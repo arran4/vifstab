@@ -1,0 +1,94 @@
+package builtin
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/arran4/vifstab/internal/rules"
+)
+
+const ProcFilesystemsKey rules.CacheKey = "proc_filesystems"
+
+type FSRule struct{}
+
+func init() {
+	rules.Register(&FSRule{})
+}
+
+func (r *FSRule) Name() string {
+	return "linux_fs"
+}
+
+func (r *FSRule) Dependencies() []string {
+	return []string{"linux_fs"}
+}
+
+func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) []rules.Suggestion {
+	if len(entry.Fields) == 0 || strings.HasPrefix(entry.RawLine, "#") {
+		return nil
+	}
+
+	if len(entry.Fields) < 3 {
+		return nil // Leave to format rule
+	}
+
+	fsType := entry.Fields[2]
+
+	if fsType == "ignore" || fsType == "swap" || fsType == "none" || fsType == "bind" {
+		return nil
+	}
+
+	c := rules.CacheFromContext(ctx)
+	if c == nil {
+		return nil // No cache, can't validate properly
+	}
+
+	val, ok := c.Get(ProcFilesystemsKey)
+	if !ok {
+		// Try to load it
+		fsMap, err := LoadProcFilesystems("/proc/filesystems")
+		if err != nil {
+			return nil // Can't validate
+		}
+		c.Set(ProcFilesystemsKey, fsMap)
+		val = fsMap
+	}
+
+	validFS, ok := val.(map[string]bool)
+	if !ok {
+		return nil
+	}
+
+	if !validFS[fsType] {
+		return []rules.Suggestion{
+			{
+				Message: fmt.Sprintf("Unknown filesystem type '%s' on line %d", fsType, entry.LineNum),
+				Line:    entry.RawLine,
+			},
+		}
+	}
+
+	return nil
+}
+
+func LoadProcFilesystems(path string) (map[string]bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	fsMap := make(map[string]bool)
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fields := strings.Fields(line)
+		if len(fields) > 0 {
+			fsMap[fields[len(fields)-1]] = true
+		}
+	}
+	return fsMap, scanner.Err()
+}

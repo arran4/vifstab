@@ -1,0 +1,17 @@
+version: 2
+project_name: vifstab
+builds:
+  - id: vifstab
+    binary: vifstab
+    main: ./cmd/vifstab
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Os }}_
+      {{- .Arch }}
