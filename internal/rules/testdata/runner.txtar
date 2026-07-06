@@ -1,3 +1,7 @@
+test: format and linux_fs test
+
+-- description.txt --
+Ensures we correctly parse and lint fstab using the runner pattern.
 -- input/etc/fstab --
 # <file system> <mount point>   <type>  <options>       <dump>  <pass>
 /dev/sda1       /               ext4    defaults        0       1
@@ -40,5 +44,5 @@ nodev	autofs
   "rules": ["format", "linux_fs"]
 }
 -- expected/output.txt --
-Validation errors found:
- - Unknown filesystem type 'unknown' on line 4 (Line: /dev/sda3       /mnt            unknown defaults        0       2)
+Validation issues found:
+ - [error] Unknown filesystem type 'unknown' on line 4 (Line: /dev/sda3       /mnt            unknown defaults        0       2)

@@ -75,7 +75,10 @@ func EditAndLint(cfg config.Config) error {
 		var allSuggestions []rules.Suggestion
 		for _, entry := range entries {
 			for _, r := range allRules {
-				suggestions := r.Validate(ctx, entry)
+				suggestions, err := r.Validate(ctx, entry)
+				if err != nil {
+					return fmt.Errorf("rule %s failed: %w", r.Name(), err)
+				}
 				allSuggestions = append(allSuggestions, suggestions...)
 			}
 		}
@@ -85,9 +88,9 @@ func EditAndLint(cfg config.Config) error {
 		}
 
 		// 4. Invalid, Prompt user
-		fmt.Println("Validation errors found:")
+		fmt.Println("Validation issues found:")
 		for _, s := range allSuggestions {
-			fmt.Printf(" - %s (Line: %s)\n", s.Message, s.Line)
+			fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
 		}
 
 		fmt.Print("What now? (e)dit again, (c)ontinue and save anyway, (q)uit without saving: ")

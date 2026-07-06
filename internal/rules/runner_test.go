@@ -140,19 +140,29 @@ func TestRules(t *testing.T) {
 			}
 
 			var allSuggestions []rules.Suggestion
+			var validateErr error
 			for _, entry := range entries {
 				for _, r := range rulesToRun {
-					suggestions := r.Validate(ctx, entry)
+					suggestions, err := r.Validate(ctx, entry)
+					if err != nil {
+						validateErr = fmt.Errorf("rule %s failed: %w", r.Name(), err)
+						break
+					}
 					allSuggestions = append(allSuggestions, suggestions...)
+				}
+				if validateErr != nil {
+					break
 				}
 			}
 
 			// Construct got output
 			var gotOutput string
-			if len(allSuggestions) > 0 {
-				gotOutput += "Validation errors found:\n"
+			if validateErr != nil {
+				gotOutput = fmt.Sprintf("Error: %v\n", validateErr)
+			} else if len(allSuggestions) > 0 {
+				gotOutput += "Validation issues found:\n"
 				for _, s := range allSuggestions {
-					gotOutput += fmt.Sprintf(" - %s (Line: %s)\n", s.Message, s.Line)
+					gotOutput += fmt.Sprintf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
 				}
 			}
 

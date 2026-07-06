@@ -26,24 +26,24 @@ func (r *FSRule) Dependencies() []string {
 	return []string{"linux_fs"}
 }
 
-func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) []rules.Suggestion {
+func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.Suggestion, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
-		return nil
+		return nil, nil
 	}
 
 	if len(entry.Fields) < 3 {
-		return nil // Leave to format rule
+		return nil, nil // Leave to format rule
 	}
 
 	fsType := entry.Fields[2]
 
 	if fsType == "ignore" || fsType == "swap" || fsType == "none" || fsType == "bind" {
-		return nil
+		return nil, nil
 	}
 
 	c := rules.CacheFromContext(ctx)
 	if c == nil {
-		return nil // No cache, can't validate properly
+		return nil, fmt.Errorf("no cache provided in context")
 	}
 
 	val, ok := c.Get(ProcFilesystemsKey)
@@ -51,7 +51,7 @@ func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) []rules.
 		// Try to load it
 		fsMap, err := LoadProcFilesystems("/proc/filesystems")
 		if err != nil {
-			return nil // Can't validate
+			return nil, fmt.Errorf("failed to load proc filesystems: %w", err)
 		}
 		c.Set(ProcFilesystemsKey, fsMap)
 		val = fsMap
@@ -59,7 +59,7 @@ func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) []rules.
 
 	validFS, ok := val.(map[string]bool)
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("invalid cache type for proc_filesystems")
 	}
 
 	if !validFS[fsType] {
@@ -67,11 +67,12 @@ func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) []rules.
 			{
 				Message: fmt.Sprintf("Unknown filesystem type '%s' on line %d", fsType, entry.LineNum),
 				Line:    entry.RawLine,
+				Level:   rules.SuggestionLevelError,
 			},
-		}
+		}, nil
 	}
 
-	return nil
+	return nil, nil
 }
 
 func LoadProcFilesystems(path string) (map[string]bool, error) {

@@ -59,7 +59,10 @@ func TestFSRule(t *testing.T) {
 	}
 
 	for _, entry := range validEntries {
-		suggs := rule.Validate(ctx, entry)
+		suggs, err := rule.Validate(ctx, entry)
+		if err != nil {
+			t.Fatalf("unexpected error during valid validate: %v", err)
+		}
 		if len(suggs) > 0 {
 			t.Errorf("expected valid entry to have no suggestions, got %v for line: %s", suggs, entry.RawLine)
 		}
@@ -73,7 +76,10 @@ func TestFSRule(t *testing.T) {
 
 	foundInvalid := false
 	for _, entry := range invalidEntries {
-		suggs := rule.Validate(ctx, entry)
+		suggs, err := rule.Validate(ctx, entry)
+		if err != nil {
+			t.Fatalf("unexpected error during invalid validate: %v", err)
+		}
 		if len(suggs) > 0 {
 			foundInvalid = true
 			if !strings.Contains(suggs[0].Message, "Unknown filesystem type 'zfs'") {
