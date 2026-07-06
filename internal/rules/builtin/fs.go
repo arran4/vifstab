@@ -27,7 +27,7 @@ func (r *FSRule) Dependencies() []string {
 }
 
 func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) []rules.Suggestion {
-	if len(entry.Fields) == 0 || strings.HasPrefix(entry.RawLine, "#") {
+	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil
 	}
 

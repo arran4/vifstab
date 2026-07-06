@@ -26,7 +26,7 @@ func (r *FormatRule) Validate(ctx context.Context, entry *rules.FstabEntry) []ru
 	if len(entry.Fields) == 0 {
 		return nil
 	}
-	if strings.HasPrefix(entry.RawLine, "#") {
+	if strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil
 	}
 

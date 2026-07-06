@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/rcs"
@@ -22,9 +24,14 @@ func EditAndLint(cfg config.Config) error {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer os.Remove(tempFile.Name())
+	defer tempFile.Close()
 
 	src, err := os.Open(cfg.FilePath)
-	if err == nil {
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to open source file: %w", err)
+		}
+	} else {
 		_, err = io.Copy(tempFile, src)
 		src.Close()
 		if err != nil {
@@ -34,13 +41,14 @@ func EditAndLint(cfg config.Config) error {
 	tempFile.Close()
 
 	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		editor = "vi"
+	editorParts := strings.Fields(editor)
+	if len(editorParts) == 0 {
+		editorParts = []string{"vi"}
 	}
 
 	for {
 		// 2. Open Editor
-		cmd := exec.Command(editor, tempFile.Name())
+		cmd := exec.Command(editorParts[0], append(editorParts[1:], tempFile.Name())...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -84,7 +92,9 @@ func EditAndLint(cfg config.Config) error {
 
 		fmt.Print("What now? (e)dit again, (c)ontinue and save anyway, (q)uit without saving: ")
 		scanner := bufio.NewScanner(os.Stdin)
-		scanner.Scan()
+		if !scanner.Scan() {
+			return fmt.Errorf("failed to read user input: %w", scanner.Err())
+		}
 		choice := scanner.Text()
 
 		if choice == "c" || choice == "C" {
@@ -108,9 +118,24 @@ func EditAndLint(cfg config.Config) error {
 		return fmt.Errorf("rcs update failed: %w", err)
 	}
 
-	// Then copy to dest
-	if err := os.WriteFile(cfg.FilePath, content, 0644); err != nil {
-		return fmt.Errorf("failed to write destination file: %w", err)
+	// Then copy to dest atomically
+	dir := filepath.Dir(cfg.FilePath)
+	tmpDest, err := os.CreateTemp(dir, "vifstab-tmp-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary destination file: %w", err)
+	}
+	defer os.Remove(tmpDest.Name())
+
+	if _, err := tmpDest.Write(content); err != nil {
+		tmpDest.Close()
+		return fmt.Errorf("failed to write to temporary destination file: %w", err)
+	}
+	if err := tmpDest.Close(); err != nil {
+		return fmt.Errorf("failed to close temporary destination file: %w", err)
+	}
+
+	if err := os.Rename(tmpDest.Name(), cfg.FilePath); err != nil {
+		return fmt.Errorf("failed to replace destination file: %w", err)
 	}
 
 	fmt.Println("Saved successfully.")

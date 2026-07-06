@@ -3,6 +3,8 @@ package rcs
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,11 +24,8 @@ func Update(filePath string, content []byte, config Config) error {
 		return fmt.Errorf("failed to create rcs dir: %w", err)
 	}
 
-	baseName := filePath[strings.LastIndex(filePath, "/")+1:]
-	if baseName == filePath {
-		baseName = filePath
-	}
-	rcsFilepath := config.Dir + "/" + baseName + ",v"
+	baseName := filepath.Base(filePath)
+	rcsFilepath := filepath.Join(config.Dir, baseName+",v")
 
 	var f *rcs.File
 
@@ -63,8 +62,10 @@ func Update(filePath string, content []byte, config Config) error {
 		headParts := strings.Split(f.Head, ".")
 		if len(headParts) == 2 {
 			minor := headParts[1]
-			newMinor := 0
-			fmt.Sscanf(minor, "%d", &newMinor)
+			newMinor, err := strconv.Atoi(minor)
+			if err != nil {
+				return fmt.Errorf("failed to parse minor revision %q: %w", minor, err)
+			}
 			newHead := fmt.Sprintf("%s.%d", headParts[0], newMinor+1)
 			f.Head = newHead
 
