@@ -35,7 +35,18 @@ func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules
 		return nil, nil // Leave to format rule
 	}
 
+	mountPoint := entry.Fields[1]
 	fsType := entry.Fields[2]
+
+	if mountPoint == "none" && fsType == "none" {
+		return []rules.Suggestion{
+			{
+				Message: fmt.Sprintf("Filesystem type for swap must be 'swap', not 'none' on line %d", entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.SuggestionLevelError,
+			},
+		}, nil
+	}
 
 	if fsType == "ignore" || fsType == "swap" || fsType == "none" || fsType == "bind" {
 		return nil, nil

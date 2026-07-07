@@ -82,8 +82,8 @@ func TestFSRule(t *testing.T) {
 		}
 		if len(suggs) > 0 {
 			foundInvalid = true
-			if !strings.Contains(suggs[0].Message, "Unknown filesystem type 'zfs'") {
-				t.Errorf("expected message about zfs, got: %s", suggs[0].Message)
+			if !strings.Contains(suggs[0].Message, "Unknown filesystem type 'zfs'") && !strings.Contains(suggs[0].Message, "Filesystem type for swap must be 'swap'") {
+				t.Errorf("expected message about zfs or swap, got: %s", suggs[0].Message)
 			}
 		}
 	}
