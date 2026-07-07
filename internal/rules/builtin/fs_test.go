@@ -74,21 +74,28 @@ func TestFSRule(t *testing.T) {
 		t.Fatalf("failed to parse invalid fstab: %v", err)
 	}
 
-	foundInvalid := false
+	expectedMsgs := []string{
+		"Unknown filesystem type 'zfs'",
+		"Filesystem type for swap must be 'swap'",
+	}
+	foundMsgs := make(map[string]bool)
 	for _, entry := range invalidEntries {
 		suggs, err := rule.Validate(ctx, entry)
 		if err != nil {
 			t.Fatalf("unexpected error during invalid validate: %v", err)
 		}
-		if len(suggs) > 0 {
-			foundInvalid = true
-			if !strings.Contains(suggs[0].Message, "Unknown filesystem type 'zfs'") && !strings.Contains(suggs[0].Message, "Filesystem type for swap must be 'swap'") {
-				t.Errorf("expected message about zfs or swap, got: %s", suggs[0].Message)
+		for _, sugg := range suggs {
+			for _, exp := range expectedMsgs {
+				if strings.Contains(sugg.Message, exp) {
+					foundMsgs[exp] = true
+				}
 			}
 		}
 	}
 
-	if !foundInvalid {
-		t.Errorf("expected to find invalid filesystem")
+	for _, exp := range expectedMsgs {
+		if !foundMsgs[exp] {
+			t.Errorf("expected to find error message containing %q, but did not", exp)
+		}
 	}
 }
