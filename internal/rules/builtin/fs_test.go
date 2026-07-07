@@ -11,11 +11,16 @@ import (
 	"golang.org/x/tools/txtar"
 )
 
-//go:embed testdata/fs.txtar
+//go:embed testdata/*.txtar
 var testdataFS embed.FS
 
 func TestFSRule(t *testing.T) {
-	data, err := testdataFS.ReadFile("testdata/fs.txtar")
+	runTest(t, "testdata/fs.txtar")
+	runTest(t, "testdata/swap.txtar")
+}
+
+func runTest(t *testing.T, filename string) {
+	data, err := testdataFS.ReadFile(filename)
 	if err != nil {
 		t.Fatalf("failed to read txtar: %v", err)
 	}
@@ -94,7 +99,10 @@ func TestFSRule(t *testing.T) {
 	}
 
 	for _, exp := range expectedMsgs {
-		if !foundMsgs[exp] {
+		if !foundMsgs[exp] && filename == "testdata/fs.txtar" && exp != "Filesystem type for swap must be 'swap'" {
+			t.Errorf("expected to find error message containing %q, but did not", exp)
+		}
+		if !foundMsgs[exp] && filename == "testdata/swap.txtar" && exp == "Filesystem type for swap must be 'swap'" {
 			t.Errorf("expected to find error message containing %q, but did not", exp)
 		}
 	}
