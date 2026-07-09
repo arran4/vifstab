@@ -1,0 +1,5 @@
+-- proc_filesystems --
+nodev	sysfs
+nodev	tmpfs
+-- invalid_fstab --
+UUID=ccd57c54-3caf-47ba-9137-cfd252dc8750 none none defaults 0 0

@@ -3,5 +3,3 @@ nodev	sysfs
 nodev	tmpfs
 -- valid_fstab --
 UUID=ccd57c54-3caf-47ba-9137-cfd252dc8750 none swap defaults 0 0
--- invalid_fstab --
-UUID=ccd57c54-3caf-47ba-9137-cfd252dc8750 none none defaults 0 0

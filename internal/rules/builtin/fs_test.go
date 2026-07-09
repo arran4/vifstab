@@ -16,7 +16,8 @@ var testdataFS embed.FS
 
 func TestFSRule(t *testing.T) {
 	runTest(t, "testdata/fs.txtar")
-	runTest(t, "testdata/swap.txtar")
+	runTest(t, "testdata/swap_valid.txtar")
+	runTest(t, "testdata/swap_invalid.txtar")
 }
 
 func runTest(t *testing.T, filename string) {
@@ -102,7 +103,7 @@ func runTest(t *testing.T, filename string) {
 		if !foundMsgs[exp] && filename == "testdata/fs.txtar" && exp != "Filesystem type for swap must be 'swap'" {
 			t.Errorf("expected to find error message containing %q, but did not", exp)
 		}
-		if !foundMsgs[exp] && filename == "testdata/swap.txtar" && exp == "Filesystem type for swap must be 'swap'" {
+		if !foundMsgs[exp] && filename == "testdata/swap_invalid.txtar" && exp == "Filesystem type for swap must be 'swap'" {
 			t.Errorf("expected to find error message containing %q, but did not", exp)
 		}
 	}
