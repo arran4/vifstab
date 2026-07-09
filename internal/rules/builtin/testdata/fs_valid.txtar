@@ -1,4 +1,4 @@
--- proc_filesystems --
+-- input/proc/filesystems --
 nodev	sysfs
 nodev	tmpfs
 nodev	bdev
@@ -28,7 +28,7 @@ nodev	fusectl
 nodev	mqueue
 nodev	pstore
 nodev	autofs
--- valid_fstab --
+-- input/etc/fstab --
 # /etc/fstab: static file system information.
 #
 # Use 'blkid' to print the universally unique identifier for a
@@ -40,5 +40,3 @@ nodev	autofs
 /dev/mapper/vg0-home /home           ext4    defaults        0       2
 UUID=1234-5678  /boot/efi       vfat    umask=0077      0       1
 /dev/mapper/vg0-swap none            swap    sw              0       0
--- invalid_fstab --
-/dev/mapper/vg0-root /               zfs     errors=remount-ro 0       1

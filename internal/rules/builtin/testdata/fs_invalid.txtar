@@ -1,0 +1,34 @@
+-- input/proc/filesystems --
+nodev	sysfs
+nodev	tmpfs
+nodev	bdev
+nodev	proc
+nodev	cgroup
+nodev	cgroup2
+nodev	cpuset
+nodev	devtmpfs
+nodev	configfs
+nodev	debugfs
+nodev	tracefs
+nodev	securityfs
+nodev	sockfs
+nodev	bpf
+nodev	pipefs
+nodev	ramfs
+nodev	hugetlbfs
+nodev	devpts
+	ext3
+	ext2
+	ext4
+	squashfs
+	vfat
+	fuseblk
+nodev	fuse
+nodev	fusectl
+nodev	mqueue
+nodev	pstore
+nodev	autofs
+-- input/etc/fstab --
+/dev/mapper/vg0-root /               zfs     errors=remount-ro 0       1
+-- expected/output.txt --
+Unknown filesystem type 'zfs'

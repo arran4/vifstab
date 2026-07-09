@@ -1,5 +1,5 @@
--- proc_filesystems --
+-- input/proc/filesystems --
 nodev	sysfs
 nodev	tmpfs
--- valid_fstab --
+-- input/etc/fstab --
 UUID=ccd57c54-3caf-47ba-9137-cfd252dc8750 none swap defaults 0 0

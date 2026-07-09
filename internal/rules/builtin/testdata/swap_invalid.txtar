@@ -1,5 +1,7 @@
--- proc_filesystems --
+-- input/proc/filesystems --
 nodev	sysfs
 nodev	tmpfs
--- invalid_fstab --
+-- input/etc/fstab --
 UUID=ccd57c54-3caf-47ba-9137-cfd252dc8750 none none defaults 0 0
+-- expected/output.txt --
+Filesystem type for swap must be 'swap'
