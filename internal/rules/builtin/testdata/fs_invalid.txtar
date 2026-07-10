@@ -1,0 +1,7 @@
+test: invalid filesystem type
+
+Ensures that fstab entries with a filesystem type not present in /proc/filesystems are properly flagged as an error.
+-- input/etc/fstab --
+/dev/mapper/vg0-root /               zfs     errors=remount-ro 0       1
+-- expected/validationerrors.txt --
+Unknown filesystem type 'zfs'

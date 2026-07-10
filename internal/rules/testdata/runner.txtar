@@ -5,7 +5,7 @@ Ensures we correctly parse and lint fstab using the runner pattern.
 -- input/etc/fstab --
 # <file system> <mount point>   <type>  <options>       <dump>  <pass>
 /dev/sda1       /               ext4    defaults        0       1
-/dev/sda2       none            swap    sw              0       0
+/dev/sda2       none            none    sw              0       0
 /dev/sda3       /mnt            unknown defaults        0       2
 -- input/proc/filesystems --
 nodev	sysfs
@@ -43,6 +43,7 @@ nodev	autofs
 {
   "rules": ["format", "linux_fs"]
 }
--- expected/output.txt --
+-- expected/validationerrors.txt --
 Validation issues found:
+ - [error] Filesystem type for swap must be 'swap', not 'none' on line 3 (Line: /dev/sda2       none            none    sw              0       0)
  - [error] Unknown filesystem type 'unknown' on line 4 (Line: /dev/sda3       /mnt            unknown defaults        0       2)
