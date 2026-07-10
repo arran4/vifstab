@@ -2,7 +2,7 @@
 
 **⚠️ Work in Progress**
 
-`vifstab` is a work in progress utility designed to emulate `visudo` for `/etc/fstab` files. It safely edits `fstab` files with built-in linting and versioning, respecting the `$EDITOR` environment variable and saving backups using RCS.
+`vifstab` is a work-in-progress utility designed to emulate `visudo` for `/etc/fstab` files. It safely edits `fstab` files with built-in linting and versioning, respecting the `$EDITOR` environment variable and saving backups using RCS.
 
 ## Features
 
@@ -53,12 +53,12 @@ vifstab --file /path/to/custom/fstab --backup-dir /var/backups/vifstab
 
 `vifstab` includes a modular linting registry that validates your entries before saving. It categorizes feedback into three levels:
 
-1. **Suggestions:** Suggestions can be with a warning or on their own. They are automatically determined improvements.
-2. **Warnings:** Warnings are anything that might cause non-critical errors, such as non-critical mount point options that don't exist.
-3. **Errors:** Errors are anything that might cause a complete failure, such as missing block devices, unknown filesystems, etc.
+1. **Suggestions:** Suggestions can accompany a warning or stand on their own. They represent automatically determined improvements.
+2. **Warnings:** Warnings indicate issues that might cause non-critical errors, such as non-existent mount options.
+3. **Errors:** Errors indicate critical issues that might cause a complete failure, such as missing block devices or unknown filesystems.
 
 Currently built-in rules check for:
-- Format validity (e.g. minimum number of fields)
+- Format validity (e.g., minimum number of fields)
 - Linux filesystem validity (checking against `/proc/filesystems`)
 
 ## Environment Variables
