@@ -166,7 +166,7 @@ func TestRules(t *testing.T) {
 				}
 			}
 
-			wantOutputBytes, err := fs.ReadFile(expectedFS, "output.txt")
+			wantOutputBytes, err := fs.ReadFile(expectedFS, "validationerrors.txt")
 			if err != nil && len(allSuggestions) > 0 {
 				t.Fatalf("unexpected validation errors:\n%s", gotOutput)
 			} else if err == nil {

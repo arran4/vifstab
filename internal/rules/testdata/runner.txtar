@@ -43,7 +43,7 @@ nodev	autofs
 {
   "rules": ["format", "linux_fs"]
 }
--- expected/output.txt --
+-- expected/validationerrors.txt --
 Validation issues found:
  - [error] Filesystem type for swap must be 'swap', not 'none' on line 3 (Line: /dev/sda2       none            none    sw              0       0)
  - [error] Unknown filesystem type 'unknown' on line 4 (Line: /dev/sda3       /mnt            unknown defaults        0       2)

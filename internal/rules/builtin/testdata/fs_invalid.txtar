@@ -30,5 +30,5 @@ nodev	pstore
 nodev	autofs
 -- input/etc/fstab --
 /dev/mapper/vg0-root /               zfs     errors=remount-ro 0       1
--- expected/output.txt --
+-- expected/validationerrors.txt --
 Unknown filesystem type 'zfs'

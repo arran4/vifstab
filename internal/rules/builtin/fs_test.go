@@ -98,7 +98,7 @@ func TestFSRule(t *testing.T) {
 				allSuggestions = append(allSuggestions, suggs...)
 			}
 
-			wantOutputBytes, err := fs.ReadFile(expectedFS, "output.txt")
+			wantOutputBytes, err := fs.ReadFile(expectedFS, "validationerrors.txt")
 			if err != nil { // No expected output provided, meaning it should be valid
 				if len(allSuggestions) > 0 {
 					t.Fatalf("expected valid entry to have no suggestions, got %v for file %s", allSuggestions, tc)

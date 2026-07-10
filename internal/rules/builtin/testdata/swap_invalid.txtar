@@ -3,5 +3,5 @@ nodev	sysfs
 nodev	tmpfs
 -- input/etc/fstab --
 UUID=ccd57c54-3caf-47ba-9137-cfd252dc8750 none none defaults 0 0
--- expected/output.txt --
+-- expected/validationerrors.txt --
 Filesystem type for swap must be 'swap'
