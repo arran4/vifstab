@@ -57,7 +57,7 @@ Because `vifstab` is meant to be run as root (or via `sudo`/`su`), it must handl
 
 ### Flags
 
-- `--backup-dir value`: Directory to store RCS backups (default: "/root")
+- `--backup-dir value`: Directory to store RCS backups. If not provided, it defaults to a sensible location based on the file being edited and the user running the command (e.g., `/root/.vifstab` for `/etc/fstab` when run as root, or `~/.vifstab` for regular users).
 - `--file value`: File to edit (default: "/etc/fstab")
 - `--generate-manpage`: Generate man page for vifstab to `vifstab.1`
 
