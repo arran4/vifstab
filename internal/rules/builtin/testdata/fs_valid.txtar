@@ -1,3 +1,6 @@
+test: valid filesystem types
+
+Ensures that valid, common fstab entries matching /proc/filesystems correctly pass validation.
 -- input/proc/filesystems --
 nodev	sysfs
 nodev	tmpfs

@@ -1,3 +1,6 @@
+test: invalid filesystem type
+
+Ensures that fstab entries with a filesystem type not present in /proc/filesystems are properly flagged as an error.
 -- input/proc/filesystems --
 nodev	sysfs
 nodev	tmpfs
