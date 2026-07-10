@@ -35,17 +35,12 @@ func main() {
 
 			backupDir := c.String("backup-dir")
 			if backupDir == "" {
-				if c.String("file") == "/etc/fstab" && os.Geteuid() == 0 {
-					backupDir = "/root/.vifstab"
+				if xdgCache := os.Getenv("XDG_CACHE_HOME"); xdgCache != "" {
+					backupDir = xdgCache + "/vifstab"
+				} else if home, err := os.UserHomeDir(); err == nil {
+					backupDir = home + "/.cache/vifstab"
 				} else {
-					// Fallback for non-root or non-/etc/fstab files
-					if xdgCache := os.Getenv("XDG_CACHE_HOME"); xdgCache != "" {
-						backupDir = xdgCache + "/vifstab"
-					} else if home, err := os.UserHomeDir(); err == nil {
-						backupDir = home + "/.cache/vifstab"
-					} else {
-						backupDir = "/tmp/.vifstab"
-					}
+					backupDir = "/tmp/.vifstab"
 				}
 			}
 
