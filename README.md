@@ -29,13 +29,31 @@ cd vifstab
 go build -o vifstab ./cmd/vifstab
 ```
 
-## Usage
+### System Installation
 
-Run `vifstab` to edit the default `/etc/fstab` file:
+After building from source or installing via Go, it is highly recommended to install the binary to a system-wide directory such as `/usr/local/sbin` or `/usr/sbin` so it is accessible to administrators:
 
 ```bash
-vifstab
+sudo cp vifstab /usr/local/sbin/
+sudo chown root:root /usr/local/sbin/vifstab
+sudo chmod 755 /usr/local/sbin/vifstab
 ```
+
+## Usage
+
+Run `vifstab` to edit the default `/etc/fstab` file. Note that because this edits a system file, you typically need to run it as root or via `sudo`:
+
+```bash
+sudo vifstab
+```
+
+### Editor Selection and Privilege Escalation
+
+Because `vifstab` is meant to be run as root (or via `sudo`/`su`), it must handle editor selection securely.
+
+1. **`$EDITOR` / `$VISUAL` Variables:** `vifstab` respects the `$EDITOR` and `$VISUAL` environment variables. If neither is set, it typically falls back to a default system editor like `vi` or `nano`.
+2. **`sudo` Considerations:** When running via `sudo`, your personal `$EDITOR` variable might not be preserved in the root environment unless configured to do so. You may need to use `sudo -E` (to preserve environment variables) or configure the `Defaults env_keep += "EDITOR VISUAL"` setting in your `sudoers` file.
+3. **Security:** Running an editor as root can be a security risk (e.g., shell escapes from within `vi`). Always ensure you are using a trusted editor and environment when running `vifstab`.
 
 ### Flags
 
