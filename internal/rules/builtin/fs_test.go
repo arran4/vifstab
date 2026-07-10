@@ -86,13 +86,22 @@ func TestFSRule(t *testing.T) {
 				}
 			}
 			c.Set(ProcFilesystemsKey, fsMap)
+			c.Set(rules.CacheKey("btrfs_subvol_exists:does_not_exist_subvol123"), false)
+			c.Set(rules.CacheKey("file_exists:/dev/nonexistent_btrfs_disk123"), false)
 
 			ctx := rules.WithCache(context.Background(), c)
 			rule := &FSRule{}
+			btrfsRule := &BTRFSRule{}
 
 			var allSuggestions []rules.Suggestion
 			for _, entry := range entries {
 				suggs, err := rule.Validate(ctx, entry)
+				if err != nil {
+					t.Fatalf("unexpected error during validate: %v", err)
+				}
+				allSuggestions = append(allSuggestions, suggs...)
+
+				suggs, err = btrfsRule.Validate(ctx, entry)
 				if err != nil {
 					t.Fatalf("unexpected error during validate: %v", err)
 				}
