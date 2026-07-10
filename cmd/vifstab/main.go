@@ -16,8 +16,7 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "backup-dir",
-				Value: "/root",
-				Usage: "Directory to store RCS backups",
+				Usage: "Directory to store RCS backups (defaults to a sensible location based on the file being edited and the user running the command)",
 			},
 			&cli.StringFlag{
 				Name:  "file",
@@ -33,8 +32,20 @@ func main() {
 				}
 				return os.WriteFile("vifstab.1", []byte(man), 0644)
 			}
+
+			backupDir := c.String("backup-dir")
+			if backupDir == "" {
+				if xdgCache := os.Getenv("XDG_CACHE_HOME"); xdgCache != "" {
+					backupDir = xdgCache + "/vifstab"
+				} else if home, err := os.UserHomeDir(); err == nil {
+					backupDir = home + "/.cache/vifstab"
+				} else {
+					backupDir = "/tmp/.vifstab"
+				}
+			}
+
 			cfg := config.Config{
-				BackupDir: c.String("backup-dir"),
+				BackupDir: backupDir,
 				FilePath:  c.String("file"),
 			}
 			return editor.EditAndLint(cfg)
