@@ -39,9 +39,10 @@ func main() {
 					backupDir = "/root/.vifstab"
 				} else {
 					// Fallback for non-root or non-/etc/fstab files
-					home, err := os.UserHomeDir()
-					if err == nil {
-						backupDir = home + "/.vifstab"
+					if xdgCache := os.Getenv("XDG_CACHE_HOME"); xdgCache != "" {
+						backupDir = xdgCache + "/vifstab"
+					} else if home, err := os.UserHomeDir(); err == nil {
+						backupDir = home + "/.cache/vifstab"
 					} else {
 						backupDir = "/tmp/.vifstab"
 					}
