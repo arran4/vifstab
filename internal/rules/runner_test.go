@@ -106,17 +106,18 @@ func TestRules(t *testing.T) {
 			// Pre-fill cache (mocking the OS interaction)
 			c := rules.NewCache()
 			procData, err := fs.ReadFile(inputFS, "proc/filesystems")
-			if err == nil {
-				fsMap := make(map[string]bool)
-				lines := strings.Split(string(procData), "\n")
-				for _, line := range lines {
-					fields := strings.Fields(line)
-					if len(fields) > 0 {
-						fsMap[fields[len(fields)-1]] = true
-					}
-				}
-				c.Set("proc_filesystems", fsMap)
+			if err != nil { // Fallback to a sane default if the test doesn't override it
+				procData = []byte("nodev\tsysfs\nnodev\ttmpfs\nnodev\tproc\n\text3\n\text4\n\tsquashfs\n\tvfat\n")
 			}
+			fsMap := make(map[string]bool)
+			lines := strings.Split(string(procData), "\n")
+			for _, line := range lines {
+				fields := strings.Fields(line)
+				if len(fields) > 0 {
+					fsMap[fields[len(fields)-1]] = true
+				}
+			}
+			c.Set("proc_filesystems", fsMap)
 
 			ctx := rules.WithCache(context.Background(), c)
 

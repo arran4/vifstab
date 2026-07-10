@@ -1,8 +1,5 @@
 test: valid swap partition entry
 
 Ensures that correctly formatted swap fstab entries (where filesystem type is 'swap') pass validation without errors.
--- input/proc/filesystems --
-nodev	sysfs
-nodev	tmpfs
 -- input/etc/fstab --
 UUID=ccd57c54-3caf-47ba-9137-cfd252dc8750 none swap defaults 0 0

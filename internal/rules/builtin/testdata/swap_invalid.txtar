@@ -1,9 +1,6 @@
 test: swap partition filesystem type must be swap
 
 Ensures that fstab entries intended for swap partitions do not mistakenly use 'none' as their filesystem type.
--- input/proc/filesystems --
-nodev	sysfs
-nodev	tmpfs
 -- input/etc/fstab --
 UUID=ccd57c54-3caf-47ba-9137-cfd252dc8750 none none defaults 0 0
 -- expected/validationerrors.txt --
