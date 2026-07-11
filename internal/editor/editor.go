@@ -8,9 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/arran4/vifstab/internal/config"
+	"github.com/google/shlex"
 	"github.com/arran4/vifstab/internal/rcs"
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
@@ -40,15 +40,31 @@ func EditAndLint(cfg config.Config) error {
 	}
 	tempFile.Close()
 
-	editor := os.Getenv("EDITOR")
-	editorParts := strings.Fields(editor)
-	if len(editorParts) == 0 {
+	editor := os.Getenv("VISUAL")
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+
+	var editorParts []string
+	var errSplit error
+	if editor != "" {
+		editorParts, errSplit = shlex.Split(editor)
+	}
+
+	if errSplit != nil || len(editorParts) == 0 {
 		editorParts = []string{"vi"}
+	}
+
+	for _, part := range editorParts {
+		if part == "--" {
+			return fmt.Errorf("editor arguments may not contain \"--\"")
+		}
 	}
 
 	for {
 		// 2. Open Editor
-		cmd := exec.Command(editorParts[0], append(editorParts[1:], tempFile.Name())...)
+		cmdArgs := append(editorParts[1:], "--", tempFile.Name())
+		cmd := exec.Command(editorParts[0], cmdArgs...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
