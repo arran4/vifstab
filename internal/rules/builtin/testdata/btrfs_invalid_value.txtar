@@ -1,0 +1,14 @@
+-- input/etc/fstab --
+/dev/sda1 / btrfs fatal_errors=ignore,space_cache=v3 0 1
+-- input/proc/filesystems --
+nodev	sysfs
+nodev	tmpfs
+nodev	proc
+	btrfs
+	ext3
+	ext4
+	squashfs
+	vfat
+-- expected/validationerrors.txt --
+Invalid value 'ignore' for fatal_errors on line 1
+Invalid value 'v3' for space_cache on line 1

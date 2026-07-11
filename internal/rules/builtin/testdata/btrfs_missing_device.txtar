@@ -1,0 +1,15 @@
+-- input/etc/fstab --
+/dev/sda1 / btrfs device=/dev/nonexistent_btrfs_disk123 0 1
+-- input/proc/filesystems --
+nodev	sysfs
+nodev	tmpfs
+nodev	proc
+	btrfs
+	ext3
+	ext4
+	squashfs
+	vfat
+-- expected/validationerrors.txt --
+Device '/dev/nonexistent_btrfs_disk123' specified in BTRFS mount option device does not exist on line 1
+-- input/cache/file_exists:/dev/nonexistent_btrfs_disk123 --
+false

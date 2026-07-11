@@ -86,17 +86,32 @@ func TestFSRule(t *testing.T) {
 				}
 			}
 			c.Set(ProcFilesystemsKey, fsMap)
+			for _, f := range ar.Files {
+				if strings.HasPrefix(f.Name, "input/cache/") {
+					key := strings.TrimPrefix(f.Name, "input/cache/")
+					val := strings.TrimSpace(string(f.Data))
+					if val == "false" {
+						c.Set(rules.CacheKey(key), false)
+					} else if val == "true" {
+						c.Set(rules.CacheKey(key), true)
+					} else {
+						c.Set(rules.CacheKey(key), f.Data)
+					}
+				}
+			}
 
 			ctx := rules.WithCache(context.Background(), c)
-			rule := &FSRule{}
+			allRules := rules.GetAllRules()
 
 			var allSuggestions []rules.Suggestion
 			for _, entry := range entries {
-				suggs, err := rule.Validate(ctx, entry)
-				if err != nil {
-					t.Fatalf("unexpected error during validate: %v", err)
+				for _, r := range allRules {
+					suggs, err := r.Validate(ctx, entry)
+					if err != nil {
+						t.Fatalf("unexpected error during validate for rule %s: %v", r.Name(), err)
+					}
+					allSuggestions = append(allSuggestions, suggs...)
 				}
-				allSuggestions = append(allSuggestions, suggs...)
 			}
 
 			wantOutputBytes, err := fs.ReadFile(expectedFS, "validationerrors.txt")
