@@ -164,7 +164,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			if val != "" {
 				if c != nil {
 					if v, ok := c.Get(rules.CacheKey("file_exists:" + val)); ok {
-						if !v.(bool) {
+						if exists, ok := v.(bool); ok && !exists {
 							suggestions = append(suggestions, rules.Suggestion{
 								Message: fmt.Sprintf("Device '%s' specified in BTRFS mount option device does not exist on line %d", val, entry.LineNum),
 								Line:    entry.RawLine,
@@ -187,7 +187,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 				checked := false
 				if c != nil {
 					if v, ok := c.Get(rules.CacheKey("btrfs_subvol_exists:" + val)); ok {
-						if !v.(bool) {
+						if exists, ok := v.(bool); ok && !exists {
 							suggestions = append(suggestions, rules.Suggestion{
 								Message: fmt.Sprintf("Subvolume '%s' might not exist on line %d", val, entry.LineNum),
 								Line:    entry.RawLine,
@@ -217,9 +217,10 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 	return suggestions, nil
 }
 
+var kernelVersionRe = regexp.MustCompile(`(?:Linux version )?(\d+)\.(\d+)(?:\.(\d+))?`)
+
 func parseKernelVersionStr(v string) (major, minor, patch int) {
-	re := regexp.MustCompile(`(?:Linux version )?(\d+)\.(\d+)(?:\.(\d+))?`)
-	matches := re.FindStringSubmatch(v)
+	matches := kernelVersionRe.FindStringSubmatch(v)
 	if len(matches) > 0 {
 		major, _ = strconv.Atoi(matches[1])
 		minor, _ = strconv.Atoi(matches[2])
@@ -233,25 +234,24 @@ func parseKernelVersionStr(v string) (major, minor, patch int) {
 func getHostKernelVersion(c *rules.Cache) (major, minor, patch int) {
 	if c != nil {
 		if v, ok := c.Get("proc_version"); ok {
-			b := v.([]byte)
-			re := regexp.MustCompile(`(?:Linux version )?(\d+\.\d+(?:\.\d+)?)`)
-			match := re.FindStringSubmatch(string(b))
-			if len(match) > 1 {
-				return parseKernelVersionStr(match[1])
+			if b, ok := v.([]byte); ok {
+				return parseKernelVersionStr(string(b))
+			} else if s, ok := v.(string); ok {
+				return parseKernelVersionStr(s)
 			}
 		}
 		if v, ok := c.Get("proc_osrelease"); ok {
-			return parseKernelVersionStr(string(v.([]byte)))
+			if b, ok := v.([]byte); ok {
+				return parseKernelVersionStr(string(b))
+			} else if s, ok := v.(string); ok {
+				return parseKernelVersionStr(s)
+			}
 		}
 	}
 
 	b, err := os.ReadFile("/proc/version")
 	if err == nil {
-		re := regexp.MustCompile(`(?:Linux version )?(\d+\.\d+(?:\.\d+)?)`)
-		match := re.FindStringSubmatch(string(b))
-		if len(match) > 1 {
-			return parseKernelVersionStr(match[1])
-		}
+		return parseKernelVersionStr(string(b))
 	}
 	b, err = os.ReadFile("/proc/sys/kernel/osrelease")
 	if err == nil {
