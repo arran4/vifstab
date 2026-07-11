@@ -11,3 +11,5 @@ nodev	proc
 	vfat
 -- expected/validationerrors.txt --
 Device '/dev/nonexistent_btrfs_disk123' specified in BTRFS mount option device does not exist on line 1
+-- input/cache/file_exists:/dev/nonexistent_btrfs_disk123 --
+false

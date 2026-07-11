@@ -11,3 +11,5 @@ nodev	proc
 	vfat
 -- expected/validationerrors.txt --
 Subvolume 'does_not_exist_subvol123' might not exist on line 1
+-- input/cache/btrfs_subvol_exists:does_not_exist_subvol123 --
+false
