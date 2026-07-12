@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 
 	"github.com/arran4/vifstab/internal/config"
-	"github.com/google/shlex"
 	"github.com/arran4/vifstab/internal/rcs"
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
@@ -48,7 +47,7 @@ func EditAndLint(cfg config.Config) error {
 	var editorParts []string
 	if editor != "" {
 		var err error
-		editorParts, err = shlex.Split(editor)
+		editorParts, err = SplitEditorCommand(editor)
 		if err != nil {
 			return fmt.Errorf("failed to parse editor command: %w", err)
 		}
