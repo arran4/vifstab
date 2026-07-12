@@ -46,12 +46,15 @@ func EditAndLint(cfg config.Config) error {
 	}
 
 	var editorParts []string
-	var errSplit error
 	if editor != "" {
-		editorParts, errSplit = shlex.Split(editor)
+		var err error
+		editorParts, err = shlex.Split(editor)
+		if err != nil {
+			return fmt.Errorf("failed to parse editor command: %w", err)
+		}
 	}
 
-	if errSplit != nil || len(editorParts) == 0 {
+	if len(editorParts) == 0 {
 		editorParts = []string{"vi"}
 	}
 
