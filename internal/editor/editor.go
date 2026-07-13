@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/rcs"
@@ -40,15 +39,37 @@ func EditAndLint(cfg config.Config) error {
 	}
 	tempFile.Close()
 
-	editor := os.Getenv("EDITOR")
-	editorParts := strings.Fields(editor)
+	editor := os.Getenv("SUDO_EDITOR")
+	if editor == "" {
+		editor = os.Getenv("VISUAL")
+	}
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+
+	var editorParts []string
+	if editor != "" {
+		var err error
+		editorParts, err = SplitEditorCommand(editor)
+		if err != nil {
+			return fmt.Errorf("failed to parse editor command: %w", err)
+		}
+	}
+
 	if len(editorParts) == 0 {
 		editorParts = []string{"vi"}
 	}
 
+	for _, part := range editorParts {
+		if part == "--" {
+			return fmt.Errorf("editor arguments may not contain \"--\"")
+		}
+	}
+
 	for {
 		// 2. Open Editor
-		cmd := exec.Command(editorParts[0], append(editorParts[1:], tempFile.Name())...)
+		cmdArgs := append(editorParts[1:], "--", tempFile.Name())
+		cmd := exec.Command(editorParts[0], cmdArgs...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
