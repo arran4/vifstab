@@ -39,7 +39,10 @@ func EditAndLint(cfg config.Config) error {
 	}
 	tempFile.Close()
 
-	editor := os.Getenv("VISUAL")
+	editor := os.Getenv("SUDO_EDITOR")
+	if editor == "" {
+		editor = os.Getenv("VISUAL")
+	}
 	if editor == "" {
 		editor = os.Getenv("EDITOR")
 	}
