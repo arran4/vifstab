@@ -31,11 +31,11 @@ vifstab
 \fBUsage\fP:
 
 .EX
-vifstab [GLOBAL OPTIONS] command [COMMAND OPTIONS] [ARGUMENTS...]
+vifstab [OPTIONS]
 .EE
 
 
-.SH GLOBAL OPTIONS
+.SH OPTIONS
 \fB--backup-dir\fP="": Directory to store RCS backups (defaults to a sensible location based on the file being edited and the user running the command)
 
 .PP
@@ -46,11 +46,6 @@ vifstab [GLOBAL OPTIONS] command [COMMAND OPTIONS] [ARGUMENTS...]
 
 .PP
 \fB--help, -h\fP: show help
-
-
-.SH COMMANDS
-.SH help, h
-Shows a list of commands or help for one command
 `
 
 func main() {
@@ -70,6 +65,11 @@ func main() {
 	}
 
 	flag.Parse()
+	if flag.NArg() > 0 {
+		fmt.Fprintf(os.Stderr, "Error: unexpected arguments: %v\n", flag.Args())
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	if generateManpage {
 		if err := os.WriteFile("vifstab.1", []byte(manPageContent), 0644); err != nil {
