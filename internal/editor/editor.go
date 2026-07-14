@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 
 	"github.com/arran4/vifstab/internal/config"
-	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/arran4/vifstab/internal/rcs"
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
@@ -29,13 +28,13 @@ func EditAndLint(cfg config.Config) error {
 	src, err := os.Open(cfg.FilePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return outcome.New(1, fmt.Errorf("failed to open source file: %w", err))
+			return fmt.Errorf("failed to open source file: %w", err)
 		}
 	} else {
 		_, err = io.Copy(tempFile, src)
 		src.Close()
 		if err != nil {
-			return outcome.New(1, fmt.Errorf("failed to copy to temp file: %w", err))
+			return fmt.Errorf("failed to copy to temp file: %w", err)
 		}
 	}
 	tempFile.Close()
@@ -53,7 +52,7 @@ func EditAndLint(cfg config.Config) error {
 		var err error
 		editorParts, err = SplitEditorCommand(editor)
 		if err != nil {
-			return outcome.New(1, fmt.Errorf("failed to parse editor command: %w", err))
+			return fmt.Errorf("failed to parse editor command: %w", err)
 		}
 	}
 
@@ -63,7 +62,7 @@ func EditAndLint(cfg config.Config) error {
 
 	for _, part := range editorParts {
 		if part == "--" {
-			return outcome.New(1, fmt.Errorf("editor arguments may not contain \"--\""))
+			return fmt.Errorf("editor arguments may not contain \"--\"")
 		}
 	}
 
@@ -75,7 +74,7 @@ func EditAndLint(cfg config.Config) error {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
-			return outcome.New(1, fmt.Errorf("editor failed: %w", err))
+			return fmt.Errorf("editor failed: %w", err)
 		}
 
 		// 3. Read and Lint
@@ -160,7 +159,7 @@ func EditAndLint(cfg config.Config) error {
 	}
 
 	if err := os.Rename(tmpDest.Name(), cfg.FilePath); err != nil {
-		return outcome.New(1, fmt.Errorf("failed to replace destination file: %w", err))
+		return fmt.Errorf("failed to replace destination file: %w", err)
 	}
 
 	fmt.Println("Saved successfully.")
