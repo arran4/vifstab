@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"flag"
 	"fmt"
 	"log"
@@ -8,45 +9,11 @@ import (
 
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/editor"
+	"github.com/cpuguy83/go-md2man/v2/md2man"
 )
 
-const manPageContent = `.nh
-.TH vifstab 8
-
-.SH NAME
-vifstab \- Edit fstab files with linting and versioning
-
-
-.SH SYNOPSIS
-vifstab
-
-.EX
-[--backup-dir]=[value]
-[--file]=[value]
-[--generate-manpage]
-[--help|-h]
-.EE
-
-.PP
-\fBUsage\fP:
-
-.EX
-vifstab [OPTIONS]
-.EE
-
-
-.SH OPTIONS
-\fB--backup-dir\fP="": Directory to store RCS backups (defaults to a sensible location based on the file being edited and the user running the command)
-
-.PP
-\fB--file\fP="": File to edit (default: "/etc/fstab")
-
-.PP
-\fB--generate-manpage\fP: Generate man page for vifstab to vifstab.1
-
-.PP
-\fB--help, -h\fP: show help
-`
+//go:embed manpage.md
+var manPageMarkdown []byte
 
 func main() {
 	var (
@@ -72,7 +39,8 @@ func main() {
 	}
 
 	if generateManpage {
-		if err := os.WriteFile("vifstab.1", []byte(manPageContent), 0644); err != nil {
+		manPageTroff := md2man.Render(manPageMarkdown)
+		if err := os.WriteFile("vifstab.1", manPageTroff, 0644); err != nil {
 			log.Fatal(err)
 		}
 		return
