@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/editor"
+	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
 )
 
@@ -43,7 +45,7 @@ func main() {
 	if generateManpage {
 		manPageTroff := md2man.Render(manPageMarkdown)
 		if err := os.WriteFile("vifstab.1", manPageTroff, 0644); err != nil {
-			log.Fatal(err)
+			log.Panic(err)
 		}
 		return
 	}
@@ -66,13 +68,24 @@ func main() {
 	if verifyOnly {
 		err := editor.VerifyAndLint(cfg)
 		if err != nil {
-			log.Fatal(err)
+			handleError(err)
 		}
 		return
 	}
 
 	err := editor.EditAndLint(cfg)
 	if err != nil {
-		log.Fatal(err)
+		handleError(err)
 	}
+}
+
+func handleError(err error) {
+	var appOutcome *outcome.ApplicationOutcome
+	if errors.As(err, &appOutcome) {
+		if appOutcome.Err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", appOutcome.Err)
+		}
+		os.Exit(appOutcome.ExitCode)
+	}
+	log.Panic(err)
 }

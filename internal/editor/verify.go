@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/arran4/vifstab/internal/config"
+	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
 	"github.com/arran4/vifstab/internal/rules/core"
@@ -50,5 +51,5 @@ func VerifyAndLint(cfg config.Config) error {
 		fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
 	}
 
-	return fmt.Errorf("validation failed with %d issues", len(allSuggestions))
+	return outcome.New(-1, fmt.Errorf("validation failed with %d issues", len(allSuggestions)))
 }
