@@ -65,9 +65,12 @@ func main() {
 	}
 
 	if verifyOnly {
-		err := editor.VerifyAndLint(cfg)
+		issueCount, err := editor.VerifyAndLint(cfg)
 		if err != nil {
 			handleError(err)
+		}
+		if issueCount > 0 {
+			os.Exit(1)
 		}
 		return
 	}

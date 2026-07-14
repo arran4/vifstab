@@ -6,24 +6,23 @@ import (
 	"os"
 
 	"github.com/arran4/vifstab/internal/config"
-	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
 	"github.com/arran4/vifstab/internal/rules/core"
 )
 
 // VerifyAndLint reads the given file and lints it against all registered rules.
-// It returns an error if any validation issues are found, without prompting the user or modifying the file.
-func VerifyAndLint(cfg config.Config) error {
+// It returns a count of validation issues found and an error if a technical failure occurred.
+func VerifyAndLint(cfg config.Config) (int, error) {
 	f, err := os.Open(cfg.FilePath)
 	if err != nil {
-		return fmt.Errorf("failed to read file for verification: %w", err)
+		return 0, fmt.Errorf("failed to read file for verification: %w", err)
 	}
 	defer f.Close()
 
 	entries, err := core.ParseFstab(f)
 	if err != nil {
-		return fmt.Errorf("failed to parse: %w", err)
+		return 0, fmt.Errorf("failed to parse: %w", err)
 	}
 
 	// Run rules
@@ -35,15 +34,22 @@ func VerifyAndLint(cfg config.Config) error {
 		for _, r := range allRules {
 			suggestions, err := r.Validate(ctx, entry)
 			if err != nil {
-				return fmt.Errorf("rule %s failed: %w", r.Name(), err)
+				return 0, fmt.Errorf("rule %s failed: %w", r.Name(), err)
 			}
 			allSuggestions = append(allSuggestions, suggestions...)
 		}
 	}
 
-	if len(allSuggestions) == 0 {
+	var issueCount int
+	for _, s := range allSuggestions {
+		if s.Level == rules.SuggestionLevelError || s.Level == rules.SuggestionLevelWarning {
+			issueCount++
+		}
+	}
+
+	if issueCount == 0 {
 		fmt.Println("Validation successful.")
-		return nil
+		return 0, nil
 	}
 
 	fmt.Println("Validation issues found:")
@@ -51,5 +57,5 @@ func VerifyAndLint(cfg config.Config) error {
 		fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
 	}
 
-	return outcome.New(1, fmt.Errorf("validation failed with %d issues", len(allSuggestions)))
+	return issueCount, nil
 }
