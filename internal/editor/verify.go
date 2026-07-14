@@ -18,9 +18,9 @@ func VerifyAndLint(cfg config.Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to read file for verification: %w", err)
 	}
+	defer f.Close()
 
 	entries, err := core.ParseFstab(f)
-	f.Close()
 	if err != nil {
 		return fmt.Errorf("failed to parse: %w", err)
 	}
