@@ -9,6 +9,7 @@ import (
 
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/editor"
+	"github.com/arran4/vifstab/internal/skill"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
 )
 
@@ -16,6 +17,11 @@ import (
 var manPageMarkdown []byte
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "skill" {
+		skill.RunCLI(os.Args[2:])
+		return
+	}
+
 	var (
 		backupDir       string
 		file            string

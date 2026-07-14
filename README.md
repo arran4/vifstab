@@ -67,6 +67,28 @@ Example:
 vifstab --file /path/to/custom/fstab --backup-dir /var/backups/vifstab
 ```
 
+## AI Agent Skills
+
+`vifstab` supports an agent-skill system to help AI coding agents use the tool safely and effectively.
+
+### Installing the official skill
+```bash
+vifstab skill install vifstab
+```
+
+### Installing skills from GitHub
+```bash
+vifstab skill install owner/repository [skill-name] [--agent <agent>] [--scope <scope>]
+```
+
+### Managing skills
+- `vifstab skill update <name> [--force]`
+- `vifstab skill remove <name>`
+- `vifstab skill list [--json]`
+- `vifstab skill inspect <name>`
+
+Skills are installed to `~/.agents/skills/` (user scope) or `./.agents/skills/` (project scope) by default. You can override the agent name using the `--agent` flag (e.g., `--agent copilot` installs to `~/.copilot/skills/`).
+
 ## Linting
 
 `vifstab` includes a modular linting registry that validates your entries before saving. It categorizes feedback into three levels:
