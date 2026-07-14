@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/arran4/vifstab/internal/config"
@@ -45,7 +44,7 @@ func main() {
 	if generateManpage {
 		manPageTroff := md2man.Render(manPageMarkdown)
 		if err := os.WriteFile("vifstab.1", manPageTroff, 0644); err != nil {
-			log.Panic(err)
+			handleError(err)
 		}
 		return
 	}
@@ -87,5 +86,6 @@ func handleError(err error) {
 		}
 		os.Exit(appOutcome.ExitCode)
 	}
-	log.Panic(err)
+	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	os.Exit(1)
 }

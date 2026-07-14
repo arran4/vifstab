@@ -51,5 +51,5 @@ func VerifyAndLint(cfg config.Config) error {
 		fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
 	}
 
-	return outcome.New(-1, fmt.Errorf("validation failed with %d issues", len(allSuggestions)))
+	return outcome.New(1, fmt.Errorf("validation failed with %d issues", len(allSuggestions)))
 }
