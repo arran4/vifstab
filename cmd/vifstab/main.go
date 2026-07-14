@@ -1,63 +1,99 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/editor"
-	"github.com/urfave/cli/v2"
 )
 
+const manPageContent = `.nh
+.TH vifstab 8
+
+.SH NAME
+vifstab \- Edit fstab files with linting and versioning
+
+
+.SH SYNOPSIS
+vifstab
+
+.EX
+[--backup-dir]=[value]
+[--file]=[value]
+[--generate-manpage]
+[--help|-h]
+.EE
+
+.PP
+\fBUsage\fP:
+
+.EX
+vifstab [GLOBAL OPTIONS] command [COMMAND OPTIONS] [ARGUMENTS...]
+.EE
+
+
+.SH GLOBAL OPTIONS
+\fB--backup-dir\fP="": Directory to store RCS backups (defaults to a sensible location based on the file being edited and the user running the command)
+
+.PP
+\fB--file\fP="": File to edit (default: "/etc/fstab")
+
+.PP
+\fB--generate-manpage\fP: Generate man page for vifstab to vifstab.1
+
+.PP
+\fB--help, -h\fP: show help
+
+
+.SH COMMANDS
+.SH help, h
+Shows a list of commands or help for one command
+`
+
 func main() {
-	app := &cli.App{
-		Name:  "vifstab",
-		Usage: "Edit fstab files with linting and versioning",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "backup-dir",
-				Usage: "Directory to store RCS backups (defaults to a sensible location based on the file being edited and the user running the command)",
-			},
-			&cli.StringFlag{
-				Name:  "file",
-				Value: "/etc/fstab",
-				Usage: "File to edit",
-			},
-		},
-		Action: func(c *cli.Context) error {
-			if c.Bool("generate-manpage") {
-				man, err := c.App.ToMan()
-				if err != nil {
-					return err
-				}
-				return os.WriteFile("vifstab.1", []byte(man), 0644)
-			}
+	var (
+		backupDir       string
+		file            string
+		generateManpage bool
+	)
 
-			backupDir := c.String("backup-dir")
-			if backupDir == "" {
-				if xdgCache := os.Getenv("XDG_CACHE_HOME"); xdgCache != "" {
-					backupDir = xdgCache + "/vifstab"
-				} else if home, err := os.UserHomeDir(); err == nil {
-					backupDir = home + "/.cache/vifstab"
-				} else {
-					backupDir = "/tmp/.vifstab"
-				}
-			}
+	flag.StringVar(&backupDir, "backup-dir", "", "Directory to store RCS backups (defaults to a sensible location based on the file being edited and the user running the command)")
+	flag.StringVar(&file, "file", "/etc/fstab", "File to edit")
+	flag.BoolVar(&generateManpage, "generate-manpage", false, "Generate man page for vifstab to vifstab.1")
 
-			cfg := config.Config{
-				BackupDir: backupDir,
-				FilePath:  c.String("file"),
-			}
-			return editor.EditAndLint(cfg)
-		},
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", os.Args[0])
+		flag.PrintDefaults()
 	}
 
-	app.Flags = append(app.Flags, &cli.BoolFlag{
-		Name:  "generate-manpage",
-		Usage: "Generate man page for vifstab to vifstab.1",
-	})
+	flag.Parse()
 
-	err := app.Run(os.Args)
+	if generateManpage {
+		if err := os.WriteFile("vifstab.1", []byte(manPageContent), 0644); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
+	if backupDir == "" {
+		if xdgCache := os.Getenv("XDG_CACHE_HOME"); xdgCache != "" {
+			backupDir = xdgCache + "/vifstab"
+		} else if home, err := os.UserHomeDir(); err == nil {
+			backupDir = home + "/.cache/vifstab"
+		} else {
+			backupDir = "/tmp/.vifstab"
+		}
+	}
+
+	cfg := config.Config{
+		BackupDir: backupDir,
+		FilePath:  file,
+	}
+
+	err := editor.EditAndLint(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
