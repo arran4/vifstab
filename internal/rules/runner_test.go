@@ -140,16 +140,16 @@ func TestRules(t *testing.T) {
 				rulesToRun = allRules
 			}
 
-			var allSuggestions []rules.Suggestion
+			var allIssues []rules.ValidationIssue
 			var validateErr error
 			for _, entry := range entries {
 				for _, r := range rulesToRun {
-					suggestions, err := r.Validate(ctx, entry)
+					issues, err := r.Validate(ctx, entry)
 					if err != nil {
 						validateErr = fmt.Errorf("rule %s failed: %w", r.Name(), err)
 						break
 					}
-					allSuggestions = append(allSuggestions, suggestions...)
+					allIssues = append(allIssues, issues...)
 				}
 				if validateErr != nil {
 					break
@@ -160,15 +160,15 @@ func TestRules(t *testing.T) {
 			var gotOutput string
 			if validateErr != nil {
 				gotOutput = fmt.Sprintf("Error: %v\n", validateErr)
-			} else if len(allSuggestions) > 0 {
+			} else if len(allIssues) > 0 {
 				gotOutput += "Validation issues found:\n"
-				for _, s := range allSuggestions {
+				for _, s := range allIssues {
 					gotOutput += fmt.Sprintf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
 				}
 			}
 
 			wantOutputBytes, err := fs.ReadFile(expectedFS, "validationerrors.txt")
-			if err != nil && len(allSuggestions) > 0 {
+			if err != nil && len(allIssues) > 0 {
 				t.Fatalf("unexpected validation errors:\n%s", gotOutput)
 			} else if err == nil {
 				wantOutput := string(wantOutputBytes)

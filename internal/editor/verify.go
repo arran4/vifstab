@@ -12,43 +12,33 @@ import (
 )
 
 // VerifyAndLint reads the given file and lints it against all registered rules.
-// It returns an error if any validation issues are found, without prompting the user or modifying the file.
-func VerifyAndLint(cfg config.Config) error {
+// It returns a slice of all suggestions (warnings, errors, etc.) and an error if a technical failure occurred.
+func VerifyAndLint(cfg config.Config) ([]rules.ValidationIssue, error) {
 	f, err := os.Open(cfg.FilePath)
 	if err != nil {
-		return fmt.Errorf("failed to read file for verification: %w", err)
+		return nil, fmt.Errorf("failed to read file for verification: %w", err)
 	}
 	defer f.Close()
 
 	entries, err := core.ParseFstab(f)
 	if err != nil {
-		return fmt.Errorf("failed to parse: %w", err)
+		return nil, fmt.Errorf("failed to parse: %w", err)
 	}
 
 	// Run rules
 	allRules := rules.GetAllRules()
 	ctx := rules.WithCache(context.Background(), rules.NewCache())
 
-	var allSuggestions []rules.Suggestion
+	var allIssues []rules.ValidationIssue
 	for _, entry := range entries {
 		for _, r := range allRules {
-			suggestions, err := r.Validate(ctx, entry)
+			issues, err := r.Validate(ctx, entry)
 			if err != nil {
-				return fmt.Errorf("rule %s failed: %w", r.Name(), err)
+				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)
 			}
-			allSuggestions = append(allSuggestions, suggestions...)
+			allIssues = append(allIssues, issues...)
 		}
 	}
 
-	if len(allSuggestions) == 0 {
-		fmt.Println("Validation successful.")
-		return nil
-	}
-
-	fmt.Println("Validation issues found:")
-	for _, s := range allSuggestions {
-		fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
-	}
-
-	return fmt.Errorf("validation failed with %d issues", len(allSuggestions))
+	return allIssues, nil
 }

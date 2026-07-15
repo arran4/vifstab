@@ -2,13 +2,15 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/editor"
+	"github.com/arran4/vifstab/internal/outcome"
+	"github.com/arran4/vifstab/internal/rules"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
 )
 
@@ -43,7 +45,7 @@ func main() {
 	if generateManpage {
 		manPageTroff := md2man.Render(manPageMarkdown)
 		if err := os.WriteFile("vifstab.1", manPageTroff, 0644); err != nil {
-			log.Fatal(err)
+			handleError(err)
 		}
 		return
 	}
@@ -64,15 +66,51 @@ func main() {
 	}
 
 	if verifyOnly {
-		err := editor.VerifyAndLint(cfg)
+		issues, err := editor.VerifyAndLint(cfg)
 		if err != nil {
-			log.Fatal(err)
+			handleError(err)
 		}
-		return
+
+		var issueCount int
+		for _, s := range issues {
+			if s.Level == rules.IssueLevelError || s.Level == rules.IssueLevelWarning {
+				issueCount++
+			}
+		}
+
+		if issueCount == 0 {
+			fmt.Println("Validation successful.")
+			if len(issues) > 0 {
+				fmt.Println("Issues:")
+				for _, s := range issues {
+					fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
+				}
+			}
+			return
+		}
+
+		fmt.Println("Validation issues found:")
+		for _, s := range issues {
+			fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
+		}
+
+		os.Exit(1)
 	}
 
 	err := editor.EditAndLint(cfg)
 	if err != nil {
-		log.Fatal(err)
+		handleError(err)
 	}
+}
+
+func handleError(err error) {
+	var appOutcome *outcome.ApplicationOutcome
+	if errors.As(err, &appOutcome) {
+		if appOutcome.Err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", appOutcome.Err)
+		}
+		os.Exit(appOutcome.ExitCode)
+	}
+	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	os.Exit(1)
 }

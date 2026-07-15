@@ -5,20 +5,20 @@ import "context"
 type Rule interface {
 	Name() string
 	Dependencies() []string
-	Validate(ctx context.Context, entry *FstabEntry) ([]Suggestion, error)
+	Validate(ctx context.Context, entry *FstabEntry) ([]ValidationIssue, error)
 }
 
-type SuggestionLevel string
+type IssueLevel string
 
 const (
-	SuggestionLevelWarning SuggestionLevel = "warning"
-	SuggestionLevelError   SuggestionLevel = "error"
+	IssueLevelWarning IssueLevel = "warning"
+	IssueLevelError   IssueLevel = "error"
 )
 
-type Suggestion struct {
+type ValidationIssue struct {
 	Message string
 	Line    string
-	Level   SuggestionLevel
+	Level   IssueLevel
 }
 
 type FstabEntry struct {
