@@ -21,7 +21,7 @@ If the validation fails (for example, if a mount point does not exist or a files
 
 **--generate-manpage**: Generates this man page to `vifstab.1` in the current directory.
 
-**--verify**: Verify the file without opening an editor.
+**--verify**: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
 
 **--help**, **-h**: Show help information.
 
