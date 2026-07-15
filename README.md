@@ -60,6 +60,7 @@ Because `vifstab` is meant to be run as root (or via `sudo`/`su`), it must handl
 - `--backup-dir value`: Directory to store RCS backups. If not provided, it defaults to `$XDG_CACHE_HOME/vifstab` or `~/.cache/vifstab` for the current user.
 - `--file value`: File to edit (default: "/etc/fstab")
 - `--generate-manpage`: Generate man page for vifstab to `vifstab.1`
+- `--verify`: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
 
 Example:
 

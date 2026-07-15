@@ -4,7 +4,7 @@
 vifstab - Edit fstab files with linting and versioning
 
 ## SYNOPSIS
-vifstab [--backup-dir=<value>] [--file=<value>] [--generate-manpage] [--help|-h]
+vifstab [--backup-dir=<value>] [--file=<value>] [--generate-manpage] [--verify] [--help|-h]
 
 ## DESCRIPTION
 
@@ -20,6 +20,8 @@ If the validation fails (for example, if a mount point does not exist or a files
 **--file**="": The specific file to edit. (default: "/etc/fstab")
 
 **--generate-manpage**: Generates this man page to `vifstab.1` in the current directory.
+
+**--verify**: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
 
 **--help**, **-h**: Show help information.
 
