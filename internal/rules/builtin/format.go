@@ -22,7 +22,7 @@ func (r *FormatRule) Dependencies() []string {
 	return nil
 }
 
-func (r *FormatRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.Suggestion, error) {
+func (r *FormatRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 {
 		return nil, nil
 	}
@@ -31,11 +31,11 @@ func (r *FormatRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]r
 	}
 
 	if len(entry.Fields) < 6 {
-		return []rules.Suggestion{
+		return []rules.ValidationIssue{
 			{
 				Message: fmt.Sprintf("Line %d has less than 6 fields", entry.LineNum),
 				Line:    entry.RawLine,
-				Level:   rules.SuggestionLevelError,
+				Level:   rules.IssueLevelError,
 			},
 		}, nil
 	}

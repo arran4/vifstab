@@ -26,7 +26,7 @@ func (r *BTRFSRule) Dependencies() []string {
 	return []string{}
 }
 
-func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.Suggestion, error) {
+func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
 	}
@@ -39,7 +39,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 		return nil, nil
 	}
 
-	var suggestions []rules.Suggestion
+	var issues []rules.ValidationIssue
 	options := strings.Split(entry.Fields[3], ",")
 
 	c := rules.CacheFromContext(ctx)
@@ -58,10 +58,10 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 		if _, ok := btrfsKnownOptions[key]; !ok {
 			// Ignore systemd extensions
 			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
-				suggestions = append(suggestions, rules.Suggestion{
+				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Unknown BTRFS mount option '%s' on line %d", key, entry.LineNum),
 					Line:    entry.RawLine,
-					Level:   rules.SuggestionLevelError,
+					Level:   rules.IssueLevelError,
 				})
 			}
 			continue
@@ -70,58 +70,58 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 		switch key {
 		case "fatal_errors":
 			if val != "bug" && val != "panic" {
-				suggestions = append(suggestions, rules.Suggestion{
+				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Invalid value '%s' for fatal_errors on line %d, must be 'bug' or 'panic'", val, entry.LineNum),
 					Line:    entry.RawLine,
-					Level:   rules.SuggestionLevelError,
+					Level:   rules.IssueLevelError,
 				})
 			}
 		case "fragment":
 			if !hostVer.atLeast(4, 4, 0) && hostVer.major != 0 {
-				suggestions = append(suggestions, rules.Suggestion{
+				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("BTRFS mount option 'fragment' requires kernel 4.4 or newer on line %d", entry.LineNum),
 					Line:    entry.RawLine,
-					Level:   rules.SuggestionLevelWarning,
+					Level:   rules.IssueLevelWarning,
 				})
 			}
 			if val != "data" && val != "metadata" && val != "all" {
-				suggestions = append(suggestions, rules.Suggestion{
+				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Invalid value '%s' for fragment on line %d, must be 'data', 'metadata' or 'all'", val, entry.LineNum),
 					Line:    entry.RawLine,
-					Level:   rules.SuggestionLevelError,
+					Level:   rules.IssueLevelError,
 				})
 			}
 		case "space_cache":
 			if val != "" && val != "v1" && val != "v2" {
-				suggestions = append(suggestions, rules.Suggestion{
+				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Invalid value '%s' for space_cache on line %d, must be 'v1' or 'v2'", val, entry.LineNum),
 					Line:    entry.RawLine,
-					Level:   rules.SuggestionLevelError,
+					Level:   rules.IssueLevelError,
 				})
 			}
 		case "rescue":
 			if !hostVer.atLeast(5, 9, 0) && hostVer.major != 0 {
-				suggestions = append(suggestions, rules.Suggestion{
+				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("BTRFS mount option 'rescue' requires kernel 5.9 or newer on line %d", entry.LineNum),
 					Line:    entry.RawLine,
-					Level:   rules.SuggestionLevelWarning,
+					Level:   rules.IssueLevelWarning,
 				})
 			}
 			rescueOpts := strings.Split(val, ":")
 			for _, ropt := range rescueOpts {
 				if ropt == "ignoremetacsums" || ropt == "imetacsums" {
 					if !hostVer.atLeast(6, 12, 0) && hostVer.major != 0 {
-						suggestions = append(suggestions, rules.Suggestion{
+						issues = append(issues, rules.ValidationIssue{
 							Message: fmt.Sprintf("BTRFS rescue option '%s' requires kernel 6.12 or newer on line %d", ropt, entry.LineNum),
 							Line:    entry.RawLine,
-							Level:   rules.SuggestionLevelWarning,
+							Level:   rules.IssueLevelWarning,
 						})
 					}
 				} else if ropt != "usebackuproot" && ropt != "nologreplay" && ropt != "ignorebadroots" && ropt != "ibadroots" && ropt != "ignoredatacsums" && ropt != "idatacsums" && ropt != "all" {
-					suggestions = append(suggestions, rules.Suggestion{
+					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("Invalid value '%s' in rescue on line %d", ropt, entry.LineNum),
 						Line:    entry.RawLine,
-						Level:   rules.SuggestionLevelError,
+						Level:   rules.IssueLevelError,
 					})
 				}
 			}
@@ -130,34 +130,34 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			algo := cparts[0]
 			if algo == "zstd" {
 				if !hostVer.atLeast(5, 1, 0) && hostVer.major != 0 {
-					suggestions = append(suggestions, rules.Suggestion{
+					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("BTRFS mount option compress algorithm 'zstd' requires kernel 5.1 or newer on line %d", entry.LineNum),
 						Line:    entry.RawLine,
-						Level:   rules.SuggestionLevelWarning,
+						Level:   rules.IssueLevelWarning,
 					})
 				}
 			}
 			if algo != "zlib" && algo != "lzo" && algo != "zstd" && algo != "no" && algo != "" {
-				suggestions = append(suggestions, rules.Suggestion{
+				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Invalid value '%s' for compress on line %d", algo, entry.LineNum),
 					Line:    entry.RawLine,
-					Level:   rules.SuggestionLevelError,
+					Level:   rules.IssueLevelError,
 				})
 			}
 		case "discard":
 			if val == "async" {
 				if !hostVer.atLeast(5, 6, 0) && hostVer.major != 0 {
-					suggestions = append(suggestions, rules.Suggestion{
+					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("BTRFS mount option 'discard=async' requires kernel 5.6 or newer on line %d", entry.LineNum),
 						Line:    entry.RawLine,
-						Level:   rules.SuggestionLevelWarning,
+						Level:   rules.IssueLevelWarning,
 					})
 				}
 			} else if val != "" && val != "sync" {
-				suggestions = append(suggestions, rules.Suggestion{
+				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Invalid value '%s' for discard on line %d, must be 'sync' or 'async'", val, entry.LineNum),
 					Line:    entry.RawLine,
-					Level:   rules.SuggestionLevelError,
+					Level:   rules.IssueLevelError,
 				})
 			}
 		case "device":
@@ -165,20 +165,20 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 				if c != nil {
 					if v, ok := c.Get(rules.CacheKey("file_exists:" + val)); ok {
 						if exists, ok := v.(bool); ok && !exists {
-							suggestions = append(suggestions, rules.Suggestion{
+							issues = append(issues, rules.ValidationIssue{
 								Message: fmt.Sprintf("Device '%s' specified in BTRFS mount option device does not exist on line %d", val, entry.LineNum),
 								Line:    entry.RawLine,
-								Level:   rules.SuggestionLevelError,
+								Level:   rules.IssueLevelError,
 							})
 						}
 						continue
 					}
 				}
 				if _, err := os.Stat(val); err != nil {
-					suggestions = append(suggestions, rules.Suggestion{
+					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("Device '%s' specified in BTRFS mount option device does not exist on line %d", val, entry.LineNum),
 						Line:    entry.RawLine,
-						Level:   rules.SuggestionLevelError,
+						Level:   rules.IssueLevelError,
 					})
 				}
 			}
@@ -188,10 +188,10 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 				if c != nil {
 					if v, ok := c.Get(rules.CacheKey("btrfs_subvol_exists:" + val)); ok {
 						if exists, ok := v.(bool); ok && !exists {
-							suggestions = append(suggestions, rules.Suggestion{
+							issues = append(issues, rules.ValidationIssue{
 								Message: fmt.Sprintf("Subvolume '%s' might not exist on line %d", val, entry.LineNum),
 								Line:    entry.RawLine,
-								Level:   rules.SuggestionLevelWarning,
+								Level:   rules.IssueLevelWarning,
 							})
 						}
 						checked = true
@@ -202,10 +202,10 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 					// to the BTRFS subvolume root which we can't reliably resolve without parsing UUIDs/mounts.
 					if strings.HasPrefix(val, "/") {
 						if _, err := os.Stat(val); err != nil && os.IsNotExist(err) {
-							suggestions = append(suggestions, rules.Suggestion{
+							issues = append(issues, rules.ValidationIssue{
 								Message: fmt.Sprintf("Subvolume '%s' might not exist on line %d", val, entry.LineNum),
 								Line:    entry.RawLine,
-								Level:   rules.SuggestionLevelWarning,
+								Level:   rules.IssueLevelWarning,
 							})
 						}
 					}
@@ -214,7 +214,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 		}
 	}
 
-	return suggestions, nil
+	return issues, nil
 }
 
 var kernelVersionRe = regexp.MustCompile(`(?:Linux version )?(\d+)\.(\d+)(?:\.(\d+))?`)

@@ -103,21 +103,21 @@ func TestFSRule(t *testing.T) {
 			ctx := rules.WithCache(context.Background(), c)
 			allRules := rules.GetAllRules()
 
-			var allSuggestions []rules.Suggestion
+			var allIssues []rules.ValidationIssue
 			for _, entry := range entries {
 				for _, r := range allRules {
 					suggs, err := r.Validate(ctx, entry)
 					if err != nil {
 						t.Fatalf("unexpected error during validate for rule %s: %v", r.Name(), err)
 					}
-					allSuggestions = append(allSuggestions, suggs...)
+					allIssues = append(allIssues, suggs...)
 				}
 			}
 
 			wantOutputBytes, err := fs.ReadFile(expectedFS, "validationerrors.txt")
 			if err != nil { // No expected output provided, meaning it should be valid
-				if len(allSuggestions) > 0 {
-					t.Fatalf("expected valid entry to have no suggestions, got %v for file %s", allSuggestions, tc)
+				if len(allIssues) > 0 {
+					t.Fatalf("expected valid entry to have no issues, got %v for file %s", allIssues, tc)
 				}
 			} else { // Expected output provided
 				expectedStr := strings.TrimSpace(string(wantOutputBytes))
@@ -127,14 +127,14 @@ func TestFSRule(t *testing.T) {
 						continue
 					}
 					found := false
-					for _, sugg := range allSuggestions {
+					for _, sugg := range allIssues {
 						if strings.Contains(sugg.Message, exp) {
 							found = true
 							break
 						}
 					}
 					if !found {
-						t.Errorf("in file %s, expected to find error message containing %q, but did not. Got: %v", tc, exp, allSuggestions)
+						t.Errorf("expected to find issue containing '%s' but it was not present. Got: %v", exp, allIssues)
 					}
 				}
 			}

@@ -13,7 +13,7 @@ import (
 
 // VerifyAndLint reads the given file and lints it against all registered rules.
 // It returns a slice of all suggestions (warnings, errors, etc.) and an error if a technical failure occurred.
-func VerifyAndLint(cfg config.Config) ([]rules.Suggestion, error) {
+func VerifyAndLint(cfg config.Config) ([]rules.ValidationIssue, error) {
 	f, err := os.Open(cfg.FilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file for verification: %w", err)
@@ -29,16 +29,16 @@ func VerifyAndLint(cfg config.Config) ([]rules.Suggestion, error) {
 	allRules := rules.GetAllRules()
 	ctx := rules.WithCache(context.Background(), rules.NewCache())
 
-	var allSuggestions []rules.Suggestion
+	var allIssues []rules.ValidationIssue
 	for _, entry := range entries {
 		for _, r := range allRules {
-			suggestions, err := r.Validate(ctx, entry)
+			issues, err := r.Validate(ctx, entry)
 			if err != nil {
 				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)
 			}
-			allSuggestions = append(allSuggestions, suggestions...)
+			allIssues = append(allIssues, issues...)
 		}
 	}
 
-	return allSuggestions, nil
+	return allIssues, nil
 }

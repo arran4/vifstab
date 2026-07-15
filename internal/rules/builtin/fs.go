@@ -26,7 +26,7 @@ func (r *FSRule) Dependencies() []string {
 	return []string{"linux_fs"}
 }
 
-func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.Suggestion, error) {
+func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
 	}
@@ -39,11 +39,11 @@ func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules
 	fsType := entry.Fields[2]
 
 	if mountPoint == "none" && fsType == "none" {
-		return []rules.Suggestion{
+		return []rules.ValidationIssue{
 			{
 				Message: fmt.Sprintf("Filesystem type for swap must be 'swap', not 'none' on line %d", entry.LineNum),
 				Line:    entry.RawLine,
-				Level:   rules.SuggestionLevelError,
+				Level:   rules.IssueLevelError,
 			},
 		}, nil
 	}
@@ -74,11 +74,11 @@ func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules
 	}
 
 	if !validFS[fsType] {
-		return []rules.Suggestion{
+		return []rules.ValidationIssue{
 			{
 				Message: fmt.Sprintf("Unknown filesystem type '%s' on line %d", fsType, entry.LineNum),
 				Line:    entry.RawLine,
-				Level:   rules.SuggestionLevelError,
+				Level:   rules.IssueLevelError,
 			},
 		}, nil
 	}

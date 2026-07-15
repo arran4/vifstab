@@ -93,24 +93,24 @@ func EditAndLint(cfg config.Config) error {
 		allRules := rules.GetAllRules()
 		ctx := rules.WithCache(context.Background(), rules.NewCache())
 
-		var allSuggestions []rules.Suggestion
+		var allIssues []rules.ValidationIssue
 		for _, entry := range entries {
 			for _, r := range allRules {
-				suggestions, err := r.Validate(ctx, entry)
+				issues, err := r.Validate(ctx, entry)
 				if err != nil {
 					return fmt.Errorf("rule %s failed: %w", r.Name(), err)
 				}
-				allSuggestions = append(allSuggestions, suggestions...)
+				allIssues = append(allIssues, issues...)
 			}
 		}
 
-		if len(allSuggestions) == 0 {
+		if len(allIssues) == 0 {
 			break // Valid
 		}
 
 		// 4. Invalid, Prompt user
 		fmt.Println("Validation issues found:")
-		for _, s := range allSuggestions {
+		for _, s := range allIssues {
 			fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
 		}
 

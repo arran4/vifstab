@@ -66,23 +66,23 @@ func main() {
 	}
 
 	if verifyOnly {
-		suggestions, err := editor.VerifyAndLint(cfg)
+		issues, err := editor.VerifyAndLint(cfg)
 		if err != nil {
 			handleError(err)
 		}
 
 		var issueCount int
-		for _, s := range suggestions {
-			if s.Level == rules.SuggestionLevelError || s.Level == rules.SuggestionLevelWarning {
+		for _, s := range issues {
+			if s.Level == rules.IssueLevelError || s.Level == rules.IssueLevelWarning {
 				issueCount++
 			}
 		}
 
 		if issueCount == 0 {
 			fmt.Println("Validation successful.")
-			if len(suggestions) > 0 {
-				fmt.Println("Suggestions:")
-				for _, s := range suggestions {
+			if len(issues) > 0 {
+				fmt.Println("Issues:")
+				for _, s := range issues {
 					fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
 				}
 			}
@@ -90,7 +90,7 @@ func main() {
 		}
 
 		fmt.Println("Validation issues found:")
-		for _, s := range suggestions {
+		for _, s := range issues {
 			fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
 		}
 
