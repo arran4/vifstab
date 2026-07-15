@@ -10,6 +10,7 @@ import (
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/editor"
 	"github.com/arran4/vifstab/internal/outcome"
+	"github.com/arran4/vifstab/internal/rules"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
 )
 
@@ -65,14 +66,35 @@ func main() {
 	}
 
 	if verifyOnly {
-		issueCount, err := editor.VerifyAndLint(cfg)
+		suggestions, err := editor.VerifyAndLint(cfg)
 		if err != nil {
 			handleError(err)
 		}
-		if issueCount > 0 {
-			os.Exit(1)
+
+		var issueCount int
+		for _, s := range suggestions {
+			if s.Level == rules.SuggestionLevelError || s.Level == rules.SuggestionLevelWarning {
+				issueCount++
+			}
 		}
-		return
+
+		if issueCount == 0 {
+			fmt.Println("Validation successful.")
+			if len(suggestions) > 0 {
+				fmt.Println("Suggestions:")
+				for _, s := range suggestions {
+					fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
+				}
+			}
+			return
+		}
+
+		fmt.Println("Validation issues found:")
+		for _, s := range suggestions {
+			fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
+		}
+
+		os.Exit(1)
 	}
 
 	err := editor.EditAndLint(cfg)
