@@ -1,0 +1,38 @@
+package zonefs
+
+import (
+	"context"
+	"strings"
+
+	"github.com/arran4/vifstab/internal/rules"
+)
+
+type ZonefsRule struct{}
+
+func init() {
+	rules.Register(&ZonefsRule{})
+}
+
+func (r *ZonefsRule) Name() string {
+	return "zonefs"
+}
+
+func (r *ZonefsRule) Dependencies() []string {
+	return []string{}
+}
+
+func (r *ZonefsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
+	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
+		return nil, nil
+	}
+	if len(entry.Fields) < 4 {
+		return nil, nil
+	}
+
+	fsType := entry.Fields[2]
+	if fsType != "zonefs" {
+		return nil, nil
+	}
+
+	return nil, nil
+}
