@@ -1,0 +1,38 @@
+package rootfs
+
+import (
+	"context"
+	"strings"
+
+	"github.com/arran4/vifstab/internal/rules"
+)
+
+type RootfsRule struct{}
+
+func init() {
+	rules.Register(&RootfsRule{})
+}
+
+func (r *RootfsRule) Name() string {
+	return "rootfs"
+}
+
+func (r *RootfsRule) Dependencies() []string {
+	return []string{}
+}
+
+func (r *RootfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
+	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
+		return nil, nil
+	}
+	if len(entry.Fields) < 4 {
+		return nil, nil
+	}
+
+	fsType := entry.Fields[2]
+	if fsType != "rootfs" {
+		return nil, nil
+	}
+
+	return nil, nil
+}

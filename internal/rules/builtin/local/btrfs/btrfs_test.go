@@ -1,0 +1,155 @@
+package btrfs
+
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"github.com/arran4/vifstab/internal/rules"
+
+	"embed"
+	"fmt"
+	"io/fs"
+	"path/filepath"
+	"sort"
+	"testing/fstest"
+
+	"github.com/arran4/vifstab/internal/rules/core"
+	"golang.org/x/tools/txtar"
+)
+
+// We can just rely on the existing fs_test.go architecture that uses txtar files,
+// but let's add a quick test to explicitly check kernel version parsing.
+func TestKernelVersionParsing(t *testing.T) {
+	maj, min, p := parseKernelVersionStr("Linux version 6.18.35-gentoo-dist")
+	if maj != 6 || min != 18 || p != 35 {
+		t.Errorf("Expected 6.18.35, got %d.%d.%d", maj, min, p)
+	}
+
+	maj, min, p = parseKernelVersionStr("6.1.1-arch1-1")
+	if maj != 6 || min != 1 || p != 1 {
+		t.Errorf("Expected 6.1.1, got %d.%d.%d", maj, min, p)
+	}
+}
+
+// Ensure the rule is registered and can process entries.
+func TestBTRFSRuleSimple(t *testing.T) {
+	rule := &BTRFSRule{}
+	entry := &rules.FstabEntry{
+		RawLine: "/dev/sda1 /mnt btrfs defaults,compress=zstd:3,discard=async 0 0",
+		LineNum: 1,
+		Fields:  strings.Fields("/dev/sda1 /mnt btrfs defaults,compress=zstd:3,discard=async 0 0"),
+	}
+
+	suggestions, err := rule.Validate(context.Background(), entry)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	// We might get warnings depending on the host running the test, so we can't assert length is 0 safely.
+	// But we can check that it didn't crash.
+	for _, s := range suggestions {
+		t.Logf("Suggestion: %s", s.Message)
+	}
+}
+
+//go:embed testdata/*.txtar
+var testdataFS embed.FS
+
+func SplitInputExpected(ar *txtar.Archive) (fstest.MapFS, fstest.MapFS, string) {
+	input := fstest.MapFS{}
+	expected := fstest.MapFS{}
+	optionsRaw := ""
+
+	for _, f := range ar.Files {
+		switch {
+		case strings.HasPrefix(f.Name, "input/"):
+			input[strings.TrimPrefix(f.Name, "input/")] = &fstest.MapFile{Data: f.Data}
+		case strings.HasPrefix(f.Name, "expected/"):
+			expected[strings.TrimPrefix(f.Name, "expected/")] = &fstest.MapFile{Data: f.Data}
+		case f.Name == "options.json":
+			optionsRaw = string(f.Data)
+		}
+	}
+	return input, expected, optionsRaw
+}
+
+func TestBTRFSTxtarRules(t *testing.T) {
+	var cases []string
+	err := fs.WalkDir(testdataFS, "testdata", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(p, ".txtar") {
+			return nil
+		}
+		cases = append(cases, p)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk cases: %v", err)
+	}
+	sort.Strings(cases)
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(strings.TrimSuffix(filepath.Base(tc), ".txtar"), func(t *testing.T) {
+			raw, err := testdataFS.ReadFile(tc)
+			if err != nil {
+				t.Fatalf("read %s: %v", tc, err)
+			}
+			ar := txtar.Parse(raw)
+			inputFS, expectedFS, _ := SplitInputExpected(ar)
+
+			// Read input fstab
+			fstabData, err := fs.ReadFile(inputFS, "etc/fstab")
+			if err != nil {
+				t.Fatalf("read input/etc/fstab: %v", err)
+			}
+
+			entries, err := core.ParseFstab(strings.NewReader(string(fstabData)))
+			if err != nil {
+				t.Fatalf("parse input/etc/fstab: %v", err)
+			}
+
+			// Pre-fill cache (mocking the OS interaction)
+			c := rules.NewCache()
+			c.Set("proc_version", "Linux version 6.1.0")
+
+			ctx := rules.WithCache(context.Background(), c)
+
+			rule := &BTRFSRule{}
+			var allIssues []rules.ValidationIssue
+			var validateErr error
+
+			for _, entry := range entries {
+				issues, err := rule.Validate(ctx, entry)
+				if err != nil {
+					validateErr = fmt.Errorf("rule %s failed: %w", rule.Name(), err)
+					break
+				}
+				allIssues = append(allIssues, issues...)
+			}
+
+			if validateErr != nil {
+				t.Fatalf("unexpected validation err: %v", validateErr)
+			}
+
+			var gotOutput string
+			if len(allIssues) > 0 {
+				for _, s := range allIssues {
+					gotOutput += fmt.Sprintf("%s\n", s.Message)
+				}
+			}
+
+			wantOutputBytes, err := fs.ReadFile(expectedFS, "validationerrors.txt")
+			if err != nil && len(allIssues) > 0 {
+				t.Fatalf("unexpected validation errors:\n%s", gotOutput)
+			} else if err == nil {
+				wantOutput := string(wantOutputBytes)
+				if gotOutput != wantOutput {
+					t.Fatalf("mismatch output\nwant:\n%s\ngot:\n%s", wantOutput, gotOutput)
+				}
+			}
+		})
+	}
+}
