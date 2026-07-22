@@ -4,16 +4,16 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/arran4/vifstab/internal/config"
-	"github.com/arran4/vifstab/internal/rcs"
-	"github.com/arran4/vifstab/internal/rules"
-	_ "github.com/arran4/vifstab/internal/rules/builtin"
-	_ "github.com/arran4/vifstab/internal/rules/builtin/all"
-	"github.com/arran4/vifstab/internal/rules/core"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/arran4/vifstab/internal/config"
+	"github.com/arran4/vifstab/internal/rcs"
+	"github.com/arran4/vifstab/internal/rules"
+	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
+	"github.com/arran4/vifstab/internal/rules/core"
 )
 
 func EditAndLint(cfg config.Config) error {

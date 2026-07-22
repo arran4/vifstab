@@ -10,5 +10,5 @@ nodev	proc
 	squashfs
 	vfat
 -- expected/validationerrors.txt --
-Invalid value 'ignore' for fatal_errors on line 1
-Invalid value 'v3' for space_cache on line 1
+Invalid value 'ignore' for fatal_errors on line 1, must be 'bug' or 'panic'
+Invalid value 'v3' for space_cache on line 1, must be 'v1' or 'v2'
