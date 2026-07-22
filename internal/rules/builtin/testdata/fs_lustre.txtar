@@ -1,0 +1,6 @@
+test: lustre filesystem
+
+Ensures that fstab entries with external filesystems are validated based on their loaded module status.
+-- input/etc/fstab --
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre defaults 0 0
+-- expected/validationerrors.txt --
