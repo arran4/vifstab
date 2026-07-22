@@ -3,15 +3,12 @@ package editor
 import (
 	"context"
 	"fmt"
-	"os"
-
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin"
-
-	_ "github.com/arran4/vifstab/internal/rules/builtin"
-
+	_ "github.com/arran4/vifstab/internal/rules/builtin/all"
 	"github.com/arran4/vifstab/internal/rules/core"
+	"os"
 )
 
 // VerifyAndLint reads the given file and lints it against all registered rules.

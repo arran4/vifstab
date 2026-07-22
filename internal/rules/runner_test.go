@@ -5,18 +5,17 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/arran4/vifstab/internal/rules"
+	_ "github.com/arran4/vifstab/internal/rules/builtin"
+	_ "github.com/arran4/vifstab/internal/rules/builtin/all"
+	"github.com/arran4/vifstab/internal/rules/core"
+	"golang.org/x/tools/txtar"
 	"io/fs"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 	"testing/fstest"
-
-	"github.com/arran4/vifstab/internal/rules"
-	_ "github.com/arran4/vifstab/internal/rules/builtin"
-
-	"github.com/arran4/vifstab/internal/rules/core"
-	"golang.org/x/tools/txtar"
 )
 
 //go:embed testdata/*.txtar
