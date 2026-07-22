@@ -1,0 +1,6 @@
+test: zfs filesystem
+
+Ensures that fstab entries with external filesystems are validated based on their loaded module status.
+-- input/etc/fstab --
+/dev/mapper/vg0-root /               zfs     errors=remount-ro 0       1
+-- expected/validationerrors.txt --
