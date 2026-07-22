@@ -12,8 +12,10 @@ import (
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/rcs"
 	"github.com/arran4/vifstab/internal/rules"
-	_ "github.com/arran4/vifstab/internal/rules/builtin/all"
-	_ "github.com/arran4/vifstab/internal/rules/builtin/all" // Register rules
+	_ "github.com/arran4/vifstab/internal/rules/builtin"
+
+	_ "github.com/arran4/vifstab/internal/rules/builtin"
+
 	"github.com/arran4/vifstab/internal/rules/core"
 )
 
