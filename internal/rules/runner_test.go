@@ -13,7 +13,8 @@ import (
 	"testing/fstest"
 
 	"github.com/arran4/vifstab/internal/rules"
-	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register builtins
+	_ "github.com/arran4/vifstab/internal/rules/builtin/all"
+	_ "github.com/arran4/vifstab/internal/rules/builtin/all" // Register builtins
 	"github.com/arran4/vifstab/internal/rules/core"
 	"golang.org/x/tools/txtar"
 )

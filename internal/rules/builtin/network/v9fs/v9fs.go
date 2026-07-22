@@ -14,7 +14,7 @@ func init() {
 }
 
 func (r *V9fsRule) Name() string {
-	return "v9fs"
+	return "9p"
 }
 
 func (r *V9fsRule) Dependencies() []string {
@@ -30,7 +30,7 @@ func (r *V9fsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rul
 	}
 
 	fsType := entry.Fields[2]
-	if fsType != "v9fs" {
+	if fsType != "9p" {
 		return nil, nil
 	}
 

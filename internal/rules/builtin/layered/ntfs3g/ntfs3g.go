@@ -14,7 +14,7 @@ func init() {
 }
 
 func (r *Ntfs3GRule) Name() string {
-	return "ntfs3g"
+	return "ntfs-3g"
 }
 
 func (r *Ntfs3GRule) Dependencies() []string {
@@ -30,7 +30,7 @@ func (r *Ntfs3GRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]r
 	}
 
 	fsType := entry.Fields[2]
-	if fsType != "ntfs3g" {
+	if fsType != "ntfs-3g" {
 		return nil, nil
 	}
 

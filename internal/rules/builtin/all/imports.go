@@ -1,4 +1,4 @@
-package builtin
+package all
 
 import (
 	_ "github.com/arran4/vifstab/internal/rules/builtin/local/btrfs"
