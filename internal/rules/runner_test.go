@@ -118,6 +118,7 @@ func TestRules(t *testing.T) {
 				}
 			}
 			c.Set("proc_filesystems", fsMap)
+			c.Set(rules.CacheKey("proc_modules"), []byte("zfs 12345 0 - Live 0xffffffff\nopenafs 1234 0 - Live\nlustre 1234 0 - Live\nbeegfs 1234 0 - Live\nmmfs26 1234 0 - Live\nvxfs 1234 0 - Live"))
 
 			ctx := rules.WithCache(context.Background(), c)
 

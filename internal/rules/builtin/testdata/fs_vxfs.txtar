@@ -1,0 +1,6 @@
+test: vxfs filesystem
+
+Ensures that fstab entries with external filesystems are validated based on their loaded module status.
+-- input/etc/fstab --
+/dev/vx/dsk/testdg/vol1 /mnt/vxfs vxfs defaults 0 0
+-- expected/validationerrors.txt --

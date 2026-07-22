@@ -10,6 +10,15 @@ import (
 	"github.com/arran4/vifstab/internal/rules"
 )
 
+var knownExternalFS = map[string]bool{
+	"zfs":     true,
+	"openafs": true,
+	"lustre":  true,
+	"beegfs":  true,
+	"gpfs":    true,
+	"vxfs":    true,
+}
+
 const ProcFilesystemsKey rules.CacheKey = "proc_filesystems"
 
 type FSRule struct{}
@@ -49,6 +58,15 @@ func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules
 	}
 
 	if fsType == "ignore" || fsType == "swap" || fsType == "none" || fsType == "bind" {
+		return nil, nil
+	}
+
+	// Known external filesystems not in /proc/filesystems
+	if knownExternalFS[fsType] {
+		return nil, nil
+	}
+	// Known external filesystems or FUSE wrappers not in /proc/filesystems
+	if strings.HasPrefix(fsType, "fuse.") || fsType == "fuse" || fsType == "fuseblk" || fsType == "fusexmp" {
 		return nil, nil
 	}
 

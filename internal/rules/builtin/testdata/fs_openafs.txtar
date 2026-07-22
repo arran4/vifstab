@@ -1,0 +1,6 @@
+test: openafs filesystem
+
+Ensures that fstab entries with external filesystems are validated based on their loaded module status.
+-- input/etc/fstab --
+AFS /afs openafs defaults 0 0
+-- expected/validationerrors.txt --
