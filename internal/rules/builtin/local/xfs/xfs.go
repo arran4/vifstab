@@ -26,6 +26,27 @@ func (r *XfsRule) Dependencies() []string {
 	return []string{}
 }
 
+func splitOptions(s string) []string {
+	var opts []string
+	var current strings.Builder
+	inQuote := false
+	for _, r := range s {
+		if r == '"' {
+			inQuote = !inQuote
+		}
+		if r == ',' && !inQuote {
+			opts = append(opts, current.String())
+			current.Reset()
+			continue
+		}
+		current.WriteRune(r)
+	}
+	if current.Len() > 0 {
+		opts = append(opts, current.String())
+	}
+	return opts
+}
+
 func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
@@ -40,7 +61,7 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 	}
 
 	var issues []rules.ValidationIssue
-	options := strings.Split(entry.Fields[3], ",")
+	options := splitOptions(entry.Fields[3])
 
 	c := rules.CacheFromContext(ctx)
 	hostVer := kernel.GetHostKernelVersion(c)
@@ -94,8 +115,15 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 				})
 			}
 		case "logbufs":
-			if val != "" {
+			if val == "" {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("Missing value for XFS mount option '%s' on line %d", key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				})
+			} else {
 				if num, err := strconv.Atoi(val); err == nil {
+
 					if num < 2 || num > 8 {
 						issues = append(issues, rules.ValidationIssue{
 							Message: fmt.Sprintf("Invalid value '%s' for logbufs on line %d, must be between 2 and 8 inclusive", val, entry.LineNum),
@@ -198,6 +226,10 @@ var xfsKnownOptions = map[string]struct{}{
 	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
 	"nodev": {}, "lazytime": {}, "iversion": {}, "nofail": {},
 	"strictatime": {}, "nodiratime": {}, "users": {},
+
+	// More generic ones
+	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
+	"nolazytime": {}, "owner": {}, "group": {},
 }
 
 var xfsRemovedOptions = map[string]struct {
