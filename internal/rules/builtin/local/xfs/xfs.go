@@ -66,6 +66,27 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 	c := rules.CacheFromContext(ctx)
 	hostVer := kernel.GetHostKernelVersion(c)
 
+	hasNoRecovery := false
+	hasRo := false
+
+	for _, opt := range options {
+		parts := strings.SplitN(opt, "=", 2)
+		key := parts[0]
+		if key == "norecovery" {
+			hasNoRecovery = true
+		} else if key == "ro" {
+			hasRo = true
+		}
+	}
+
+	if hasNoRecovery && !hasRo {
+		issues = append(issues, rules.ValidationIssue{
+			Message: fmt.Sprintf("XFS mount option 'norecovery' requires 'ro' on line %d", entry.LineNum),
+			Line:    entry.RawLine,
+			Level:   rules.IssueLevelError,
+		})
+	}
+
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]

@@ -1,0 +1,6 @@
+test: norecovery with ro
+-- cache --
+-- kernel --
+-- input --
+/dev/sda1 /mnt/xfs xfs ro,norecovery 0 0
+-- issues --
