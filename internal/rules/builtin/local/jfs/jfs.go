@@ -62,11 +62,25 @@ func (r *JfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 	issues := legacy.CheckFSVersion(ctx, entry, "jfs", kernel.Ver{}, kernel.Ver{}, false, "", true)
 
 	options := splitOptions(entry.Fields[3])
+	hasRemount := false
+	hasRo := false
+	for _, opt := range options {
+		parts := strings.SplitN(opt, "=", 2)
+		if parts[0] == "remount" {
+			hasRemount = true
+		} else if parts[0] == "ro" {
+			hasRo = true
+		} else if parts[0] == "rw" {
+			hasRo = false
+		}
+	}
+
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
 		var val string
-		if len(parts) > 1 {
+		hasEquals := len(parts) > 1
+		if hasEquals {
 			val = parts[1]
 		}
 
@@ -81,8 +95,24 @@ func (r *JfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 			continue
 		}
 
-		if val != "" {
+		if hasEquals && val != "" {
 			if _, ok := jfsValuedOptions[key]; !ok && key != "resize" {
+				if !strings.HasPrefix(key, "X-mount.") && !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("jfs mount option '%s' on line %d does not take a value", key, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
+				}
+			}
+		} else if hasEquals && val == "" {
+			if _, ok := jfsRequireValueOptions[key]; ok {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("Missing value for jfs mount option '%s' on line %d", key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				})
+			} else if _, ok := jfsValuedOptions[key]; !ok && key != "resize" {
 				if !strings.HasPrefix(key, "X-mount.") && !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("jfs mount option '%s' on line %d does not take a value", key, entry.LineNum),
@@ -103,6 +133,13 @@ func (r *JfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 
 		switch key {
 		case "resize":
+			if !hasRemount || hasRo {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("jfs mount option 'resize' on line %d requires a read-write remount", entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				})
+			}
 			if val != "" {
 				if _, err := strconv.Atoi(val); err != nil {
 					issues = append(issues, rules.ValidationIssue{
@@ -136,13 +173,13 @@ var jfsRequireValueOptions = map[string]struct{}{
 var jfsValuedOptions = map[string]struct{}{
 	"iocharset": {}, "errors": {},
 	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-	"uid": {}, "gid": {}, "umask": {},
+	"uid": {}, "gid": {}, "umask": {}, "comment": {}, "loop": {},
 }
 
 var jfsKnownOptions = map[string]struct{}{
 	"iocharset": {}, "resize": {}, "nointegrity": {}, "integrity": {},
 	"errors": {}, "noquota": {}, "quota": {}, "usrquota": {}, "grpquota": {},
-	"discard": {}, "nodiscard": {}, "uid": {}, "gid": {}, "umask": {},
+	"discard": {}, "nodiscard": {}, "uid": {}, "gid": {}, "umask": {}, "comment": {}, "loop": {},
 
 	// Common generic ones
 	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
@@ -154,5 +191,5 @@ var jfsKnownOptions = map[string]struct{}{
 
 	// More generic ones
 	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
-	"nolazytime": {}, "owner": {}, "group": {}, "remount": {}, "bind": {}, "rbind": {}, "loop": {},
+	"nolazytime": {}, "owner": {}, "group": {}, "remount": {}, "bind": {}, "rbind": {},
 }
