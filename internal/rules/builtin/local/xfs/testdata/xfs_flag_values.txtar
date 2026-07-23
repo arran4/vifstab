@@ -1,0 +1,8 @@
+test: values on flag options
+-- cache --
+-- kernel --
+-- input --
+/dev/sda1 /mnt/xfs xfs nouuid=garbage,wsync=1 0 0
+-- issues --
+Error: XFS mount option 'nouuid' does not take a value on line 1
+Error: XFS mount option 'wsync' does not take a value on line 1

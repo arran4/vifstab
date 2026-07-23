@@ -47,6 +47,14 @@ func splitOptions(s string) []string {
 	return opts
 }
 
+func unescapeFstab(s string) string {
+	s = strings.ReplaceAll(s, "\\040", " ")
+	s = strings.ReplaceAll(s, "\\011", "\t")
+	s = strings.ReplaceAll(s, "\\012", "\n")
+	s = strings.ReplaceAll(s, "\\134", "\\")
+	return s
+}
+
 func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
@@ -69,10 +77,14 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 	hasNoRecovery := false
 	hasRo := false
 
+	sunit := -1
+	swidth := -1
+
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
 		if key == "norecovery" {
+
 			hasNoRecovery = true
 		} else if key == "ro" {
 			hasRo = true
@@ -118,6 +130,18 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 				})
 			}
 			continue
+		}
+
+		if val != "" {
+			if _, ok := xfsValuedOptions[key]; !ok {
+				if !strings.HasPrefix(key, "X-mount.") && !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("XFS mount option '%s' does not take a value on line %d", key, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
+				}
+			}
 		}
 
 		switch key {
@@ -208,6 +232,12 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 							Line:    entry.RawLine,
 							Level:   rules.IssueLevelError,
 						})
+					} else {
+						if key == "sunit" {
+							sunit = num
+						} else if key == "swidth" {
+							swidth = num
+						}
 					}
 				}
 			}
@@ -219,11 +249,12 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 					Level:   rules.IssueLevelError,
 				})
 			} else {
+				decodedVal := unescapeFstab(val)
 				if c != nil {
-					if v, ok := c.Get(rules.CacheKey("file_exists:" + val)); ok {
+					if v, ok := c.Get(rules.CacheKey("file_exists:" + decodedVal)); ok {
 						if exists, ok := v.(bool); ok && !exists {
 							issues = append(issues, rules.ValidationIssue{
-								Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", val, key, entry.LineNum),
+								Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", decodedVal, key, entry.LineNum),
 								Line:    entry.RawLine,
 								Level:   rules.IssueLevelError,
 							})
@@ -231,14 +262,26 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 						continue
 					}
 				}
-				if _, err := os.Stat(val); err != nil {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", val, key, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
+				if c == nil {
+					if _, err := os.Stat(decodedVal); err != nil {
+						issues = append(issues, rules.ValidationIssue{
+							Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", decodedVal, key, entry.LineNum),
+							Line:    entry.RawLine,
+							Level:   rules.IssueLevelError,
+						})
+					}
 				}
 			}
+		}
+	}
+
+	if sunit != -1 && swidth != -1 && sunit != 0 {
+		if swidth%sunit != 0 {
+			issues = append(issues, rules.ValidationIssue{
+				Message: fmt.Sprintf("XFS mount option 'swidth' (%d) must be a multiple of 'sunit' (%d) on line %d", swidth, sunit, entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelError,
+			})
 		}
 	}
 
@@ -272,6 +315,12 @@ var xfsKnownOptions = map[string]struct{}{
 	// More generic ones
 	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
 	"nolazytime": {}, "owner": {}, "group": {},
+}
+
+var xfsValuedOptions = map[string]struct{}{
+	"allocsize": {}, "dax": {}, "logbufs": {}, "logbsize": {}, "logdev": {},
+	"rtdev": {}, "sunit": {}, "swidth": {}, "context": {}, "defcontext": {},
+	"rootcontext": {}, "fscontext": {},
 }
 
 var xfsRemovedOptions = map[string]struct {
