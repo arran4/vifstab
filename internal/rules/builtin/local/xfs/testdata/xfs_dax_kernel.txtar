@@ -1,0 +1,10 @@
+test: dax options with old kernel
+-- cache --
+-- kernel --
+5.7.0
+-- input --
+/dev/sda1 /mnt/xfs xfs dax=inode,dax=never,dax=always 0 0
+-- issues --
+Error: Valued DAX options require kernel 5.8 or newer on line 1
+Error: Valued DAX options require kernel 5.8 or newer on line 1
+Error: Valued DAX options require kernel 5.8 or newer on line 1

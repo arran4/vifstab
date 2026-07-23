@@ -1,0 +1,8 @@
+test: negative sunit and swidth
+-- cache --
+-- kernel --
+-- input --
+/dev/sda1 /mnt/xfs xfs sunit=-1,swidth=-1 0 0
+-- issues --
+Error: Invalid value '-1' for sunit on line 1, must be non-negative
+Error: Invalid value '-1' for swidth on line 1, must be non-negative

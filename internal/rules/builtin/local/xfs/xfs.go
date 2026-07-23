@@ -75,8 +75,8 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 		}
 
 		if _, ok := xfsKnownOptions[key]; !ok {
-			// Ignore systemd extensions
-			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
+			// Ignore systemd and userspace extensions
+			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Unknown XFS mount option '%s' on line %d", key, entry.LineNum),
 					Line:    entry.RawLine,
@@ -107,12 +107,21 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 				})
 			}
 		case "dax":
-			if val != "" && val != "inode" && val != "never" && val != "always" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Invalid value '%s' for dax on line %d, must be 'inode', 'never', or 'always'", val, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
+			if val != "" {
+				if hostVer.Major != 0 && !hostVer.AtLeast(5, 8, 0) {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("Valued DAX options require kernel 5.8 or newer on line %d", entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
+				}
+				if val != "inode" && val != "never" && val != "always" {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("Invalid value '%s' for dax on line %d, must be 'inode', 'never', or 'always'", val, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
+				}
 			}
 		case "logbufs":
 			if val == "" {
@@ -160,9 +169,15 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 						})
 					}
 				} else { // sunit, swidth should be integers
-					if _, err := strconv.Atoi(val); err != nil {
+					if num, err := strconv.Atoi(val); err != nil {
 						issues = append(issues, rules.ValidationIssue{
 							Message: fmt.Sprintf("Invalid value '%s' for %s on line %d, must be an integer", val, key, entry.LineNum),
+							Line:    entry.RawLine,
+							Level:   rules.IssueLevelError,
+						})
+					} else if num < 0 {
+						issues = append(issues, rules.ValidationIssue{
+							Message: fmt.Sprintf("Invalid value '%s' for %s on line %d, must be non-negative", val, key, entry.LineNum),
 							Line:    entry.RawLine,
 							Level:   rules.IssueLevelError,
 						})
