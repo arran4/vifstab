@@ -20,7 +20,7 @@ func (r *JfsRule) Name() string {
 }
 
 func (r *JfsRule) Dependencies() []string {
-	return []string{}
+	return []string{"linux_fs"}
 }
 
 func (r *JfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {

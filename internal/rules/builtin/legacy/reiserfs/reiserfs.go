@@ -19,10 +19,10 @@ func (r *ReiserfsRule) Name() string {
 }
 
 func (r *ReiserfsRule) Dependencies() []string {
-	return []string{}
+	return []string{"linux_fs"}
 }
 
 func (r *ReiserfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
-	// ReiserFS was removed in 6.6
-	return legacy.CheckFSVersion(ctx, entry, "reiserfs", kernel.Ver{}, kernel.Ver{Major: 6, Minor: 6, Patch: 0}, false, "", false), nil
+	// ReiserFS was removed in 6.13
+	return legacy.CheckFSVersion(ctx, entry, "reiserfs", kernel.Ver{}, kernel.Ver{Major: 6, Minor: 13, Patch: 0}, false, "", false), nil
 }

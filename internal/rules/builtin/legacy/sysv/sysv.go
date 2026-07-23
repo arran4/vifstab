@@ -19,7 +19,7 @@ func (r *SysvRule) Name() string {
 }
 
 func (r *SysvRule) Dependencies() []string {
-	return []string{}
+	return []string{"linux_fs"}
 }
 
 func (r *SysvRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {

@@ -19,7 +19,7 @@ func (r *NcpfsRule) Name() string {
 }
 
 func (r *NcpfsRule) Dependencies() []string {
-	return []string{}
+	return []string{"linux_fs"}
 }
 
 func (r *NcpfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {

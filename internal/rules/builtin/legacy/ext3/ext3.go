@@ -19,7 +19,7 @@ func (r *Ext3Rule) Name() string {
 }
 
 func (r *Ext3Rule) Dependencies() []string {
-	return []string{}
+	return []string{"linux_fs"}
 }
 
 func (r *Ext3Rule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {

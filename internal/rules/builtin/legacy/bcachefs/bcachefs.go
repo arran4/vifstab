@@ -19,7 +19,7 @@ func (r *BcachefsRule) Name() string {
 }
 
 func (r *BcachefsRule) Dependencies() []string {
-	return []string{}
+	return []string{"linux_fs"}
 }
 
 func (r *BcachefsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {

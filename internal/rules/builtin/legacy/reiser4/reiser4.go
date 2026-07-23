@@ -19,7 +19,7 @@ func (r *Reiser4Rule) Name() string {
 }
 
 func (r *Reiser4Rule) Dependencies() []string {
-	return []string{}
+	return []string{"linux_fs"}
 }
 
 func (r *Reiser4Rule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
