@@ -68,7 +68,7 @@ func checkModulesDepOrBuiltin(c *rules.Cache, moduleName string) bool {
 	// Check modules.builtin
 	builtinPath := fmt.Sprintf("/lib/modules/%s/modules.builtin", uname)
 	if data := readCachedFile(c, builtinPath); data != nil {
-		if strings.Contains(string(data), "/" + moduleName + ".ko") {
+		if strings.Contains(string(data), "/"+moduleName+".ko") {
 			return true
 		}
 	}
@@ -76,7 +76,7 @@ func checkModulesDepOrBuiltin(c *rules.Cache, moduleName string) bool {
 	// Check modules.dep
 	depPath := fmt.Sprintf("/lib/modules/%s/modules.dep", uname)
 	if data := readCachedFile(c, depPath); data != nil {
-		if strings.Contains(string(data), "/" + moduleName + ".ko:") {
+		if strings.Contains(string(data), "/"+moduleName+".ko:") {
 			return true
 		}
 	}
@@ -95,7 +95,7 @@ func readCachedFile(c *rules.Cache, path string) []byte {
 	d, err := os.ReadFile(path)
 	if err == nil {
 		if c != nil {
-			c.Set(rules.CacheKey("file_content:" + path), d)
+			c.Set(rules.CacheKey("file_content:"+path), d)
 		}
 		return d
 	}
