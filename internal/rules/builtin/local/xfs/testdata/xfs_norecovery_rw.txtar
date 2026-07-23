@@ -1,0 +1,7 @@
+test: norecovery with ro then rw
+-- cache --
+-- kernel --
+-- input --
+/dev/sda1 /mnt/xfs xfs ro,rw,norecovery 0 0
+-- issues --
+Error: XFS mount option 'norecovery' requires 'ro' on line 1

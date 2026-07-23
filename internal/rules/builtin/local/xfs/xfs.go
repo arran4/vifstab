@@ -76,6 +76,8 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 			hasNoRecovery = true
 		} else if key == "ro" {
 			hasRo = true
+		} else if key == "rw" {
+			hasRo = false
 		}
 	}
 
@@ -181,8 +183,12 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 				// or sunit/swidth (512-byte blocks) deeply here to avoid over-complicating without context,
 				// but we ensure a value is provided and roughly checks format for logbsize/allocsize ending in k/m/g or digit.
 				if key == "logbsize" || key == "allocsize" {
+					numStr := val
 					lastChar := val[len(val)-1]
-					if !(lastChar >= '0' && lastChar <= '9') && lastChar != 'k' && lastChar != 'K' && lastChar != 'm' && lastChar != 'M' && lastChar != 'g' && lastChar != 'G' {
+					if lastChar == 'k' || lastChar == 'K' || lastChar == 'm' || lastChar == 'M' || lastChar == 'g' || lastChar == 'G' {
+						numStr = val[:len(val)-1]
+					}
+					if num, err := strconv.Atoi(numStr); err != nil || num < 0 {
 						issues = append(issues, rules.ValidationIssue{
 							Message: fmt.Sprintf("Invalid value format '%s' for %s on line %d", val, key, entry.LineNum),
 							Line:    entry.RawLine,
