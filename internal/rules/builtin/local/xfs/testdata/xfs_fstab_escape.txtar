@@ -1,0 +1,8 @@
+test: fstab escapes in device path
+-- cache --
+file_exists:/dev/mapper/foo bar=true
+file_exists:/dev/mapper/foo=false
+-- kernel --
+-- input --
+/dev/sda1 /mnt/xfs xfs logdev=/dev/mapper/foo\040bar 0 0
+-- issues --

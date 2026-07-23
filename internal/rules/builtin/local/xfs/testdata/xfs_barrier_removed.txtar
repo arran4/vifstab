@@ -1,0 +1,9 @@
+test: barrier options removed
+-- cache --
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt/xfs xfs barrier,nobarrier 0 0
+-- issues --
+Error: XFS mount option 'barrier' was removed in kernel 4.19 and will yield mount failures on line 1
+Error: XFS mount option 'nobarrier' was removed in kernel 4.19 and will yield mount failures on line 1

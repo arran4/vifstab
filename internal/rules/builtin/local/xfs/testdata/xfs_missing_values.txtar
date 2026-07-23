@@ -1,0 +1,13 @@
+test: missing values for xfs options
+-- cache --
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt/xfs xfs logbsize,allocsize,sunit,swidth,logdev,rtdev 0 0
+-- issues --
+Error: Missing value for XFS mount option 'logbsize' on line 1
+Error: Missing value for XFS mount option 'allocsize' on line 1
+Error: Missing value for XFS mount option 'sunit' on line 1
+Error: Missing value for XFS mount option 'swidth' on line 1
+Error: Missing device for XFS mount option 'logdev' on line 1
+Error: Missing device for XFS mount option 'rtdev' on line 1

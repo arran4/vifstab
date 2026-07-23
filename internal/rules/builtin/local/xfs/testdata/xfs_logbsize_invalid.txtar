@@ -1,0 +1,8 @@
+test: invalid logbsize and allocsize
+-- cache --
+-- kernel --
+-- input --
+/dev/sda1 /mnt/xfs xfs logbsize=10nonsensek,allocsize=-1m 0 0
+-- issues --
+Error: Invalid value format '10nonsensek' for logbsize on line 1
+Error: Invalid value format '-1m' for allocsize on line 1

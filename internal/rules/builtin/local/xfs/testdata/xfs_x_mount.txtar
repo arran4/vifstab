@@ -1,0 +1,6 @@
+test: X-mount options
+-- cache --
+-- kernel --
+-- input --
+/dev/sda1 /mnt/xfs xfs X-mount.mkdir=0755,x-systemd.mount-timeout=30s 0 0
+-- issues --

@@ -1,0 +1,28 @@
+test: invalid xfs options
+-- cache --
+file_exists:/dev/missing1=false
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt/xfs xfs invalid_opt 0 0
+/dev/sda1 /mnt/xfs xfs delaylog,nodelaylog 0 0
+/dev/sda1 /mnt/xfs xfs attr2,noattr2,ikeep,noikeep 0 0
+/dev/sda1 /mnt/xfs xfs dax=invalid,logbufs=9,logbufs=invalid,logbsize=invalid,allocsize=invalid,sunit=invalid,swidth=invalid 0 0
+/dev/sda1 /mnt/xfs xfs logdev=/dev/missing1,rtdev=/dev/missing1 0 0
+-- issues --
+Error: Unknown XFS mount option 'invalid_opt' on line 1
+Error: XFS mount option 'delaylog' was removed in kernel 4.0 and will yield mount failures on line 2
+Error: XFS mount option 'nodelaylog' was removed in kernel 4.0 and will yield mount failures on line 2
+Warning: XFS mount option 'attr2' is deprecated as of kernel v5.10 and will be removed/immutable on line 3
+Warning: XFS mount option 'noattr2' is deprecated as of kernel v5.10 and will be removed/immutable on line 3
+Warning: XFS mount option 'ikeep' is deprecated as of kernel v5.10 and will be removed/immutable on line 3
+Warning: XFS mount option 'noikeep' is deprecated as of kernel v5.10 and will be removed/immutable on line 3
+Error: Invalid value 'invalid' for dax on line 4, must be 'inode', 'never', or 'always'
+Error: Invalid value '9' for logbufs on line 4, must be between 2 and 8 inclusive
+Error: Invalid value 'invalid' for logbufs on line 4, must be an integer
+Error: Invalid value format 'invalid' for logbsize on line 4
+Error: Invalid value format 'invalid' for allocsize on line 4
+Error: Invalid value 'invalid' for sunit on line 4, must be an integer
+Error: Invalid value 'invalid' for swidth on line 4, must be an integer
+Error: Device '/dev/missing1' specified in XFS mount option logdev does not exist on line 5
+Error: Device '/dev/missing1' specified in XFS mount option rtdev does not exist on line 5

@@ -1,0 +1,9 @@
+test: valid xfs options
+-- cache --
+file_exists:/dev/sda1=true
+file_exists:/dev/sdb1=true
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt/xfs xfs defaults,rw,noatime,dax=inode,logbufs=8,logbsize=32k,allocsize=16m,sunit=16,swidth=32,logdev=/dev/sdb1,rtdev=/dev/sdb1,nouuid,wsync 0 0
+-- issues --

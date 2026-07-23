@@ -1,0 +1,6 @@
+test: dax options
+-- cache --
+-- kernel --
+-- input --
+/dev/sda1 /mnt/xfs xfs dax,dax=inode,dax=never,dax=always 0 0
+-- issues --

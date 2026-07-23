@@ -1,0 +1,7 @@
+test: barrier options old kernel
+-- cache --
+-- kernel --
+4.0.0
+-- input --
+/dev/sda1 /mnt/xfs xfs barrier,nobarrier 0 0
+-- issues --

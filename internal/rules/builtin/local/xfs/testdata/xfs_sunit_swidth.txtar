@@ -1,0 +1,7 @@
+test: sunit and swidth relationship
+-- cache --
+-- kernel --
+-- input --
+/dev/sda1 /mnt/xfs xfs sunit=16,swidth=17 0 0
+-- issues --
+Error: XFS mount option 'swidth' (17) must be a multiple of 'sunit' (16) on line 1
