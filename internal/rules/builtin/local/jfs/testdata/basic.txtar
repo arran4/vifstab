@@ -1,0 +1,22 @@
+-- kernel --
+6.5.0
+-- cache --
+proc_filesystems=jfs
+-- input --
+/dev/sda1 /mnt jfs defaults 0 0
+/dev/sda2 /mnt jfs remount,rw,iocharset=utf8,resize,resize=100 0 0
+/dev/sda3 /mnt jfs nointegrity,errors=continue 0 0
+/dev/sda4 /mnt jfs errors=panic 0 0
+/dev/sda5 /mnt jfs noquota,quota,usrquota,grpquota 0 0
+/dev/sda6 /mnt jfs errors=remount-ro 0 0
+/dev/sda7 /mnt jfs unknown_opt 0 0
+/dev/sda8 /mnt jfs errors=invalid 0 0
+/dev/sda9 /mnt jfs discard,nodiscard,uid=1000,gid=1000,umask=0022 0 0
+/dev/sda10 /mnt jfs loop=/dev/loop7,comment=backup 0 0
+/dev/sda11 /mnt jfs discard= 0 0
+/dev/sda12 /mnt jfs resize 0 0
+-- issues --
+Error: jfs mount option 'unknown_opt' on line 7 is unknown
+Error: jfs mount option 'errors' on line 8 has invalid value 'invalid'. Valid values are 'continue', 'remount-ro', 'panic'
+Error: jfs mount option 'discard' on line 11 does not take a value
+Error: jfs mount option 'resize' on line 12 requires a read-write remount
