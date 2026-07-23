@@ -24,5 +24,5 @@ func (r *BcachefsRule) Dependencies() []string {
 
 func (r *BcachefsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	// bcachefs is not present in the current upstream filesystem tree (or wasn't for a long time)
-	return legacy.CheckFSVersion(ctx, entry, "bcachefs", kernel.Ver{}, kernel.Ver{}, false, "", false), nil
+	return legacy.CheckFSVersion(ctx, entry, "bcachefs", kernel.Ver{Major: 6, Minor: 7, Patch: 0}, kernel.Ver{Major: 6, Minor: 18, Patch: 0}, false, "", false), nil
 }

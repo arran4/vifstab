@@ -24,5 +24,5 @@ func (r *Ext3Rule) Dependencies() []string {
 
 func (r *Ext3Rule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	// ext3 was removed in 4.3, replaced by ext4 handling ext3 format
-	return legacy.CheckFSVersion(ctx, entry, "ext3", kernel.Ver{}, kernel.Ver{Major: 4, Minor: 3, Patch: 0}, false, "ext4 handles ext3-format volumes", false), nil
+	return legacy.CheckFSVersion(ctx, entry, "ext3", kernel.Ver{}, kernel.Ver{}, false, "ext4 handles ext3-format volumes", false), nil
 }
