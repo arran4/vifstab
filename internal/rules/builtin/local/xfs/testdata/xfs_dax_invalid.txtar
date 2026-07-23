@@ -1,0 +1,7 @@
+test: dax options invalid
+-- cache --
+-- kernel --
+-- input --
+/dev/sda1 /mnt/xfs xfs dax=false 0 0
+-- issues --
+Error: Invalid value 'false' for dax on line 1, must be 'inode', 'never', or 'always'

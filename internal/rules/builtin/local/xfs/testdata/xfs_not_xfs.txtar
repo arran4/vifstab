@@ -1,0 +1,8 @@
+test: not xfs filesystem
+-- cache --
+-- kernel --
+-- input --
+/dev/sda1 /mnt/xfs ext4 xfs 0 0
+/dev/sda1 /mnt/xfs
+# a comment
+-- issues --
