@@ -2,6 +2,8 @@ package jfs
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
@@ -23,6 +25,27 @@ func (r *JfsRule) Dependencies() []string {
 	return []string{"linux_fs"}
 }
 
+func splitOptions(s string) []string {
+	var opts []string
+	var current strings.Builder
+	inQuote := false
+	for _, r := range s {
+		if r == '"' {
+			inQuote = !inQuote
+		}
+		if r == ',' && !inQuote {
+			opts = append(opts, current.String())
+			current.Reset()
+			continue
+		}
+		current.WriteRune(r)
+	}
+	if current.Len() > 0 {
+		opts = append(opts, current.String())
+	}
+	return opts
+}
+
 func (r *JfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
@@ -38,5 +61,98 @@ func (r *JfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 
 	issues := legacy.CheckFSVersion(ctx, entry, "jfs", kernel.Ver{}, kernel.Ver{}, false, "", true)
 
+	options := splitOptions(entry.Fields[3])
+	for _, opt := range options {
+		parts := strings.SplitN(opt, "=", 2)
+		key := parts[0]
+		var val string
+		if len(parts) > 1 {
+			val = parts[1]
+		}
+
+		if _, ok := jfsKnownOptions[key]; !ok {
+			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("jfs mount option '%s' on line %d is unknown", key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				})
+			}
+			continue
+		}
+
+		if val != "" {
+			if _, ok := jfsValuedOptions[key]; !ok && key != "resize" {
+				if !strings.HasPrefix(key, "X-mount.") && !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("jfs mount option '%s' on line %d does not take a value", key, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
+				}
+			}
+		} else {
+			if _, ok := jfsRequireValueOptions[key]; ok {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("Missing value for jfs mount option '%s' on line %d", key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				})
+			}
+		}
+
+		switch key {
+		case "resize":
+			if val != "" {
+				if _, err := strconv.Atoi(val); err != nil {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("Invalid value '%s' for resize on line %d, must be an integer", val, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
+				}
+			}
+		case "errors":
+			if val != "continue" && val != "remount-ro" && val != "panic" {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("jfs mount option 'errors' on line %d has invalid value '%s'. Valid values are 'continue', 'remount-ro', 'panic'", entry.LineNum, val),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				})
+			}
+		case "uid", "gid", "umask":
+		    // Can validate further if needed, but not required yet
+		}
+	}
+
 	return issues, nil
+}
+
+var jfsRequireValueOptions = map[string]struct{}{
+	"iocharset": {}, "errors": {}, "context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
+	"uid": {}, "gid": {}, "umask": {},
+}
+
+var jfsValuedOptions = map[string]struct{}{
+	"iocharset": {}, "errors": {},
+	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
+	"uid": {}, "gid": {}, "umask": {},
+}
+
+var jfsKnownOptions = map[string]struct{}{
+	"iocharset": {}, "resize": {}, "nointegrity": {}, "integrity": {},
+	"errors": {}, "noquota": {}, "quota": {}, "usrquota": {}, "grpquota": {},
+	"discard": {}, "nodiscard": {}, "uid": {}, "gid": {}, "umask": {},
+
+	// Common generic ones
+	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
+	"suid": {}, "nosuid": {}, "exec": {}, "noexec": {}, "auto": {}, "noauto": {},
+	"user": {}, "nouser": {}, "sync": {}, "async": {}, "dirsync": {},
+	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
+	"nodev": {}, "lazytime": {}, "iversion": {}, "nofail": {},
+	"strictatime": {}, "nodiratime": {}, "users": {},
+
+	// More generic ones
+	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
+	"nolazytime": {}, "owner": {}, "group": {}, "remount": {}, "bind": {}, "rbind": {}, "loop": {},
 }
