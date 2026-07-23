@@ -3,13 +3,12 @@ package btrfs
 import (
 	"context"
 	"os"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"fmt"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/kernel"
 )
 
 type BTRFSRule struct{}
@@ -44,8 +43,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 
 	c := rules.CacheFromContext(ctx)
 
-	maj, min, patch := getHostKernelVersion(c)
-	hostVer := kernelVer{major: maj, minor: min, patch: patch}
+	hostVer := kernel.GetHostKernelVersion(c)
 
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
@@ -77,7 +75,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 				})
 			}
 		case "fragment":
-			if !hostVer.atLeast(4, 4, 0) && hostVer.major != 0 {
+			if !hostVer.AtLeast(4, 4, 0) && hostVer.Major != 0 {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("BTRFS mount option 'fragment' requires kernel 4.4 or newer on line %d", entry.LineNum),
 					Line:    entry.RawLine,
@@ -100,7 +98,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 				})
 			}
 		case "rescue":
-			if !hostVer.atLeast(5, 9, 0) && hostVer.major != 0 {
+			if !hostVer.AtLeast(5, 9, 0) && hostVer.Major != 0 {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("BTRFS mount option 'rescue' requires kernel 5.9 or newer on line %d", entry.LineNum),
 					Line:    entry.RawLine,
@@ -110,7 +108,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			rescueOpts := strings.Split(val, ":")
 			for _, ropt := range rescueOpts {
 				if ropt == "ignoremetacsums" || ropt == "imetacsums" {
-					if !hostVer.atLeast(6, 12, 0) && hostVer.major != 0 {
+					if !hostVer.AtLeast(6, 12, 0) && hostVer.Major != 0 {
 						issues = append(issues, rules.ValidationIssue{
 							Message: fmt.Sprintf("BTRFS rescue option '%s' requires kernel 6.12 or newer on line %d", ropt, entry.LineNum),
 							Line:    entry.RawLine,
@@ -129,7 +127,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			cparts := strings.SplitN(val, ":", 2)
 			algo := cparts[0]
 			if algo == "zstd" {
-				if !hostVer.atLeast(5, 1, 0) && hostVer.major != 0 {
+				if !hostVer.AtLeast(5, 1, 0) && hostVer.Major != 0 {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("BTRFS mount option compress algorithm 'zstd' requires kernel 5.1 or newer on line %d", entry.LineNum),
 						Line:    entry.RawLine,
@@ -146,7 +144,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			}
 		case "discard":
 			if val == "async" {
-				if !hostVer.atLeast(5, 6, 0) && hostVer.major != 0 {
+				if !hostVer.AtLeast(5, 6, 0) && hostVer.Major != 0 {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("BTRFS mount option 'discard=async' requires kernel 5.6 or newer on line %d", entry.LineNum),
 						Line:    entry.RawLine,
@@ -215,49 +213,6 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 	}
 
 	return issues, nil
-}
-
-var kernelVersionRe = regexp.MustCompile(`(?:Linux version )?(\d+)\.(\d+)(?:\.(\d+))?`)
-
-func parseKernelVersionStr(v string) (major, minor, patch int) {
-	matches := kernelVersionRe.FindStringSubmatch(v)
-	if len(matches) > 0 {
-		major, _ = strconv.Atoi(matches[1])
-		minor, _ = strconv.Atoi(matches[2])
-		if len(matches) > 3 && matches[3] != "" {
-			patch, _ = strconv.Atoi(matches[3])
-		}
-	}
-	return
-}
-
-func getHostKernelVersion(c *rules.Cache) (major, minor, patch int) {
-	if c != nil {
-		if v, ok := c.Get("proc_version"); ok {
-			if b, ok := v.([]byte); ok {
-				return parseKernelVersionStr(string(b))
-			} else if s, ok := v.(string); ok {
-				return parseKernelVersionStr(s)
-			}
-		}
-		if v, ok := c.Get("proc_osrelease"); ok {
-			if b, ok := v.([]byte); ok {
-				return parseKernelVersionStr(string(b))
-			} else if s, ok := v.(string); ok {
-				return parseKernelVersionStr(s)
-			}
-		}
-	}
-
-	b, err := os.ReadFile("/proc/version")
-	if err == nil {
-		return parseKernelVersionStr(string(b))
-	}
-	b, err = os.ReadFile("/proc/sys/kernel/osrelease")
-	if err == nil {
-		return parseKernelVersionStr(string(b))
-	}
-	return 0, 0, 0
 }
 
 type kernelVer struct {

@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/builtin/legacy"
+	"github.com/arran4/vifstab/internal/rules/kernel"
 )
 
 type JfsRule struct{}
@@ -34,5 +36,7 @@ func (r *JfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 		return nil, nil
 	}
 
-	return nil, nil
+	issues := legacy.CheckFSVersion(ctx, entry, "jfs", kernel.Ver{}, kernel.Ver{}, false, "", true)
+
+	return issues, nil
 }
