@@ -1,0 +1,7 @@
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt f2fs inline_data=yes 0 0
+
+-- issues --
+Error: f2fs mount option 'inline_data' does not take a value on line 1

@@ -1,0 +1,7 @@
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt f2fs rw,foo=bar 0 0
+
+-- issues --
+Error: Unknown f2fs mount option 'foo' on line 1
