@@ -1,0 +1,11 @@
+test: invalid ext4 options
+-- cache --
+proc_filesystems=ext4
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt/ext4 ext4 invalid_opt,journal_ioprio=8,inode_readahead_blks=15 0 0
+-- issues --
+Error: Unknown ext4 mount option 'invalid_opt' on line 1
+Error: Invalid value '8' for ext4 mount option 'journal_ioprio' on line 1, must be between 0 and 7
+Error: Invalid value '15' for ext4 mount option 'inode_readahead_blks' on line 1, must be a power of 2

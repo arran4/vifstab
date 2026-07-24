@@ -1,0 +1,8 @@
+test: valid ext2 options
+-- cache --
+file_exists:/dev/sda1=true
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt/ext2 ext2 defaults,rw,noatime,acl,user_xattr,errors=remount-ro,check=none 0 0
+-- issues --

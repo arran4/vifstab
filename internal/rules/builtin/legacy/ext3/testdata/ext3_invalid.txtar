@@ -1,0 +1,13 @@
+test: invalid ext3 options
+-- cache --
+proc_filesystems=ext3
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt/ext3 ext3 invalid_opt,data=invalid,commit=notanint,jqfmt=value,barrier=2 0 0
+-- issues --
+Error: Unknown ext3 mount option 'invalid_opt' on line 1
+Error: Invalid value 'invalid' for ext3 mount option 'data' on line 1
+Error: Invalid value 'notanint' for ext3 mount option 'commit' on line 1, must be an integer
+Error: Invalid value 'value' for ext3 mount option 'jqfmt' on line 1
+Error: Invalid value '2' for ext3 mount option 'barrier' on line 1
