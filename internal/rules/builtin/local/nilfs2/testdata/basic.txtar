@@ -1,0 +1,10 @@
+-- kernel --
+6.5.0
+-- cache --
+proc_filesystems=nilfs2
+-- input --
+/dev/sda1 /mnt/nilfs2_1 nilfs2 defaults 0 0
+/dev/sda2 /mnt/nilfs2_2 nilfs2 nobarrier,discard,errors=continue 0 0
+/dev/sda3 /mnt/nilfs2_3 nilfs2 ro,cp=10,order=relaxed,nodiscard 0 0
+/dev/sda4 /mnt/nilfs2_4 nilfs2 ro,norecovery 0 0
+-- issues --
