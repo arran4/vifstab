@@ -1,0 +1,6 @@
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt f2fs ro,norecovery 0 0
+
+-- issues --

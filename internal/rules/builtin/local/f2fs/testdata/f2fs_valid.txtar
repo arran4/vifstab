@@ -1,0 +1,6 @@
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt f2fs rw,noatime,background_gc=on 0 0
+
+-- issues --
