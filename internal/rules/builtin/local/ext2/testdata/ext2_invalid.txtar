@@ -1,0 +1,11 @@
+test: invalid ext2 options
+-- cache --
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt/ext2 ext2 invalid_opt,check=invalid,resgid=notanint,acl=value 0 0
+-- issues --
+Error: Unknown ext2 mount option 'invalid_opt' on line 1
+Error: Unsupported value 'invalid' for ext2 mount option 'check' on line 1 (only 'none' or 'nocheck' are supported)
+Error: Invalid value 'notanint' for ext2 mount option 'resgid' on line 1, must be an integer
+Error: ext2 mount option 'acl' does not take a value on line 1

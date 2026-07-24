@@ -1,0 +1,9 @@
+test: valid ext4 options
+-- cache --
+file_exists:/dev/sda1=true
+proc_filesystems=ext4
+-- kernel --
+6.5.0
+-- input --
+/dev/sda1 /mnt/ext4 ext4 defaults,rw,noatime,journal_checksum,inode_readahead_blks=64,journal_ioprio=5 0 0
+-- issues --
