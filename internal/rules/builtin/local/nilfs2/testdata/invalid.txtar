@@ -1,0 +1,23 @@
+-- kernel --
+6.5.0
+-- cache --
+proc_filesystems=nilfs2
+-- input --
+/dev/sda1 /mnt/nilfs2_1 nilfs2 cp=10 0 0
+/dev/sda2 /mnt/nilfs2_2 nilfs2 rw,cp=10 0 0
+/dev/sda3 /mnt/nilfs2_3 nilfs2 rw,norecovery 0 0
+/dev/sda4 /mnt/nilfs2_4 nilfs2 errors=invalid 0 0
+/dev/sda5 /mnt/nilfs2_5 nilfs2 order=invalid 0 0
+/dev/sda6 /mnt/nilfs2_6 nilfs2 cp 0 0
+/dev/sda7 /mnt/nilfs2_7 nilfs2 discard=1 0 0
+/dev/sda8 /mnt/nilfs2_8 nilfs2 notarealoption 0 0
+-- issues --
+Error: nilfs2 mount option 'cp' on line 1 requires a read-only mount option ('ro')
+Error: nilfs2 mount option 'cp' on line 2 requires a read-only mount option ('ro')
+Warning: nilfs2 mount option 'norecovery' on line 3 will fail for r/w mounts on an unclean volume. Using read-only ('ro') is recommended.
+Error: nilfs2 mount option 'errors' on line 4 has invalid value 'invalid'. Valid values are 'continue', 'remount-ro', 'panic'
+Error: nilfs2 mount option 'order' on line 5 has invalid value 'invalid'. Valid values are 'relaxed', 'strict'
+Error: Missing value for nilfs2 mount option 'cp' on line 6
+Error: nilfs2 mount option 'cp' on line 6 requires a read-only mount option ('ro')
+Error: nilfs2 mount option 'discard' on line 7 does not take a value
+Error: nilfs2 mount option 'notarealoption' on line 8 is unknown
