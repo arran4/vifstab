@@ -361,7 +361,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			}
 		case "device":
 			if val != "" {
-				if !rules.CheckFileExists(ctx, val) {
+				if !rules.APIFromContext(ctx).CheckFileExists(val) {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("Device '%s' specified in BTRFS mount option device does not exist on line %d", val, entry.LineNum),
 						Line:    entry.RawLine,

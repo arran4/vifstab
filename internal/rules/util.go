@@ -1,7 +1,7 @@
 package rules
 
 import (
-	"context"
+
 	"regexp"
 	"strings"
 )
@@ -38,23 +38,4 @@ func ResolveDevicePath(dev string) string {
 		return "/dev/disk/by-id/" + val
 	}
 	return dev
-}
-
-// CheckFileExists checks if a file exists, taking into account the cache
-// and resolving block lookups transparently via the API interface in context.
-func CheckFileExists(ctx context.Context, path string) bool {
-	resolvedPath := ResolveDevicePath(path)
-
-	// Fast-path: check if raw path is in cache explicitly
-	c := CacheFromContext(ctx)
-	if c != nil {
-		if v, ok := c.Get(CacheKey("file_exists:" + path)); ok {
-			if exists, ok := v.(bool); ok {
-				return exists
-			}
-		}
-	}
-
-	api := APIFromContext(ctx)
-	return api.CheckFileExists(resolvedPath)
 }

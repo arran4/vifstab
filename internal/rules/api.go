@@ -23,15 +23,23 @@ type CacheFS struct {
 }
 
 func (c CacheFS) CheckFileExists(path string) bool {
+	resolvedPath := ResolveDevicePath(path)
+
 	if c.Cache != nil {
+		if v, ok := c.Cache.Get(CacheKey("file_exists:" + resolvedPath)); ok {
+			if exists, ok := v.(bool); ok {
+				return exists
+			}
+		}
+		// Also check if they cached the raw path for some reason
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + path)); ok {
 			if exists, ok := v.(bool); ok {
 				return exists
 			}
 		}
 	}
-	// Fallback to real OS
-	return ActualFS{}.CheckFileExists(path)
+	// Fallback to real OS using the resolved path
+	return ActualFS{}.CheckFileExists(resolvedPath)
 }
 
 func APIFromContext(ctx context.Context) API {
