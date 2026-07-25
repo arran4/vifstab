@@ -104,7 +104,7 @@ func TestRules(t *testing.T) {
 			}
 
 			// Pre-fill cache (mocking the OS interaction)
-			c := rules.NewCacheWithFS(inputFS)
+			c := rules.NewCache()
 			procData, err := fs.ReadFile(inputFS, "proc/filesystems")
 			if err != nil { // Fallback to a sane default if the test doesn't override it
 				procData = []byte("nodev\tsysfs\nnodev\ttmpfs\nnodev\tproc\n\text3\n\text4\n\tsquashfs\n\tvfat\n")

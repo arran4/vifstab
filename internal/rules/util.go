@@ -60,14 +60,6 @@ func CheckFileExists(ctx context.Context, path string) bool {
 			}
 		}
 
-		if c.FS() != nil {
-			file, err := c.FS().Open(strings.TrimPrefix(resolvedPath, "/"))
-			if err == nil {
-				file.Close()
-				return true
-			}
-			return false
-		}
 	}
 
 	_, err := os.Stat(resolvedPath)
