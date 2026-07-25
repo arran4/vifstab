@@ -1,0 +1,7 @@
+-- kernel --
+Linux version 5.10.0
+-- input/etc/fstab --
+sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
+sysfs /sys sysfs fakeopt,defaults 0 0
+-- expected/validationerrors.txt --
+Unknown sysfs mount option 'fakeopt' on line 2
