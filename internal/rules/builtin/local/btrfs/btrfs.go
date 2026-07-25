@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/builtin/util"
 	"github.com/arran4/vifstab/internal/rules/kernel"
 )
 
@@ -361,6 +362,10 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			}
 		case "device":
 			if val != "" {
+				if util.IsBlockLookup(val) {
+					// Assume valid for LABEL=, UUID=, PARTLABEL=, PARTUUID=, ID=
+					continue
+				}
 				if c != nil {
 					if v, ok := c.Get(rules.CacheKey("file_exists:" + val)); ok {
 						if exists, ok := v.(bool); ok && !exists {

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules/kernel"
+	"github.com/arran4/vifstab/internal/rules/builtin/util"
 
 	"github.com/arran4/vifstab/internal/rules"
 )
@@ -250,6 +251,10 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 				})
 			} else {
 				decodedVal := unescapeFstab(val)
+				if util.IsBlockLookup(decodedVal) {
+					// Assume valid for LABEL=, UUID=, PARTLABEL=, PARTUUID=, ID=
+					continue
+				}
 				if c != nil {
 					if v, ok := c.Get(rules.CacheKey("file_exists:" + decodedVal)); ok {
 						if exists, ok := v.(bool); ok && !exists {
