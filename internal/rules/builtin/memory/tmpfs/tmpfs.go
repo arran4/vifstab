@@ -2,6 +2,7 @@ package tmpfs
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
@@ -21,6 +22,14 @@ func (r *TmpfsRule) Dependencies() []string {
 	return []string{}
 }
 
+func splitOptions(optsStr string) []string {
+	if optsStr == "" {
+		return nil
+	}
+	opts := strings.Split(optsStr, ",")
+	return opts
+}
+
 func (r *TmpfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
@@ -34,5 +43,89 @@ func (r *TmpfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 		return nil, nil
 	}
 
-	return nil, nil
+	var issues []rules.ValidationIssue
+	options := splitOptions(entry.Fields[3])
+
+	for _, opt := range options {
+		parts := strings.SplitN(opt, "=", 2)
+		key := parts[0]
+		var val string
+		if len(parts) > 1 {
+			val = parts[1]
+		}
+
+		if _, ok := tmpfsKnownOptions[key]; !ok {
+			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("Unknown tmpfs mount option '%s' on line %d", key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				})
+			}
+			continue
+		}
+
+		if val != "" {
+			if _, ok := tmpfsValuedOptions[key]; !ok {
+				if !strings.HasPrefix(key, "X-mount.") && !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("tmpfs mount option '%s' does not take a value on line %d", key, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
+				}
+			}
+		} else {
+			if _, ok := tmpfsValuedOptions[key]; ok {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("Missing value for tmpfs mount option '%s' on line %d", key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				})
+			}
+		}
+
+		switch key {
+		case "huge":
+			if val != "never" && val != "always" && val != "within_size" && val != "advise" && val != "deny" && val != "force" {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("Invalid value '%s' for tmpfs mount option 'huge' on line %d", val, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				})
+			}
+		case "mpol":
+			if !strings.HasPrefix(val, "default") && !strings.HasPrefix(val, "prefer:") && !strings.HasPrefix(val, "bind:") && !strings.HasPrefix(val, "interleave") && !strings.HasPrefix(val, "local") {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("Invalid value '%s' for tmpfs mount option 'mpol' on line %d", val, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				})
+			}
+		}
+	}
+
+	return issues, nil
+}
+
+var tmpfsKnownOptions = map[string]struct{}{
+	// tmpfs specific options
+	"size": {}, "nr_blocks": {}, "nr_inodes": {}, "noswap": {},
+	"mode": {}, "gid": {}, "uid": {}, "huge": {}, "mpol": {},
+
+	// Generic ones
+	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
+	"suid": {}, "nosuid": {}, "exec": {}, "noexec": {}, "auto": {}, "noauto": {},
+	"user": {}, "nouser": {}, "sync": {}, "async": {}, "dirsync": {},
+	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
+	"nodev": {}, "lazytime": {}, "iversion": {}, "nofail": {},
+	"strictatime": {}, "nodiratime": {}, "users": {},
+
+	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
+	"nolazytime": {}, "owner": {}, "group": {},
+}
+
+var tmpfsValuedOptions = map[string]struct{}{
+	"size": {}, "nr_blocks": {}, "nr_inodes": {}, "mode": {}, "gid": {}, "uid": {}, "huge": {}, "mpol": {},
+	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
 }

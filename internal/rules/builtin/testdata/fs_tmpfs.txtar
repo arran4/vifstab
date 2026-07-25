@@ -1,0 +1,21 @@
+test: tmpfs mount options validation
+
+Ensures that tmpfs mount options are correctly validated.
+-- input/etc/fstab --
+# Valid tmpfs entries
+tmpfs /tmp tmpfs defaults 0 0
+tmpfs /run tmpfs size=10M,nr_blocks=1024,nr_inodes=10k,noswap,mode=1777,gid=0,uid=0,huge=always,mpol=default 0 0
+tmpfs /dev/shm tmpfs rw,nosuid,nodev,noexec,relatime,size=2G 0 0
+
+# Invalid tmpfs entries
+tmpfs /invalid_opt tmpfs unknown_opt 0 0
+tmpfs /missing_val tmpfs size= 0 0
+tmpfs /no_val_needed tmpfs noswap=yes 0 0
+tmpfs /huge_invalid tmpfs huge=invalid_huge 0 0
+tmpfs /mpol_invalid tmpfs mpol=invalid_mpol 0 0
+-- expected/validationerrors.txt --
+Unknown tmpfs mount option 'unknown_opt' on line 7
+Missing value for tmpfs mount option 'size' on line 8
+tmpfs mount option 'noswap' does not take a value on line 9
+Invalid value 'invalid_huge' for tmpfs mount option 'huge' on line 10
+Invalid value 'invalid_mpol' for tmpfs mount option 'mpol' on line 11
