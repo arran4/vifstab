@@ -362,12 +362,9 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			}
 		case "device":
 			if val != "" {
-				if util.IsBlockLookup(val) {
-					// Assume valid for LABEL=, UUID=, PARTLABEL=, PARTUUID=, ID=
-					continue
-				}
+				resolvedVal := util.ResolveDevicePath(val)
 				if c != nil {
-					if v, ok := c.Get(rules.CacheKey("file_exists:" + val)); ok {
+					if v, ok := c.Get(rules.CacheKey("file_exists:" + resolvedVal)); ok {
 						if exists, ok := v.(bool); ok && !exists {
 							issues = append(issues, rules.ValidationIssue{
 								Message: fmt.Sprintf("Device '%s' specified in BTRFS mount option device does not exist on line %d", val, entry.LineNum),
@@ -378,7 +375,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 						continue
 					}
 				}
-				if _, err := os.Stat(val); err != nil {
+				if _, err := os.Stat(resolvedVal); err != nil {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("Device '%s' specified in BTRFS mount option device does not exist on line %d", val, entry.LineNum),
 						Line:    entry.RawLine,

@@ -251,12 +251,9 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 				})
 			} else {
 				decodedVal := unescapeFstab(val)
-				if util.IsBlockLookup(decodedVal) {
-					// Assume valid for LABEL=, UUID=, PARTLABEL=, PARTUUID=, ID=
-					continue
-				}
+				resolvedVal := util.ResolveDevicePath(decodedVal)
 				if c != nil {
-					if v, ok := c.Get(rules.CacheKey("file_exists:" + decodedVal)); ok {
+					if v, ok := c.Get(rules.CacheKey("file_exists:" + resolvedVal)); ok {
 						if exists, ok := v.(bool); ok && !exists {
 							issues = append(issues, rules.ValidationIssue{
 								Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", decodedVal, key, entry.LineNum),
@@ -268,7 +265,7 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 					}
 				}
 				if c == nil {
-					if _, err := os.Stat(decodedVal); err != nil {
+					if _, err := os.Stat(resolvedVal); err != nil {
 						issues = append(issues, rules.ValidationIssue{
 							Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", decodedVal, key, entry.LineNum),
 							Line:    entry.RawLine,
