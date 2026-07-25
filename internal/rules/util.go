@@ -17,7 +17,7 @@ func ResolveDevicePath(dev string) string {
 		return dev
 	}
 	key := strings.ToUpper(matches[1])
-	val := matches[2]
+	val := strings.TrimSpace(matches[2])
 
 	// Unescape if quoted
 	if strings.HasPrefix(val, `"`) && strings.HasSuffix(val, `"`) {
