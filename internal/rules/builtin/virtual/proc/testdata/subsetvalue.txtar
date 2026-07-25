@@ -1,0 +1,6 @@
+-- kernel --
+Linux version 5.15.0
+-- input/etc/fstab --
+proc /proc proc subset=wrong 0 0
+-- expected/validationerrors.txt --
+proc mount option 'subset' expects 'pid', got 'wrong'

@@ -1,0 +1,8 @@
+-- kernel --
+Linux version 3.2.0
+-- input/etc/fstab --
+proc /proc proc hidepid=2,gid=1000,subset=pid 0 0
+-- expected/validationerrors.txt --
+proc mount option 'hidepid' is only supported on Linux 3.3+ (detected 3.2.0)
+proc mount option 'gid' is only supported on Linux 3.3+ (detected 3.2.0)
+proc mount option 'subset' is only supported on Linux 5.8+ (detected 3.2.0)

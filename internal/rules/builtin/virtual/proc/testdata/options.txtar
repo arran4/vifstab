@@ -1,0 +1,8 @@
+-- kernel --
+Linux version 5.10.0
+-- input/etc/fstab --
+proc /proc proc hidepid=2,gid=1000,subset=pid,defaults 0 0
+proc /proc proc fakeopt,hidepid 0 0
+-- expected/validationerrors.txt --
+Unknown proc mount option 'fakeopt' on line 2
+Missing value for proc mount option 'hidepid' on line 2
