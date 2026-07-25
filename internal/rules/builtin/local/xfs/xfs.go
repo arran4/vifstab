@@ -3,12 +3,11 @@ package xfs
 import (
 	"context"
 	"fmt"
-	"os"
+
 	"strconv"
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules/kernel"
-	"github.com/arran4/vifstab/internal/rules/builtin/util"
 
 	"github.com/arran4/vifstab/internal/rules"
 )
@@ -251,27 +250,12 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 				})
 			} else {
 				decodedVal := unescapeFstab(val)
-				resolvedVal := util.ResolveDevicePath(decodedVal)
-				if c != nil {
-					if v, ok := c.Get(rules.CacheKey("file_exists:" + resolvedVal)); ok {
-						if exists, ok := v.(bool); ok && !exists {
-							issues = append(issues, rules.ValidationIssue{
-								Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", decodedVal, key, entry.LineNum),
-								Line:    entry.RawLine,
-								Level:   rules.IssueLevelError,
-							})
-						}
-						continue
-					}
-				}
-				if c == nil {
-					if _, err := os.Stat(resolvedVal); err != nil {
-						issues = append(issues, rules.ValidationIssue{
-							Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", decodedVal, key, entry.LineNum),
-							Line:    entry.RawLine,
-							Level:   rules.IssueLevelError,
-						})
-					}
+				if !rules.CheckFileExists(ctx, decodedVal) {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", decodedVal, key, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
 				}
 			}
 		}

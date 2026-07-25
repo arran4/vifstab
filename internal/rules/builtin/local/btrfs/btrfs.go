@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	"github.com/arran4/vifstab/internal/rules"
-	"github.com/arran4/vifstab/internal/rules/builtin/util"
 	"github.com/arran4/vifstab/internal/rules/kernel"
 )
 
@@ -362,20 +361,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			}
 		case "device":
 			if val != "" {
-				resolvedVal := util.ResolveDevicePath(val)
-				if c != nil {
-					if v, ok := c.Get(rules.CacheKey("file_exists:" + resolvedVal)); ok {
-						if exists, ok := v.(bool); ok && !exists {
-							issues = append(issues, rules.ValidationIssue{
-								Message: fmt.Sprintf("Device '%s' specified in BTRFS mount option device does not exist on line %d", val, entry.LineNum),
-								Line:    entry.RawLine,
-								Level:   rules.IssueLevelError,
-							})
-						}
-						continue
-					}
-				}
-				if _, err := os.Stat(resolvedVal); err != nil {
+				if !rules.CheckFileExists(ctx, val) {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("Device '%s' specified in BTRFS mount option device does not exist on line %d", val, entry.LineNum),
 						Line:    entry.RawLine,
