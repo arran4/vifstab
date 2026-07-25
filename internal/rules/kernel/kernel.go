@@ -1,7 +1,7 @@
 package kernel
 
 import (
-	"os"
+
 	"regexp"
 	"strconv"
 
@@ -22,38 +22,12 @@ func parseKernelVersionStr(v string) (major, minor, patch int) {
 	return
 }
 
-func GetHostKernelVersion(c *rules.Cache) Ver {
-	if c != nil {
-		if v, ok := c.Get("proc_version"); ok {
-			if b, ok := v.([]byte); ok {
-				maj, min, pat := parseKernelVersionStr(string(b))
-				return Ver{Major: maj, Minor: min, Patch: pat}
-			} else if s, ok := v.(string); ok {
-				maj, min, pat := parseKernelVersionStr(s)
-				return Ver{Major: maj, Minor: min, Patch: pat}
-			}
-		}
-		if v, ok := c.Get("proc_osrelease"); ok {
-			if b, ok := v.([]byte); ok {
-				maj, min, pat := parseKernelVersionStr(string(b))
-				return Ver{Major: maj, Minor: min, Patch: pat}
-			} else if s, ok := v.(string); ok {
-				maj, min, pat := parseKernelVersionStr(s)
-				return Ver{Major: maj, Minor: min, Patch: pat}
-			}
-		}
-	}
-
-	b, err := os.ReadFile("/proc/version")
-	if err == nil {
-		maj, min, pat := parseKernelVersionStr(string(b))
+func GetHostKernelVersion(api rules.API) Ver {
+	s := api.GetHostKernelVersion()
+    if s != "" {
+        maj, min, pat := parseKernelVersionStr(s)
 		return Ver{Major: maj, Minor: min, Patch: pat}
-	}
-	b, err = os.ReadFile("/proc/sys/kernel/osrelease")
-	if err == nil {
-		maj, min, pat := parseKernelVersionStr(string(b))
-		return Ver{Major: maj, Minor: min, Patch: pat}
-	}
+    }
 	return Ver{Major: 0, Minor: 0, Patch: 0}
 }
 

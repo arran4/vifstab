@@ -71,8 +71,8 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 	var issues []rules.ValidationIssue
 	options := splitOptions(entry.Fields[3])
 
-	c := rules.CacheFromContext(ctx)
-	hostVer := kernel.GetHostKernelVersion(c)
+
+	hostVer := kernel.GetHostKernelVersion(rules.APIFromContext(ctx))
 
 	hasNoRecovery := false
 	hasRo := false

@@ -50,7 +50,7 @@ func CheckFSVersion(ctx context.Context, entry *rules.FstabEntry, fsType string,
 		}
 	}
 
-	hostVer := kernel.GetHostKernelVersion(c)
+	hostVer := kernel.GetHostKernelVersion(rules.APIFromContext(ctx))
 
 	var issues []rules.ValidationIssue
 

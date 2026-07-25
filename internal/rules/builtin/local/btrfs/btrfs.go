@@ -46,7 +46,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 
 	c := rules.CacheFromContext(ctx)
 
-	hostVer := kernel.GetHostKernelVersion(c)
+	hostVer := kernel.GetHostKernelVersion(rules.APIFromContext(ctx))
 
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)

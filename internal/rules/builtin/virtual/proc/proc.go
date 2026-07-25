@@ -80,8 +80,8 @@ func (r *ProcRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rul
 	var issues []rules.ValidationIssue
 	options := splitOptions(entry.Fields[3])
 
-	c := rules.CacheFromContext(ctx)
-	hostVer := kernel.GetHostKernelVersion(c)
+
+	hostVer := kernel.GetHostKernelVersion(rules.APIFromContext(ctx))
 
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)

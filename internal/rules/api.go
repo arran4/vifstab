@@ -8,6 +8,7 @@ import (
 
 type API interface {
 	CheckFileExists(path string) bool
+	GetHostKernelVersion() string
 }
 
 type ActualFS struct{}
@@ -17,9 +18,41 @@ func (ActualFS) CheckFileExists(path string) bool {
 	return err == nil
 }
 
+func (ActualFS) GetHostKernelVersion() string {
+	b, err := os.ReadFile("/proc/version")
+	if err == nil {
+		return string(b)
+	}
+	b, err = os.ReadFile("/proc/sys/kernel/osrelease")
+	if err == nil {
+		return string(b)
+	}
+	return ""
+}
+
 type CacheFS struct {
 	Cache *Cache
 	FS    fs.FS
+}
+
+func (c CacheFS) GetHostKernelVersion() string {
+	if c.Cache != nil {
+		if v, ok := c.Cache.Get("proc_version"); ok {
+			if b, ok := v.([]byte); ok {
+				return string(b)
+			} else if s, ok := v.(string); ok {
+				return s
+			}
+		}
+		if v, ok := c.Cache.Get("proc_osrelease"); ok {
+			if b, ok := v.([]byte); ok {
+				return string(b)
+			} else if s, ok := v.(string); ok {
+				return s
+			}
+		}
+	}
+	return ActualFS{}.GetHostKernelVersion()
 }
 
 func (c CacheFS) CheckFileExists(path string) bool {
