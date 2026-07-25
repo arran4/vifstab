@@ -8,7 +8,9 @@ import (
 
 type API interface {
 	CheckFileExists(path string) bool
+	CheckBlockDeviceExists(dev string) bool
 	GetHostKernelVersion() string
+	CheckSymbolicLink(dev string) string
 }
 
 type ActualFS struct{}
@@ -16,6 +18,21 @@ type ActualFS struct{}
 func (ActualFS) CheckFileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+func (ActualFS) CheckBlockDeviceExists(dev string) bool {
+	resolvedPath := ResolveDevicePath(dev)
+	_, err := os.Stat(resolvedPath)
+	return err == nil
+}
+
+func (ActualFS) CheckSymbolicLink(dev string) string {
+	resolvedPath := ResolveDevicePath(dev)
+	link, err := os.Readlink(resolvedPath)
+	if err == nil {
+		return link
+	}
+	return ""
 }
 
 func (ActualFS) GetHostKernelVersion() string {
@@ -56,7 +73,19 @@ func (c CacheFS) GetHostKernelVersion() string {
 }
 
 func (c CacheFS) CheckFileExists(path string) bool {
-	resolvedPath := ResolveDevicePath(path)
+	if c.Cache != nil {
+		if v, ok := c.Cache.Get(CacheKey("file_exists:" + path)); ok {
+			if exists, ok := v.(bool); ok {
+				return exists
+			}
+		}
+	}
+	// Fallback to real OS using the raw path
+	return ActualFS{}.CheckFileExists(path)
+}
+
+func (c CacheFS) CheckBlockDeviceExists(dev string) bool {
+	resolvedPath := ResolveDevicePath(dev)
 
 	if c.Cache != nil {
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + resolvedPath)); ok {
@@ -65,14 +94,33 @@ func (c CacheFS) CheckFileExists(path string) bool {
 			}
 		}
 		// Also check if they cached the raw path for some reason
-		if v, ok := c.Cache.Get(CacheKey("file_exists:" + path)); ok {
+		if v, ok := c.Cache.Get(CacheKey("file_exists:" + dev)); ok {
 			if exists, ok := v.(bool); ok {
 				return exists
 			}
 		}
 	}
 	// Fallback to real OS using the resolved path
-	return ActualFS{}.CheckFileExists(resolvedPath)
+	return ActualFS{}.CheckBlockDeviceExists(dev)
+}
+
+func (c CacheFS) CheckSymbolicLink(dev string) string {
+	resolvedPath := ResolveDevicePath(dev)
+
+	if c.Cache != nil {
+		if v, ok := c.Cache.Get(CacheKey("readlink:" + resolvedPath)); ok {
+			if link, ok := v.(string); ok {
+				return link
+			}
+		}
+		if v, ok := c.Cache.Get(CacheKey("readlink:" + dev)); ok {
+			if link, ok := v.(string); ok {
+				return link
+			}
+		}
+	}
+	// Fallback to real OS using the resolved path
+	return ActualFS{}.CheckSymbolicLink(dev)
 }
 
 func APIFromContext(ctx context.Context) API {
