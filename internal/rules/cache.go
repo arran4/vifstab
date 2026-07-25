@@ -2,6 +2,7 @@ package rules
 
 import (
 	"context"
+	"io/fs"
 	"sync"
 )
 
@@ -10,12 +11,24 @@ type CacheKey string
 type Cache struct {
 	mu   sync.RWMutex
 	data map[CacheKey]interface{}
+	fs   fs.FS
 }
 
 func NewCache() *Cache {
 	return &Cache{
 		data: make(map[CacheKey]interface{}),
 	}
+}
+
+func NewCacheWithFS(fileSystem fs.FS) *Cache {
+	return &Cache{
+		data: make(map[CacheKey]interface{}),
+		fs:   fileSystem,
+	}
+}
+
+func (c *Cache) FS() fs.FS {
+	return c.fs
 }
 
 func (c *Cache) Get(key CacheKey) (interface{}, bool) {
