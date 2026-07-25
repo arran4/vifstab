@@ -1,0 +1,9 @@
+-- kernel --
+Linux version 6.8.0
+-- input/etc/fstab --
+/dev/sda1 /mnt btrfs inode_cache,check_int,recovery,rescue=ignorebadroots:ignoremetacsums 0 0
+-- expected/validationerrors.txt --
+BTRFS mount option 'inode_cache' was removed in kernel 5.11 on line 1
+BTRFS mount option 'check_int' was removed in kernel 6.7 on line 1
+BTRFS mount option 'recovery' is deprecated since kernel 4.5 on line 1
+BTRFS rescue option 'ignoremetacsums' requires kernel 6.12 or newer on line 1
