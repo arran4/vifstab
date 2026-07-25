@@ -1,0 +1,19 @@
+-- kernel --
+Linux version 6.16.0
+-- input/etc/fstab --
+/dev/sda1 /mnt btrfs commit=abc,commit=400,fatal_errors=ignore,max_inline=10X,thread_pool=foo,subvolid=bar,metadata_ratio=baz,fragment=none,space_cache=v3,compress=zstd:-20,compress=zstd:16,compress=zlib:10,compress=lzo:3,rescue=invalid_rescue 0 0
+-- expected/validationerrors.txt --
+Invalid value 'abc' for commit on line 1, must be an integer
+Value '400' for commit is larger than recommended 300s on line 1
+Invalid value 'ignore' for fatal_errors on line 1, must be 'bug' or 'panic'
+Invalid value '10X' for max_inline on line 1, must be a byte size (e.g. 2048, 2K)
+Invalid value 'foo' for thread_pool on line 1, must be an integer
+Invalid value 'bar' for subvolid on line 1, must be an integer
+Invalid value 'baz' for metadata_ratio on line 1, must be an integer
+Invalid value 'none' for fragment on line 1, must be 'data', 'metadata' or 'all'
+Invalid value 'v3' for space_cache on line 1, must be 'v1' or 'v2'
+Invalid level '-20' for zstd compress on line 1, must be between -15 and 15
+Invalid level '16' for zstd compress on line 1, must be between -15 and 15
+Invalid level '10' for zlib compress on line 1, must be between 1 and 9
+BTRFS mount option compress algorithm 'lzo' does not support levels on line 1
+Invalid value 'invalid_rescue' in rescue on line 1

@@ -1,0 +1,10 @@
+-- kernel --
+Linux version 4.1.0
+-- input/etc/fstab --
+/dev/sda1 /mnt btrfs autodefrag,commit=30,fatal_errors=bug,rescan_uuid_tree,skip_balance,usebackuproot,recovery,norecovery,inode_cache,check_int,nospace_cache,space_cache=v1,compress=zstd,rescue=usebackuproot 0 0
+-- expected/validationerrors.txt --
+BTRFS mount option 'usebackuproot' requires kernel 4.6 or newer on line 1
+BTRFS mount option 'norecovery' requires kernel 4.5 or newer on line 1
+BTRFS mount option 'space_cache=v1' requires kernel 4.5 or newer on line 1
+BTRFS mount option compress algorithm 'zstd' requires kernel 4.14 or newer on line 1
+BTRFS mount option 'rescue' requires kernel 5.9 or newer on line 1

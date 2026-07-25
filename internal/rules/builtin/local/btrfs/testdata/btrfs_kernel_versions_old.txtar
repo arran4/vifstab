@@ -1,0 +1,13 @@
+-- kernel --
+Linux version 2.6.32
+-- input/etc/fstab --
+/dev/sda1 /mnt btrfs autodefrag,commit=30,fatal_errors=bug,skip_balance,recovery,nospace_cache,inode_cache,check_int 0 0
+-- expected/validationerrors.txt --
+BTRFS mount option 'autodefrag' requires kernel 3.0 or newer on line 1
+BTRFS mount option 'commit' requires kernel 3.12 or newer on line 1
+BTRFS mount option 'fatal_errors' requires kernel 3.4 or newer on line 1
+BTRFS mount option 'skip_balance' requires kernel 3.3 or newer on line 1
+BTRFS mount option 'recovery' requires kernel 3.2 or newer on line 1
+BTRFS mount option 'nospace_cache' requires kernel 3.2 or newer on line 1
+BTRFS mount option 'inode_cache' requires kernel 3.0 or newer on line 1
+BTRFS mount option 'check_int' requires kernel 3.0 or newer on line 1

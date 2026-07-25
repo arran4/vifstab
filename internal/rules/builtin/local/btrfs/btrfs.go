@@ -1,6 +1,9 @@
 package btrfs
 
 import (
+	"strconv"
+	"regexp"
+
 	"context"
 	"os"
 	"strings"
@@ -66,13 +69,132 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 		}
 
 		switch key {
+		case "autodefrag", "noautodefrag", "inode_cache", "noinode_cache", "check_int", "check_int_data", "check_int_print_mask":
+			if !hostVer.AtLeast(3, 0, 0) && hostVer.Major != 0 {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("BTRFS mount option '%s' requires kernel 3.0 or newer on line %d", key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				})
+			}
+			if (key == "inode_cache" || key == "noinode_cache") && hostVer.AtLeast(5, 11, 0) {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("BTRFS mount option '%s' was removed in kernel 5.11 on line %d", key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				})
+			}
+			if (key == "check_int" || key == "check_int_data" || key == "check_int_print_mask") && hostVer.AtLeast(6, 7, 0) {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("BTRFS mount option '%s' was removed in kernel 6.7 on line %d", key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				})
+			}
+		case "commit", "rescan_uuid_tree":
+			if !hostVer.AtLeast(3, 12, 0) && hostVer.Major != 0 {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("BTRFS mount option '%s' requires kernel 3.12 or newer on line %d", key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				})
+			}
+			if key == "commit" && val != "" {
+				if v, err := strconv.Atoi(val); err != nil {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("Invalid value '%s' for commit on line %d, must be an integer", val, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
+				} else if v > 300 {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("Value '%d' for commit is larger than recommended 300s on line %d", v, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelWarning,
+					})
+				}
+			}
 		case "fatal_errors":
+			if !hostVer.AtLeast(3, 4, 0) && hostVer.Major != 0 {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("BTRFS mount option 'fatal_errors' requires kernel 3.4 or newer on line %d", entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				})
+			}
 			if val != "bug" && val != "panic" {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Invalid value '%s' for fatal_errors on line %d, must be 'bug' or 'panic'", val, entry.LineNum),
 					Line:    entry.RawLine,
 					Level:   rules.IssueLevelError,
 				})
+			}
+		case "skip_balance":
+			if !hostVer.AtLeast(3, 3, 0) && hostVer.Major != 0 {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("BTRFS mount option 'skip_balance' requires kernel 3.3 or newer on line %d", entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				})
+			}
+		case "usebackuproot":
+			if !hostVer.AtLeast(4, 6, 0) && hostVer.Major != 0 {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("BTRFS mount option 'usebackuproot' requires kernel 4.6 or newer on line %d", entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				})
+			}
+		case "recovery":
+			if !hostVer.AtLeast(3, 2, 0) && hostVer.Major != 0 {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("BTRFS mount option 'recovery' requires kernel 3.2 or newer on line %d", entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				})
+			}
+			if hostVer.AtLeast(4, 5, 0) {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("BTRFS mount option 'recovery' is deprecated since kernel 4.5 on line %d", entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				})
+			}
+		case "norecovery":
+			if !hostVer.AtLeast(4, 5, 0) && hostVer.Major != 0 {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("BTRFS mount option 'norecovery' requires kernel 4.5 or newer on line %d", entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				})
+			}
+		case "nospace_cache":
+			if !hostVer.AtLeast(3, 2, 0) && hostVer.Major != 0 {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("BTRFS mount option 'nospace_cache' requires kernel 3.2 or newer on line %d", entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				})
+			}
+		case "max_inline":
+			if val != "" {
+				if !regexp.MustCompile(`^(?i)[0-9]+[KMGTP]?$`).MatchString(val) {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("Invalid value '%s' for max_inline on line %d, must be a byte size (e.g. 2048, 2K)", val, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
+				}
+			}
+		case "thread_pool", "subvolid", "metadata_ratio":
+			if val != "" {
+				if _, err := strconv.Atoi(val); err != nil {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("Invalid value '%s' for %s on line %d, must be an integer", val, key, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
+				}
 			}
 		case "fragment":
 			if !hostVer.AtLeast(4, 4, 0) && hostVer.Major != 0 {
@@ -97,6 +219,13 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 					Level:   rules.IssueLevelError,
 				})
 			}
+			if (val == "v1" || val == "v2") && !hostVer.AtLeast(4, 5, 0) && hostVer.Major != 0 {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("BTRFS mount option 'space_cache=%s' requires kernel 4.5 or newer on line %d", val, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				})
+			}
 		case "rescue":
 			if !hostVer.AtLeast(5, 9, 0) && hostVer.Major != 0 {
 				issues = append(issues, rules.ValidationIssue{
@@ -107,7 +236,15 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			}
 			rescueOpts := strings.Split(val, ":")
 			for _, ropt := range rescueOpts {
-				if ropt == "ignoremetacsums" || ropt == "imetacsums" {
+				if ropt == "ignorebadroots" || ropt == "ibadroots" || ropt == "ignoredatacsums" || ropt == "idatacsums" {
+					if !hostVer.AtLeast(5, 11, 0) && hostVer.Major != 0 {
+						issues = append(issues, rules.ValidationIssue{
+							Message: fmt.Sprintf("BTRFS rescue option '%s' requires kernel 5.11 or newer on line %d", ropt, entry.LineNum),
+							Line:    entry.RawLine,
+							Level:   rules.IssueLevelWarning,
+						})
+					}
+				} else if ropt == "ignoremetacsums" || ropt == "imetacsums" {
 					if !hostVer.AtLeast(6, 12, 0) && hostVer.Major != 0 {
 						issues = append(issues, rules.ValidationIssue{
 							Message: fmt.Sprintf("BTRFS rescue option '%s' requires kernel 6.12 or newer on line %d", ropt, entry.LineNum),
@@ -115,7 +252,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 							Level:   rules.IssueLevelWarning,
 						})
 					}
-				} else if ropt != "usebackuproot" && ropt != "nologreplay" && ropt != "ignorebadroots" && ropt != "ibadroots" && ropt != "ignoredatacsums" && ropt != "idatacsums" && ropt != "all" {
+				} else if ropt != "usebackuproot" && ropt != "nologreplay" && ropt != "all" {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("Invalid value '%s' in rescue on line %d", ropt, entry.LineNum),
 						Line:    entry.RawLine,
@@ -126,15 +263,79 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 		case "compress", "compress-force":
 			cparts := strings.SplitN(val, ":", 2)
 			algo := cparts[0]
+			levelStr := ""
+			if len(cparts) > 1 {
+				levelStr = cparts[1]
+			}
 			if algo == "zstd" {
-				if !hostVer.AtLeast(5, 1, 0) && hostVer.Major != 0 {
+				if !hostVer.AtLeast(4, 14, 0) && hostVer.Major != 0 {
 					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("BTRFS mount option compress algorithm 'zstd' requires kernel 5.1 or newer on line %d", entry.LineNum),
+						Message: fmt.Sprintf("BTRFS mount option compress algorithm 'zstd' requires kernel 4.14 or newer on line %d", entry.LineNum),
 						Line:    entry.RawLine,
 						Level:   rules.IssueLevelWarning,
 					})
 				}
+				if levelStr != "" {
+					if !hostVer.AtLeast(5, 1, 0) && hostVer.Major != 0 {
+						issues = append(issues, rules.ValidationIssue{
+							Message: fmt.Sprintf("BTRFS mount option compress algorithm 'zstd' levels requires kernel 5.1 or newer on line %d", entry.LineNum),
+							Line:    entry.RawLine,
+							Level:   rules.IssueLevelWarning,
+						})
+					}
+					level, err := strconv.Atoi(levelStr)
+					if err != nil {
+						issues = append(issues, rules.ValidationIssue{
+							Message: fmt.Sprintf("Invalid level '%s' for zstd compress on line %d, must be an integer", levelStr, entry.LineNum),
+							Line:    entry.RawLine,
+							Level:   rules.IssueLevelError,
+						})
+					} else {
+						if level < -15 || level > 15 {
+							issues = append(issues, rules.ValidationIssue{
+								Message: fmt.Sprintf("Invalid level '%d' for zstd compress on line %d, must be between -15 and 15", level, entry.LineNum),
+								Line:    entry.RawLine,
+								Level:   rules.IssueLevelError,
+							})
+						}
+						if level < 0 && !hostVer.AtLeast(6, 15, 0) && hostVer.Major != 0 {
+							issues = append(issues, rules.ValidationIssue{
+								Message: fmt.Sprintf("BTRFS mount option compress algorithm 'zstd' negative levels requires kernel 6.15 or newer on line %d", entry.LineNum),
+								Line:    entry.RawLine,
+								Level:   rules.IssueLevelWarning,
+							})
+						}
+					}
+				}
 			}
+			if algo == "zlib" {
+				if levelStr != "" {
+					level, err := strconv.Atoi(levelStr)
+					if err != nil {
+						issues = append(issues, rules.ValidationIssue{
+							Message: fmt.Sprintf("Invalid level '%s' for zlib compress on line %d, must be an integer", levelStr, entry.LineNum),
+							Line:    entry.RawLine,
+							Level:   rules.IssueLevelError,
+						})
+					} else if level < 1 || level > 9 {
+						issues = append(issues, rules.ValidationIssue{
+							Message: fmt.Sprintf("Invalid level '%d' for zlib compress on line %d, must be between 1 and 9", level, entry.LineNum),
+							Line:    entry.RawLine,
+							Level:   rules.IssueLevelError,
+						})
+					}
+				}
+			}
+			if algo == "lzo" {
+				if levelStr != "" {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("BTRFS mount option compress algorithm 'lzo' does not support levels on line %d", entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
+				}
+			}
+
 			if algo != "zlib" && algo != "lzo" && algo != "zstd" && algo != "no" && algo != "" {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Invalid value '%s' for compress on line %d", algo, entry.LineNum),
