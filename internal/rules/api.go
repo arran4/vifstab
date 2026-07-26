@@ -10,7 +10,6 @@ type API interface {
 	CheckFileExists(path string) bool
 	CheckBlockDeviceExists(dev string) bool
 	GetHostKernelVersion() string
-	CheckSymbolicLink(dev string) string
 }
 
 type ActualFS struct{}
@@ -26,14 +25,7 @@ func (ActualFS) CheckBlockDeviceExists(dev string) bool {
 	return err == nil
 }
 
-func (ActualFS) CheckSymbolicLink(dev string) string {
-	resolvedPath := ResolveDevicePath(dev)
-	link, err := os.Readlink(resolvedPath)
-	if err == nil {
-		return link
-	}
-	return ""
-}
+
 
 func (ActualFS) GetHostKernelVersion() string {
 	b, err := os.ReadFile("/proc/version")
@@ -104,24 +96,7 @@ func (c CacheFS) CheckBlockDeviceExists(dev string) bool {
 	return ActualFS{}.CheckBlockDeviceExists(dev)
 }
 
-func (c CacheFS) CheckSymbolicLink(dev string) string {
-	resolvedPath := ResolveDevicePath(dev)
 
-	if c.Cache != nil {
-		if v, ok := c.Cache.Get(CacheKey("readlink:" + resolvedPath)); ok {
-			if link, ok := v.(string); ok {
-				return link
-			}
-		}
-		if v, ok := c.Cache.Get(CacheKey("readlink:" + dev)); ok {
-			if link, ok := v.(string); ok {
-				return link
-			}
-		}
-	}
-	// Fallback to real OS using the resolved path
-	return ActualFS{}.CheckSymbolicLink(dev)
-}
 
 func APIFromContext(ctx context.Context) API {
 	c := CacheFromContext(ctx)
