@@ -1,8 +1,8 @@
 package btrfs
 
 import (
-	"strconv"
 	"regexp"
+	"strconv"
 
 	"context"
 	"os"
@@ -13,6 +13,8 @@ import (
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/arran4/vifstab/internal/rules/kernel"
 )
+
+var maxInlineRegexp = regexp.MustCompile(`^(?i)[0-9]+[KMGTP]?$`)
 
 type BTRFSRule struct{}
 
@@ -178,7 +180,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			}
 		case "max_inline":
 			if val != "" {
-				if !regexp.MustCompile(`^(?i)[0-9]+[KMGTP]?$`).MatchString(val) {
+				if !maxInlineRegexp.MatchString(val) {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("Invalid value '%s' for max_inline on line %d, must be a byte size (e.g. 2048, 2K)", val, entry.LineNum),
 						Line:    entry.RawLine,

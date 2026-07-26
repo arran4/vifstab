@@ -145,7 +145,7 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]r
 			}
 		case "cp":
 			if !hasRo || hasRw { // Note: 'ro' must be explicitly specified (or defaults without rw, but explicit rw breaks it)
-			    // According to docs: "Snapshot is read-only, so a read-only mount option must be specified together."
+				// According to docs: "Snapshot is read-only, so a read-only mount option must be specified together."
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("nilfs2 mount option 'cp' on line %d requires a read-only mount option ('ro')", entry.LineNum),
 					Line:    entry.RawLine,

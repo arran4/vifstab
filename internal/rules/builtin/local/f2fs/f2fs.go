@@ -117,27 +117,27 @@ func (r *F2fsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rul
 		if val != "" {
 			if _, ok := f2fsValuedOptions[key]; !ok {
 				if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
-				    // Check for some options that could have empty values like usrjquota=
-				    if !(key == "usrjquota" || key == "grpjquota" || key == "prjjquota") {
-					    issues = append(issues, rules.ValidationIssue{
-						    Message: fmt.Sprintf("f2fs mount option '%s' does not take a value on line %d", key, entry.LineNum),
-						    Line:    entry.RawLine,
-						    Level:   rules.IssueLevelError,
-					    })
+					// Check for some options that could have empty values like usrjquota=
+					if !(key == "usrjquota" || key == "grpjquota" || key == "prjjquota") {
+						issues = append(issues, rules.ValidationIssue{
+							Message: fmt.Sprintf("f2fs mount option '%s' does not take a value on line %d", key, entry.LineNum),
+							Line:    entry.RawLine,
+							Level:   rules.IssueLevelError,
+						})
 					}
 				}
 			}
 		} else {
 			if _, ok := f2fsValuedOptions[key]; ok {
-			    // Some can be empty to turn off
-			    if key == "usrjquota" || key == "grpjquota" || key == "prjjquota" || key == "test_dummy_encryption" {
-			        // allowed empty
-			    } else {
-				    issues = append(issues, rules.ValidationIssue{
-					    Message: fmt.Sprintf("Missing value for f2fs mount option '%s' on line %d", key, entry.LineNum),
-					    Line:    entry.RawLine,
-					    Level:   rules.IssueLevelError,
-				    })
+				// Some can be empty to turn off
+				if key == "usrjquota" || key == "grpjquota" || key == "prjjquota" || key == "test_dummy_encryption" {
+					// allowed empty
+				} else {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("Missing value for f2fs mount option '%s' on line %d", key, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
 				}
 			}
 		}
@@ -193,14 +193,14 @@ func (r *F2fsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rul
 			}
 		case "checkpoint":
 			if val != "" {
-			    cpParts := strings.Split(val, ":")
-			    if cpParts[0] != "enable" && cpParts[0] != "disable" {
-			        issues = append(issues, rules.ValidationIssue{
-					    Message: fmt.Sprintf("Invalid value '%s' for checkpoint on line %d, must start with 'enable' or 'disable'", val, entry.LineNum),
-					    Line:    entry.RawLine,
-					    Level:   rules.IssueLevelError,
-				    })
-			    }
+				cpParts := strings.Split(val, ":")
+				if cpParts[0] != "enable" && cpParts[0] != "disable" {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("Invalid value '%s' for checkpoint on line %d, must start with 'enable' or 'disable'", val, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
+				}
 			}
 		case "compress_algorithm":
 			if val != "" {
@@ -278,13 +278,13 @@ func (r *F2fsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rul
 				})
 			}
 		case "jqfmt":
-		    if val != "" && val != "vfsold" && val != "vfsv0" && val != "vfsv1" {
-		        issues = append(issues, rules.ValidationIssue{
+			if val != "" && val != "vfsold" && val != "vfsv0" && val != "vfsv1" {
+				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Invalid value '%s' for jqfmt on line %d, must be 'vfsold', 'vfsv0', or 'vfsv1'", val, entry.LineNum),
 					Line:    entry.RawLine,
 					Level:   rules.IssueLevelError,
 				})
-		    }
+			}
 		}
 	}
 
@@ -292,137 +292,137 @@ func (r *F2fsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rul
 }
 
 var f2fsKnownOptions = map[string]struct{}{
-	"background_gc":        {},
-	"gc_merge":             {},
-	"nogc_merge":           {},
-	"disable_roll_forward": {},
-	"norecovery":           {},
-	"discard":              {},
-	"nodiscard":            {},
-	"heap":                 {},
-	"no_heap":              {},
-	"nouser_xattr":         {},
-	"noacl":                {},
-	"active_logs":          {},
-	"disable_ext_identify": {},
-	"inline_xattr":         {},
-	"noinline_xattr":       {},
-	"inline_xattr_size":    {},
-	"inline_data":          {},
-	"inline_dentry":        {},
-	"noinline_dentry":      {},
-	"flush_merge":          {},
-	"nobarrier":            {},
-	"barrier":              {},
-	"fastboot":             {},
-	"extent_cache":         {},
-	"noextent_cache":       {},
-	"noinline_data":        {},
-	"data_flush":           {},
-	"reserve_root":         {},
-	"reserve_node":         {},
-	"resuid":               {},
-	"resgid":               {},
-	"fault_injection":      {},
-	"fault_type":           {},
-	"mode":                 {},
-	"usrquota":             {},
-	"grpquota":             {},
-	"prjquota":             {},
-	"usrjquota":            {},
-	"grpjquota":            {},
-	"prjjquota":            {},
-	"jqfmt":                {},
-	"quota":                {},
-	"noquota":              {},
-	"alloc_mode":           {},
-	"fsync_mode":           {},
-	"test_dummy_encryption":{},
-	"checkpoint":           {},
-	"checkpoint_merge":     {},
-	"nocheckpoint_merge":   {},
-	"compress_algorithm":   {},
-	"compress_log_size":    {},
-	"compress_extension":   {},
-	"nocompress_extension": {},
-	"compress_chksum":      {},
-	"compress_mode":        {},
-	"compress_cache":       {},
-	"inlinecrypt":          {},
-	"atgc":                 {},
-	"discard_unit":         {},
-	"memory":               {},
-	"age_extent_cache":     {},
-	"errors":               {},
-	"nat_bits":             {},
-	"lookup_mode":          {},
-	"defaults":             {},
-	"rw":                   {},
-	"ro":                   {},
-	"noatime":              {},
-	"relatime":             {},
-	"suid":                 {},
-	"nosuid":               {},
-	"exec":                 {},
-	"noexec":               {},
-	"auto":                 {},
-	"noauto":               {},
-	"user":                 {},
-	"nouser":               {},
-	"sync":                 {},
-	"async":                {},
-	"dirsync":              {},
-	"context":              {},
-	"defcontext":           {},
-	"rootcontext":          {},
-	"fscontext":            {},
-	"nodev":                {},
-	"lazytime":             {},
-	"iversion":             {},
-	"nofail":               {},
-	"strictatime":          {},
-	"nodiratime":           {},
-	"users":                {},
-	"_netdev":              {},
-	"dev":                  {},
-	"atime":                {},
-	"diratime":             {},
-	"noiversion":           {},
-	"nolazytime":           {},
-	"owner":                {},
-	"group":                {},
+	"background_gc":         {},
+	"gc_merge":              {},
+	"nogc_merge":            {},
+	"disable_roll_forward":  {},
+	"norecovery":            {},
+	"discard":               {},
+	"nodiscard":             {},
+	"heap":                  {},
+	"no_heap":               {},
+	"nouser_xattr":          {},
+	"noacl":                 {},
+	"active_logs":           {},
+	"disable_ext_identify":  {},
+	"inline_xattr":          {},
+	"noinline_xattr":        {},
+	"inline_xattr_size":     {},
+	"inline_data":           {},
+	"inline_dentry":         {},
+	"noinline_dentry":       {},
+	"flush_merge":           {},
+	"nobarrier":             {},
+	"barrier":               {},
+	"fastboot":              {},
+	"extent_cache":          {},
+	"noextent_cache":        {},
+	"noinline_data":         {},
+	"data_flush":            {},
+	"reserve_root":          {},
+	"reserve_node":          {},
+	"resuid":                {},
+	"resgid":                {},
+	"fault_injection":       {},
+	"fault_type":            {},
+	"mode":                  {},
+	"usrquota":              {},
+	"grpquota":              {},
+	"prjquota":              {},
+	"usrjquota":             {},
+	"grpjquota":             {},
+	"prjjquota":             {},
+	"jqfmt":                 {},
+	"quota":                 {},
+	"noquota":               {},
+	"alloc_mode":            {},
+	"fsync_mode":            {},
+	"test_dummy_encryption": {},
+	"checkpoint":            {},
+	"checkpoint_merge":      {},
+	"nocheckpoint_merge":    {},
+	"compress_algorithm":    {},
+	"compress_log_size":     {},
+	"compress_extension":    {},
+	"nocompress_extension":  {},
+	"compress_chksum":       {},
+	"compress_mode":         {},
+	"compress_cache":        {},
+	"inlinecrypt":           {},
+	"atgc":                  {},
+	"discard_unit":          {},
+	"memory":                {},
+	"age_extent_cache":      {},
+	"errors":                {},
+	"nat_bits":              {},
+	"lookup_mode":           {},
+	"defaults":              {},
+	"rw":                    {},
+	"ro":                    {},
+	"noatime":               {},
+	"relatime":              {},
+	"suid":                  {},
+	"nosuid":                {},
+	"exec":                  {},
+	"noexec":                {},
+	"auto":                  {},
+	"noauto":                {},
+	"user":                  {},
+	"nouser":                {},
+	"sync":                  {},
+	"async":                 {},
+	"dirsync":               {},
+	"context":               {},
+	"defcontext":            {},
+	"rootcontext":           {},
+	"fscontext":             {},
+	"nodev":                 {},
+	"lazytime":              {},
+	"iversion":              {},
+	"nofail":                {},
+	"strictatime":           {},
+	"nodiratime":            {},
+	"users":                 {},
+	"_netdev":               {},
+	"dev":                   {},
+	"atime":                 {},
+	"diratime":              {},
+	"noiversion":            {},
+	"nolazytime":            {},
+	"owner":                 {},
+	"group":                 {},
 }
 
 var f2fsValuedOptions = map[string]struct{}{
-	"background_gc":        {},
-	"active_logs":          {},
-	"inline_xattr_size":    {},
-	"reserve_root":         {},
-	"reserve_node":         {},
-	"resuid":               {},
-	"resgid":               {},
-	"fault_injection":      {},
-	"fault_type":           {},
-	"mode":                 {},
-	"usrjquota":            {},
-	"grpjquota":            {},
-	"prjjquota":            {},
-	"jqfmt":                {},
-	"alloc_mode":           {},
-	"fsync_mode":           {},
-	"test_dummy_encryption":{},
-	"checkpoint":           {},
-	"compress_algorithm":   {},
-	"compress_log_size":    {},
-	"compress_extension":   {},
-	"nocompress_extension": {},
-	"compress_mode":        {},
-	"discard_unit":         {},
-	"memory":               {},
-	"errors":               {},
-	"lookup_mode":          {},
-	"context":              {},
-	"defcontext":           {},
-	"rootcontext":          {},
-	"fscontext":            {},
+	"background_gc":         {},
+	"active_logs":           {},
+	"inline_xattr_size":     {},
+	"reserve_root":          {},
+	"reserve_node":          {},
+	"resuid":                {},
+	"resgid":                {},
+	"fault_injection":       {},
+	"fault_type":            {},
+	"mode":                  {},
+	"usrjquota":             {},
+	"grpjquota":             {},
+	"prjjquota":             {},
+	"jqfmt":                 {},
+	"alloc_mode":            {},
+	"fsync_mode":            {},
+	"test_dummy_encryption": {},
+	"checkpoint":            {},
+	"compress_algorithm":    {},
+	"compress_log_size":     {},
+	"compress_extension":    {},
+	"nocompress_extension":  {},
+	"compress_mode":         {},
+	"discard_unit":          {},
+	"memory":                {},
+	"errors":                {},
+	"lookup_mode":           {},
+	"context":               {},
+	"defcontext":            {},
+	"rootcontext":           {},
+	"fscontext":             {},
 }
