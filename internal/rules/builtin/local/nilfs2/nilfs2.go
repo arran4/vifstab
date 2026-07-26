@@ -22,26 +22,6 @@ func (r *Nilfs2Rule) Dependencies() []string {
 	return []string{}
 }
 
-func splitOptions(s string) []string {
-	var opts []string
-	var current strings.Builder
-	inQuote := false
-	for _, r := range s {
-		if r == '"' {
-			inQuote = !inQuote
-		}
-		if r == ',' && !inQuote {
-			opts = append(opts, current.String())
-			current.Reset()
-			continue
-		}
-		current.WriteRune(r)
-	}
-	if current.Len() > 0 {
-		opts = append(opts, current.String())
-	}
-	return opts
-}
 
 func (r *Nilfs2Rule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
@@ -57,7 +37,7 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]r
 	}
 
 	var issues []rules.ValidationIssue
-	options := splitOptions(entry.Fields[3])
+	options := rules.SplitOptions(entry.Fields[3])
 	hasRo := false
 	hasRw := false
 
