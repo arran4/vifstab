@@ -23,29 +23,6 @@ func (r *F2fsRule) Dependencies() []string {
 	return []string{}
 }
 
-func splitOptions(optsStr string) []string {
-	if optsStr == "" || optsStr == "defaults" {
-		return nil
-	}
-	var opts []string
-	var current []rune
-	inQuote := false
-	for _, r := range optsStr {
-		if r == '"' {
-			inQuote = !inQuote
-			current = append(current, r)
-		} else if r == ',' && !inQuote {
-			opts = append(opts, string(current))
-			current = nil
-		} else {
-			current = append(current, r)
-		}
-	}
-	if len(current) > 0 {
-		opts = append(opts, string(current))
-	}
-	return opts
-}
 
 func (r *F2fsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
@@ -61,7 +38,7 @@ func (r *F2fsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rul
 	}
 
 	var issues []rules.ValidationIssue
-	options := splitOptions(entry.Fields[3])
+	options := rules.SplitOptions(entry.Fields[3])
 
 	hasRo := false
 	hasNoRecovery := false
