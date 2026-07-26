@@ -1,13 +1,12 @@
 package builtin
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/osutil"
 )
 
 var knownExternalFS = map[string]bool{
@@ -78,7 +77,7 @@ func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules
 	val, ok := c.Get(ProcFilesystemsKey)
 	if !ok {
 		// Try to load it
-		fsMap, err := LoadProcFilesystems("/proc/filesystems")
+		fsMap, err := osutil.LoadProcFilesystems("/proc/filesystems")
 		if err != nil {
 			return nil, fmt.Errorf("failed to load proc filesystems: %w", err)
 		}
@@ -102,23 +101,4 @@ func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules
 	}
 
 	return nil, nil
-}
-
-func LoadProcFilesystems(path string) (map[string]bool, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	fsMap := make(map[string]bool)
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		fields := strings.Fields(line)
-		if len(fields) > 0 {
-			fsMap[fields[len(fields)-1]] = true
-		}
-	}
-	return fsMap, scanner.Err()
 }

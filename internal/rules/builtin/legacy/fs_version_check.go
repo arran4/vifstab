@@ -1,14 +1,12 @@
 package legacy
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/arran4/vifstab/internal/rules/kernel"
+	"github.com/arran4/vifstab/internal/rules/osutil"
 )
 
 const ProcFilesystemsKey rules.CacheKey = "proc_filesystems"
@@ -28,16 +26,7 @@ func CheckFSVersion(ctx context.Context, entry *rules.FstabEntry, fsType string,
 		val, ok := c.Get(ProcFilesystemsKey)
 		if !ok {
 			// Try to load it if not present
-			if f, err := os.Open("/proc/filesystems"); err == nil {
-				fsMap := make(map[string]bool)
-				scanner := bufio.NewScanner(f)
-				for scanner.Scan() {
-					fields := strings.Fields(scanner.Text())
-					if len(fields) > 0 {
-						fsMap[fields[len(fields)-1]] = true
-					}
-				}
-				f.Close()
+			if fsMap, err := osutil.LoadProcFilesystems("/proc/filesystems"); err == nil {
 				c.Set(ProcFilesystemsKey, fsMap)
 				val = fsMap
 			}
