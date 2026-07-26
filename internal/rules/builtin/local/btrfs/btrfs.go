@@ -2,7 +2,6 @@ package btrfs
 
 import (
 	"strconv"
-	"regexp"
 
 	"context"
 	"os"
@@ -178,7 +177,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			}
 		case "max_inline":
 			if val != "" {
-				if !regexp.MustCompile(`^(?i)[0-9]+[KMGTP]?$`).MatchString(val) {
+				if !isValidMaxInline(val) {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("Invalid value '%s' for max_inline on line %d, must be a byte size (e.g. 2048, 2K)", val, entry.LineNum),
 						Line:    entry.RawLine,
@@ -459,4 +458,30 @@ var btrfsKnownOptions = map[string]struct{}{
 	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
 	"nodev": {}, "lazytime": {}, "iversion": {}, "nofail": {},
 	"strictatime": {}, "nodiratime": {}, "users": {},
+}
+
+func isValidMaxInline(val string) bool {
+	if val == "" {
+		return false
+	}
+
+	valUpper := strings.ToUpper(val)
+	lastChar := valUpper[len(valUpper)-1]
+
+	numPart := valUpper
+	if lastChar == 'K' || lastChar == 'M' || lastChar == 'G' || lastChar == 'T' || lastChar == 'P' {
+		numPart = valUpper[:len(valUpper)-1]
+	}
+
+	if numPart == "" {
+		return false
+	}
+
+	for _, ch := range numPart {
+		if ch < '0' || ch > '9' {
+			return false
+		}
+	}
+
+	return true
 }

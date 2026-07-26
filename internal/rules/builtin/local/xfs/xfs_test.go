@@ -54,24 +54,24 @@ func TestXFSTxtarRules(t *testing.T) {
 			cacheVals := map[string]string{}
 
 			for _, file := range ar.Files {
-			    if file.Name == "input" {
-			        inputData = string(file.Data)
-			    } else if file.Name == "issues" {
-			        expectedIssues = string(file.Data)
-			    } else if file.Name == "kernel" {
-			        kernelVer = "Linux version " + strings.TrimSpace(string(file.Data))
-			    } else if file.Name == "cache" {
-			        for _, line := range strings.Split(string(file.Data), "\n") {
-			            line = strings.TrimSpace(line)
-			            if line == "" {
-			                continue
-			            }
-			            parts := strings.SplitN(line, "=", 2)
-			            if len(parts) == 2 {
-			                cacheVals[parts[0]] = parts[1]
-			            }
-			        }
-			    }
+				if file.Name == "input" {
+					inputData = string(file.Data)
+				} else if file.Name == "issues" {
+					expectedIssues = string(file.Data)
+				} else if file.Name == "kernel" {
+					kernelVer = "Linux version " + strings.TrimSpace(string(file.Data))
+				} else if file.Name == "cache" {
+					for _, line := range strings.Split(string(file.Data), "\n") {
+						line = strings.TrimSpace(line)
+						if line == "" {
+							continue
+						}
+						parts := strings.SplitN(line, "=", 2)
+						if len(parts) == 2 {
+							cacheVals[parts[0]] = parts[1]
+						}
+					}
+				}
 			}
 
 			entries, err := core.ParseFstab(strings.NewReader(inputData))
@@ -83,13 +83,13 @@ func TestXFSTxtarRules(t *testing.T) {
 			c := rules.NewCache()
 			c.Set("proc_version", kernelVer)
 			for k, v := range cacheVals {
-			    if v == "true" {
-			        c.Set(rules.CacheKey(k), true)
-			    } else if v == "false" {
-			        c.Set(rules.CacheKey(k), false)
-			    } else {
-			        c.Set(rules.CacheKey(k), v)
-			    }
+				if v == "true" {
+					c.Set(rules.CacheKey(k), true)
+				} else if v == "false" {
+					c.Set(rules.CacheKey(k), false)
+				} else {
+					c.Set(rules.CacheKey(k), v)
+				}
 			}
 
 			ctx := rules.WithCache(context.Background(), c)
@@ -114,12 +114,12 @@ func TestXFSTxtarRules(t *testing.T) {
 			var gotOutput string
 			if len(allIssues) > 0 {
 				for _, s := range allIssues {
-				    level := "Suggestion"
-				    if s.Level == rules.IssueLevelWarning {
-				        level = "Warning"
-				    } else if s.Level == rules.IssueLevelError {
-				        level = "Error"
-				    }
+					level := "Suggestion"
+					if s.Level == rules.IssueLevelWarning {
+						level = "Warning"
+					} else if s.Level == rules.IssueLevelError {
+						level = "Error"
+					}
 					gotOutput += fmt.Sprintf("%s: %s\n", level, s.Message)
 				}
 			}

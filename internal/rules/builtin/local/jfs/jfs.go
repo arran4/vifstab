@@ -138,7 +138,7 @@ func (r *JfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 				})
 			}
 		case "uid", "gid", "umask":
-		    // Can validate further if needed, but not required yet
+			// Can validate further if needed, but not required yet
 		}
 	}
 
