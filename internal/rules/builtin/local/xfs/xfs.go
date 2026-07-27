@@ -26,7 +26,6 @@ func (r *XfsRule) Dependencies() []string {
 	return []string{}
 }
 
-
 func unescapeFstab(s string) string {
 	s = strings.ReplaceAll(s, "\\040", " ")
 	s = strings.ReplaceAll(s, "\\011", "\t")
@@ -50,7 +49,6 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 
 	var issues []rules.ValidationIssue
 	options := rules.SplitOptions(entry.Fields[3])
-
 
 	hostVer := kernel.GetHostKernelVersion(api)
 
@@ -281,12 +279,22 @@ var xfsKnownOptions = map[string]struct{}{
 	// More generic ones
 	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
 	"nolazytime": {}, "owner": {}, "group": {},
+	// Common generic ones added automatically
+	"X-": {}, "beneath": {}, "bind": {}, "exclusive": {}, "fake": {}, "fork": {}, "fstab": {}, "help": {},
+	"internal-only": {}, "loud": {}, "make-private": {}, "make-rprivate": {}, "make-rshared": {}, "make-rslave": {}, "make-runbindable": {}, "make-shared": {},
+	"make-slave": {}, "make-unbindable": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "no-canonicalize": {}, "no-mtab": {},
+	"nomand": {}, "nosymfollow": {}, "onlyonce": {}, "options": {}, "options-mode": {}, "options-source": {}, "options-source-force": {}, "rbind": {},
+	"read-only": {}, "read-write": {}, "remount": {}, "show-labels": {}, "silent": {}, "source": {}, "target": {}, "target-prefix": {},
+	"test-opts": {}, "types": {}, "uuid": {}, "verbose": {}, "version": {}, "x-": {},
 }
 
 var xfsValuedOptions = map[string]struct{}{
 	"allocsize": {}, "dax": {}, "logbufs": {}, "logbsize": {}, "logdev": {},
 	"rtdev": {}, "sunit": {}, "swidth": {}, "context": {}, "defcontext": {},
 	"rootcontext": {}, "fscontext": {},
+	// Generic valued options added automatically
+	"fstab": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "options": {}, "options-mode": {}, "options-source": {},
+	"source": {}, "target": {}, "target-prefix": {}, "test-opts": {}, "types": {}, "uuid": {},
 }
 
 var xfsRemovedOptions = map[string]struct {

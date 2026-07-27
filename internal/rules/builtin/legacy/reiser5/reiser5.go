@@ -23,5 +23,5 @@ func (r *Reiser5Rule) Dependencies() []string {
 }
 
 func (r *Reiser5Rule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
-	return legacy.CheckFSVersion(ctx, entry, "reiser5", kernel.Ver{}, kernel.Ver{}, true, "", false), nil
+	return legacy.CheckFSVersion(ctx, api, entry, "reiser5", kernel.Ver{}, kernel.Ver{}, true, "", false), nil
 }

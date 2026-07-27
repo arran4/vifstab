@@ -1,7 +1,6 @@
 package rules
 
 import (
-	"context"
 	"io/fs"
 	"os"
 )
@@ -24,8 +23,6 @@ func (ActualFS) CheckBlockDeviceExists(dev string) bool {
 	_, err := os.Stat(resolvedPath)
 	return err == nil
 }
-
-
 
 func (ActualFS) GetHostKernelVersion() string {
 	b, err := os.ReadFile("/proc/version")
@@ -72,6 +69,15 @@ func (c *CacheFS) CheckFileExists(path string) bool {
 			}
 		}
 	}
+	if c.FS != nil {
+		if path != "" && path[0] == '/' {
+			path = path[1:]
+		}
+		_, err := fs.Stat(c.FS, path)
+		if err == nil {
+			return true
+		}
+	}
 	// Fallback to real OS using the raw path
 	return ActualFS{}.CheckFileExists(path)
 }
@@ -90,6 +96,16 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
 			if exists, ok := v.(bool); ok {
 				return exists
 			}
+		}
+	}
+	if c.FS != nil {
+		checkPath := resolvedPath
+		if checkPath != "" && checkPath[0] == '/' {
+			checkPath = checkPath[1:]
+		}
+		_, err := fs.Stat(c.FS, checkPath)
+		if err == nil {
+			return true
 		}
 	}
 	// Fallback to real OS using the resolved path

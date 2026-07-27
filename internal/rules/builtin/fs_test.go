@@ -106,7 +106,7 @@ func TestFSRule(t *testing.T) {
 			var allIssues []rules.ValidationIssue
 			for _, entry := range entries {
 				for _, r := range allRules {
-					suggs, err := r.Validate(ctx, entry)
+					suggs, err := r.Validate(ctx, &rules.CacheFS{}, entry)
 					if err != nil {
 						t.Fatalf("unexpected error during validate for rule %s: %v", r.Name(), err)
 					}

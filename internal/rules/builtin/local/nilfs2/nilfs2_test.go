@@ -109,7 +109,7 @@ func TestNilfs2TxtarRules(t *testing.T) {
 			var validateErr error
 
 			for _, entry := range entries {
-				issues, err := rule.Validate(ctx, entry)
+				issues, err := rule.Validate(ctx, &rules.CacheFS{Cache: c}, entry)
 				if err != nil {
 					validateErr = fmt.Errorf("rule %s failed: %w", rule.Name(), err)
 					break

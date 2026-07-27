@@ -446,6 +446,14 @@ var btrfsKnownOptions = map[string]struct{}{
 	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
 	"nodev": {}, "lazytime": {}, "iversion": {}, "nofail": {},
 	"strictatime": {}, "nodiratime": {}, "users": {},
+	// Common generic ones added automatically
+	"X-": {}, "_netdev": {}, "atime": {}, "beneath": {}, "bind": {}, "dev": {}, "diratime": {}, "exclusive": {},
+	"fake": {}, "fork": {}, "fstab": {}, "group": {}, "help": {}, "internal-only": {}, "loud": {}, "make-private": {},
+	"make-rprivate": {}, "make-rshared": {}, "make-rslave": {}, "make-runbindable": {}, "make-shared": {}, "make-slave": {}, "make-unbindable": {}, "map-groups": {},
+	"map-users": {}, "mkdir": {}, "namespace": {}, "no-canonicalize": {}, "no-mtab": {}, "noiversion": {}, "nolazytime": {}, "nomand": {},
+	"nosymfollow": {}, "onlyonce": {}, "options": {}, "options-mode": {}, "options-source": {}, "options-source-force": {}, "owner": {}, "rbind": {},
+	"read-only": {}, "read-write": {}, "remount": {}, "show-labels": {}, "silent": {}, "source": {}, "target": {}, "target-prefix": {},
+	"test-opts": {}, "types": {}, "uuid": {}, "verbose": {}, "version": {}, "x-": {},
 }
 
 func isValidMaxInline(val string) bool {

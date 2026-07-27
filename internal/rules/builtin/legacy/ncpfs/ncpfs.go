@@ -23,5 +23,5 @@ func (r *NcpfsRule) Dependencies() []string {
 }
 
 func (r *NcpfsRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
-	return legacy.CheckFSVersion(ctx, entry, "ncpfs", kernel.Ver{}, kernel.Ver{Major: 4, Minor: 17, Patch: 0}, false, "", false), nil
+	return legacy.CheckFSVersion(ctx, api, entry, "ncpfs", kernel.Ver{}, kernel.Ver{Major: 4, Minor: 17, Patch: 0}, false, "", false), nil
 }
