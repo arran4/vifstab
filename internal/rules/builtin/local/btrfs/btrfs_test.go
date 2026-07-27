@@ -99,7 +99,6 @@ func TestBTRFSTxtarRules(t *testing.T) {
 				t.Fatalf("parse input/etc/fstab: %v", err)
 			}
 
-
 			// Pre-fill cache (mocking the OS interaction)
 			c := rules.NewCache()
 
@@ -113,7 +112,6 @@ func TestBTRFSTxtarRules(t *testing.T) {
 			c.Set("proc_version", kernelVer)
 
 			ctx := rules.WithCache(context.Background(), c)
-
 
 			rule := &BTRFSRule{}
 			var allIssues []rules.ValidationIssue

@@ -26,26 +26,6 @@ func (r *XfsRule) Dependencies() []string {
 	return []string{}
 }
 
-func splitOptions(s string) []string {
-	var opts []string
-	var current strings.Builder
-	inQuote := false
-	for _, r := range s {
-		if r == '"' {
-			inQuote = !inQuote
-		}
-		if r == ',' && !inQuote {
-			opts = append(opts, current.String())
-			current.Reset()
-			continue
-		}
-		current.WriteRune(r)
-	}
-	if current.Len() > 0 {
-		opts = append(opts, current.String())
-	}
-	return opts
-}
 
 func unescapeFstab(s string) string {
 	s = strings.ReplaceAll(s, "\\040", " ")
@@ -69,7 +49,7 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 	}
 
 	var issues []rules.ValidationIssue
-	options := splitOptions(entry.Fields[3])
+	options := rules.SplitOptions(entry.Fields[3])
 
 
 	hostVer := kernel.GetHostKernelVersion(api)

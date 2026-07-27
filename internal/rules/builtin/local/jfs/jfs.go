@@ -25,26 +25,6 @@ func (r *JfsRule) Dependencies() []string {
 	return []string{"linux_fs"}
 }
 
-func splitOptions(s string) []string {
-	var opts []string
-	var current strings.Builder
-	inQuote := false
-	for _, r := range s {
-		if r == '"' {
-			inQuote = !inQuote
-		}
-		if r == ',' && !inQuote {
-			opts = append(opts, current.String())
-			current.Reset()
-			continue
-		}
-		current.WriteRune(r)
-	}
-	if current.Len() > 0 {
-		opts = append(opts, current.String())
-	}
-	return opts
-}
 
 func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
@@ -61,7 +41,7 @@ func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 
 	issues := legacy.CheckFSVersion(ctx, entry, "jfs", kernel.Ver{}, kernel.Ver{}, false, "", true)
 
-	options := splitOptions(entry.Fields[3])
+	options := rules.SplitOptions(entry.Fields[3])
 	hasRemount := false
 	hasRo := false
 	for _, opt := range options {
@@ -158,7 +138,7 @@ func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 				})
 			}
 		case "uid", "gid", "umask":
-		    // Can validate further if needed, but not required yet
+			// Can validate further if needed, but not required yet
 		}
 	}
 

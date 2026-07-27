@@ -22,13 +22,6 @@ func (r *TmpfsRule) Dependencies() []string {
 	return []string{}
 }
 
-func splitOptions(optsStr string) []string {
-	if optsStr == "" {
-		return nil
-	}
-	opts := strings.Split(optsStr, ",")
-	return opts
-}
 
 func (r *TmpfsRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
@@ -44,7 +37,7 @@ func (r *TmpfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 	}
 
 	var issues []rules.ValidationIssue
-	options := splitOptions(entry.Fields[3])
+	options := rules.SplitOptions(entry.Fields[3])
 
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)

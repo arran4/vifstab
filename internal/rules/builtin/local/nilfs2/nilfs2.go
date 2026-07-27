@@ -22,26 +22,6 @@ func (r *Nilfs2Rule) Dependencies() []string {
 	return []string{}
 }
 
-func splitOptions(s string) []string {
-	var opts []string
-	var current strings.Builder
-	inQuote := false
-	for _, r := range s {
-		if r == '"' {
-			inQuote = !inQuote
-		}
-		if r == ',' && !inQuote {
-			opts = append(opts, current.String())
-			current.Reset()
-			continue
-		}
-		current.WriteRune(r)
-	}
-	if current.Len() > 0 {
-		opts = append(opts, current.String())
-	}
-	return opts
-}
 
 func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
@@ -57,7 +37,7 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 	}
 
 	var issues []rules.ValidationIssue
-	options := splitOptions(entry.Fields[3])
+	options := rules.SplitOptions(entry.Fields[3])
 	hasRo := false
 	hasRw := false
 
@@ -145,7 +125,7 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 			}
 		case "cp":
 			if !hasRo || hasRw { // Note: 'ro' must be explicitly specified (or defaults without rw, but explicit rw breaks it)
-			    // According to docs: "Snapshot is read-only, so a read-only mount option must be specified together."
+				// According to docs: "Snapshot is read-only, so a read-only mount option must be specified together."
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("nilfs2 mount option 'cp' on line %d requires a read-only mount option ('ro')", entry.LineNum),
 					Line:    entry.RawLine,

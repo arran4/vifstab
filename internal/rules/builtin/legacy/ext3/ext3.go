@@ -25,13 +25,6 @@ func (r *Ext3Rule) Dependencies() []string {
 	return []string{"linux_fs"}
 }
 
-func splitOptions(optsStr string) []string {
-	if optsStr == "" {
-		return nil
-	}
-	opts := strings.Split(optsStr, ",")
-	return opts
-}
 
 func (r *Ext3Rule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	// ext3 was removed in 4.3, replaced by ext4 handling ext3 format
@@ -49,7 +42,7 @@ func (r *Ext3Rule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		return issues, nil
 	}
 
-	options := splitOptions(entry.Fields[3])
+	options := rules.SplitOptions(entry.Fields[3])
 
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)

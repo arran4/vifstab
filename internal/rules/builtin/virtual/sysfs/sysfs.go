@@ -8,26 +8,6 @@ import (
 	"github.com/arran4/vifstab/internal/rules"
 )
 
-func splitOptions(s string) []string {
-	var opts []string
-	var current strings.Builder
-	inQuote := false
-	for _, r := range s {
-		if r == '"' {
-			inQuote = !inQuote
-		}
-		if r == ',' && !inQuote {
-			opts = append(opts, current.String())
-			current.Reset()
-			continue
-		}
-		current.WriteRune(r)
-	}
-	if current.Len() > 0 {
-		opts = append(opts, current.String())
-	}
-	return opts
-}
 
 var sysfsKnownOptions = map[string]struct{}{
 	// Generic ones
@@ -74,7 +54,7 @@ func (r *SysfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 	}
 
 	var issues []rules.ValidationIssue
-	options := splitOptions(entry.Fields[3])
+	options := rules.SplitOptions(entry.Fields[3])
 
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
