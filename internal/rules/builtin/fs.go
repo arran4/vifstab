@@ -35,7 +35,7 @@ func (r *FSRule) Dependencies() []string {
 	return []string{"linux_fs"}
 }
 
-func (r *FSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
+func (r *FSRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
 	}

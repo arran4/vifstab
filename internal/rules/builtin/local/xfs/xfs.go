@@ -55,7 +55,7 @@ func unescapeFstab(s string) string {
 	return s
 }
 
-func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
+func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
 	}
@@ -72,7 +72,7 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 	options := splitOptions(entry.Fields[3])
 
 
-	hostVer := kernel.GetHostKernelVersion(rules.APIFromContext(ctx))
+	hostVer := kernel.GetHostKernelVersion(api)
 
 	hasNoRecovery := false
 	hasRo := false
@@ -250,7 +250,7 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 				})
 			} else {
 				decodedVal := unescapeFstab(val)
-				if !rules.APIFromContext(ctx).CheckBlockDeviceExists(decodedVal) {
+				if !api.CheckBlockDeviceExists(decodedVal) {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", decodedVal, key, entry.LineNum),
 						Line:    entry.RawLine,

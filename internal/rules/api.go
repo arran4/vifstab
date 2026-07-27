@@ -44,7 +44,7 @@ type CacheFS struct {
 	FS    fs.FS
 }
 
-func (c CacheFS) GetHostKernelVersion() string {
+func (c *CacheFS) GetHostKernelVersion() string {
 	if c.Cache != nil {
 		if v, ok := c.Cache.Get("proc_version"); ok {
 			if b, ok := v.([]byte); ok {
@@ -64,7 +64,7 @@ func (c CacheFS) GetHostKernelVersion() string {
 	return ActualFS{}.GetHostKernelVersion()
 }
 
-func (c CacheFS) CheckFileExists(path string) bool {
+func (c *CacheFS) CheckFileExists(path string) bool {
 	if c.Cache != nil {
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + path)); ok {
 			if exists, ok := v.(bool); ok {
@@ -76,7 +76,7 @@ func (c CacheFS) CheckFileExists(path string) bool {
 	return ActualFS{}.CheckFileExists(path)
 }
 
-func (c CacheFS) CheckBlockDeviceExists(dev string) bool {
+func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
 	resolvedPath := ResolveDevicePath(dev)
 
 	if c.Cache != nil {
@@ -94,14 +94,4 @@ func (c CacheFS) CheckBlockDeviceExists(dev string) bool {
 	}
 	// Fallback to real OS using the resolved path
 	return ActualFS{}.CheckBlockDeviceExists(dev)
-}
-
-
-
-func APIFromContext(ctx context.Context) API {
-	c := CacheFromContext(ctx)
-	if c != nil {
-		return CacheFS{Cache: c}
-	}
-	return ActualFS{}
 }

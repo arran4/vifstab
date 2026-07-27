@@ -32,7 +32,7 @@ func VerifyAndLint(cfg config.Config) ([]rules.ValidationIssue, error) {
 	var allIssues []rules.ValidationIssue
 	for _, entry := range entries {
 		for _, r := range allRules {
-			issues, err := r.Validate(ctx, entry)
+			issues, err := r.Validate(ctx, api, entry)
 			if err != nil {
 				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)
 			}

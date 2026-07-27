@@ -5,7 +5,7 @@ import "context"
 type Rule interface {
 	Name() string
 	Dependencies() []string
-	Validate(ctx context.Context, entry *FstabEntry) ([]ValidationIssue, error)
+	Validate(ctx context.Context, api API, entry *FstabEntry) ([]ValidationIssue, error)
 }
 
 type IssueLevel string

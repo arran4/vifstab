@@ -28,7 +28,7 @@ func (r *BTRFSRule) Dependencies() []string {
 	return []string{}
 }
 
-func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
+func (r *BTRFSRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
 	}
@@ -46,7 +46,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 
 	c := rules.CacheFromContext(ctx)
 
-	hostVer := kernel.GetHostKernelVersion(rules.APIFromContext(ctx))
+	hostVer := kernel.GetHostKernelVersion(api)
 
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
@@ -361,7 +361,7 @@ func (r *BTRFSRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]ru
 			}
 		case "device":
 			if val != "" {
-				if !rules.APIFromContext(ctx).CheckBlockDeviceExists(val) {
+				if !api.CheckBlockDeviceExists(val) {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("Device '%s' specified in BTRFS mount option device does not exist on line %d", val, entry.LineNum),
 						Line:    entry.RawLine,
