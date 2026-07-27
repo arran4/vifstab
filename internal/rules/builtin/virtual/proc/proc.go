@@ -44,7 +44,7 @@ var procValuedOptions = map[string]struct{}{
 	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
 }
 
-func (r *ProcRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
+func (r *ProcRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
 	}
@@ -60,8 +60,8 @@ func (r *ProcRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rul
 	var issues []rules.ValidationIssue
 	options := rules.SplitOptions(entry.Fields[3])
 
-	c := rules.CacheFromContext(ctx)
-	hostVer := kernel.GetHostKernelVersion(c)
+
+	hostVer := kernel.GetHostKernelVersion(api)
 
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)

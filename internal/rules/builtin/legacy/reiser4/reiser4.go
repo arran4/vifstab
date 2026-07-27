@@ -22,6 +22,6 @@ func (r *Reiser4Rule) Dependencies() []string {
 	return []string{"linux_fs"}
 }
 
-func (r *Reiser4Rule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
+func (r *Reiser4Rule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	return legacy.CheckFSVersion(ctx, entry, "reiser4", kernel.Ver{}, kernel.Ver{}, true, "", false), nil
 }

@@ -22,6 +22,6 @@ func (r *SysvRule) Dependencies() []string {
 	return []string{"linux_fs"}
 }
 
-func (r *SysvRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
+func (r *SysvRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	return legacy.CheckFSVersion(ctx, entry, "sysv", kernel.Ver{}, kernel.Ver{}, false, "", false), nil
 }

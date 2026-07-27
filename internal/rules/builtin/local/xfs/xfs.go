@@ -3,7 +3,7 @@ package xfs
 import (
 	"context"
 	"fmt"
-	"os"
+
 	"strconv"
 	"strings"
 
@@ -35,7 +35,7 @@ func unescapeFstab(s string) string {
 	return s
 }
 
-func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
+func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
 	}
@@ -51,8 +51,8 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 	var issues []rules.ValidationIssue
 	options := rules.SplitOptions(entry.Fields[3])
 
-	c := rules.CacheFromContext(ctx)
-	hostVer := kernel.GetHostKernelVersion(c)
+
+	hostVer := kernel.GetHostKernelVersion(api)
 
 	hasNoRecovery := false
 	hasRo := false
@@ -230,26 +230,12 @@ func (r *XfsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rule
 				})
 			} else {
 				decodedVal := unescapeFstab(val)
-				if c != nil {
-					if v, ok := c.Get(rules.CacheKey("file_exists:" + decodedVal)); ok {
-						if exists, ok := v.(bool); ok && !exists {
-							issues = append(issues, rules.ValidationIssue{
-								Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", decodedVal, key, entry.LineNum),
-								Line:    entry.RawLine,
-								Level:   rules.IssueLevelError,
-							})
-						}
-						continue
-					}
-				}
-				if c == nil {
-					if _, err := os.Stat(decodedVal); err != nil {
-						issues = append(issues, rules.ValidationIssue{
-							Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", decodedVal, key, entry.LineNum),
-							Line:    entry.RawLine,
-							Level:   rules.IssueLevelError,
-						})
-					}
+				if !api.CheckBlockDeviceExists(decodedVal) {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", decodedVal, key, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
 				}
 			}
 		}

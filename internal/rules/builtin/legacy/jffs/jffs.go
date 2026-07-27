@@ -22,6 +22,6 @@ func (r *JffsRule) Dependencies() []string {
 	return []string{"linux_fs"}
 }
 
-func (r *JffsRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
+func (r *JffsRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	return legacy.CheckFSVersion(ctx, entry, "jffs", kernel.Ver{}, kernel.Ver{Major: 2, Minor: 6, Patch: 17}, false, "", false), nil
 }

@@ -26,7 +26,7 @@ func (r *Ext3Rule) Dependencies() []string {
 }
 
 
-func (r *Ext3Rule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
+func (r *Ext3Rule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	// ext3 was removed in 4.3, replaced by ext4 handling ext3 format
 	issues := legacy.CheckFSVersion(ctx, entry, "ext3", kernel.Ver{}, kernel.Ver{}, false, "ext4 handles ext3-format volumes", false)
 

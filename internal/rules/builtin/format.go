@@ -22,7 +22,7 @@ func (r *FormatRule) Dependencies() []string {
 	return nil
 }
 
-func (r *FormatRule) Validate(ctx context.Context, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
+func (r *FormatRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 {
 		return nil, nil
 	}
