@@ -41,10 +41,13 @@ type CacheFS struct {
 	FS    fs.FS
 }
 
-func NewCacheFS(cache *Cache, fs fs.FS) *CacheFS {
+func NewCacheFS(cache *Cache, mockFS fs.FS) *CacheFS {
+	if mockFS == nil {
+		panic("CacheFS must be initialized with a valid fs.FS")
+	}
 	return &CacheFS{
 		Cache: cache,
-		FS:    fs,
+		FS:    mockFS,
 	}
 }
 
@@ -82,12 +85,9 @@ func (c *CacheFS) CheckFileExists(path string) bool {
 			path = path[1:]
 		}
 		_, err := fs.Stat(c.FS, path)
-		if err == nil {
-			return true
-		}
+		return err == nil
 	}
-	// Fallback to real OS using the raw path
-	return ActualFS{}.CheckFileExists(path)
+	panic("CacheFS must be initialized with a valid fs.FS")
 }
 
 func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
@@ -112,10 +112,7 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
 			checkPath = checkPath[1:]
 		}
 		_, err := fs.Stat(c.FS, checkPath)
-		if err == nil {
-			return true
-		}
+		return err == nil
 	}
-	// Fallback to real OS using the resolved path
-	return ActualFS{}.CheckBlockDeviceExists(dev)
+	panic("CacheFS must be initialized with a valid fs.FS")
 }
