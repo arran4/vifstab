@@ -1,8 +1,8 @@
 package rules
 
 import (
+	"reflect"
 	"testing"
-  "reflect"
 )
 
 func TestResolveDevicePath(t *testing.T) {

@@ -1,7 +1,6 @@
 package rules
 
 import (
-
 	"regexp"
 	"strings"
 )

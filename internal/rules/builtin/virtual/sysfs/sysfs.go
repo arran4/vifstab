@@ -8,7 +8,6 @@ import (
 	"github.com/arran4/vifstab/internal/rules"
 )
 
-
 var sysfsKnownOptions = map[string]struct{}{
 	// Generic ones
 	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
@@ -20,10 +19,20 @@ var sysfsKnownOptions = map[string]struct{}{
 
 	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
 	"nolazytime": {}, "owner": {}, "group": {},
+	// Common generic ones added automatically
+	"X-": {}, "beneath": {}, "bind": {}, "exclusive": {}, "fake": {}, "fork": {}, "fstab": {}, "help": {},
+	"internal-only": {}, "loud": {}, "make-private": {}, "make-rprivate": {}, "make-rshared": {}, "make-rslave": {}, "make-runbindable": {}, "make-shared": {},
+	"make-slave": {}, "make-unbindable": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "no-canonicalize": {}, "no-mtab": {},
+	"nomand": {}, "nosymfollow": {}, "onlyonce": {}, "options": {}, "options-mode": {}, "options-source": {}, "options-source-force": {}, "rbind": {},
+	"read-only": {}, "read-write": {}, "remount": {}, "show-labels": {}, "silent": {}, "source": {}, "target": {}, "target-prefix": {},
+	"test-opts": {}, "types": {}, "uuid": {}, "verbose": {}, "version": {}, "x-": {},
 }
 
 var sysfsValuedOptions = map[string]struct{}{
 	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
+	// Generic valued options added automatically
+	"fstab": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "options": {}, "options-mode": {}, "options-source": {},
+	"source": {}, "target": {}, "target-prefix": {}, "test-opts": {}, "types": {}, "uuid": {},
 }
 
 type SysfsRule struct{}

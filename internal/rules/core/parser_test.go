@@ -2,9 +2,9 @@ package core
 
 import (
 	"errors"
+	"github.com/arran4/vifstab/internal/rules"
 	"strings"
 	"testing"
-	"github.com/arran4/vifstab/internal/rules"
 )
 
 var errMockRead = errors.New("mock read error")

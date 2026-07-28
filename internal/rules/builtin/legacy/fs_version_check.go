@@ -13,7 +13,7 @@ import (
 
 const ProcFilesystemsKey rules.CacheKey = "proc_filesystems"
 
-func CheckFSVersion(ctx context.Context, entry *rules.FstabEntry, fsType string, minVer, maxVer kernel.Ver, neverMerged bool, replacement string, isStillPresent bool) []rules.ValidationIssue {
+func CheckFSVersion(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsType string, minVer, maxVer kernel.Ver, neverMerged bool, replacement string, isStillPresent bool) []rules.ValidationIssue {
 	if len(entry.Fields) < 3 {
 		return nil
 	}

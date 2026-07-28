@@ -25,7 +25,6 @@ func (r *JfsRule) Dependencies() []string {
 	return []string{"linux_fs"}
 }
 
-
 func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
@@ -39,7 +38,7 @@ func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 		return nil, nil
 	}
 
-	issues := legacy.CheckFSVersion(ctx, entry, "jfs", kernel.Ver{}, kernel.Ver{}, false, "", true)
+	issues := legacy.CheckFSVersion(ctx, api, entry, "jfs", kernel.Ver{}, kernel.Ver{}, false, "", true)
 
 	options := rules.SplitOptions(entry.Fields[3])
 	hasRemount := false
@@ -151,25 +150,90 @@ var jfsRequireValueOptions = map[string]struct{}{
 }
 
 var jfsValuedOptions = map[string]struct{}{
-	"iocharset": {}, "errors": {},
-	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-	"uid": {}, "gid": {}, "umask": {}, "comment": {}, "loop": {},
+	"X-mount.file": {},
+	"X-mount.group": {},
+	"X-mount.mkdir": {},
+	"X-mount.mode": {},
+	"X-mount.owner": {},
+	"comment": {},
+	"context": {},
+	"defcontext": {},
+	"fscontext": {},
+	"iocharset": {},
+	"rootcontext": {},
+	"x-systemd.device-timeout": {},
+	"x-systemd.idle-timeout": {},
+	"x-systemd.mount-timeout": {},
+	"x-systemd.requires": {},
+	"x-systemd.requires-mounts-for": {},
+	"errors": {},
+	"uid": {}, "gid": {}, "umask": {}, "loop": {},
 }
 
 var jfsKnownOptions = map[string]struct{}{
-	"iocharset": {}, "resize": {}, "nointegrity": {}, "integrity": {},
+	"X-mount.file": {},
+	"X-mount.group": {},
+	"X-mount.mkdir": {},
+	"X-mount.mode": {},
+	"X-mount.owner": {},
+	"_netdev": {},
+	"async": {},
+	"atime": {},
+	"auto": {},
+	"bind": {},
+	"context": {},
+	"defaults": {},
+	"defcontext": {},
+	"dev": {},
+	"diratime": {},
+	"dirsync": {},
+	"exec": {},
+	"fscontext": {},
+	"group": {},
+	"iocharset": {},
+	"iversion": {},
+	"lazytime": {},
+	"loud": {},
+	"make-private": {},
+	"make-runbindable": {},
+	"make-shared": {},
+	"make-slave": {},
+	"make-unbindable": {},
+	"mand": {},
+	"noatime": {},
+	"noauto": {},
+	"nodev": {},
+	"nodiratime": {},
+	"noexec": {},
+	"nofail": {},
+	"noiversion": {},
+	"nolazytime": {},
+	"nomand": {},
+	"norelatime": {},
+	"nostrictatime": {},
+	"nosuid": {},
+	"nosymfollow": {},
+	"nouser": {},
+	"owner": {},
+	"rbind": {},
+	"relatime": {},
+	"remount": {},
+	"ro": {},
+	"rootcontext": {},
+	"rw": {},
+	"silent": {},
+	"strictatime": {},
+	"suid": {},
+	"sync": {},
+	"user": {},
+	"users": {},
+	"x-systemd.automount": {},
+	"x-systemd.device-timeout": {},
+	"x-systemd.idle-timeout": {},
+	"x-systemd.mount-timeout": {},
+	"x-systemd.requires": {},
+	"x-systemd.requires-mounts-for": {},
+	"resize": {}, "nointegrity": {}, "integrity": {},
 	"errors": {}, "noquota": {}, "quota": {}, "usrquota": {}, "grpquota": {},
 	"discard": {}, "nodiscard": {}, "uid": {}, "gid": {}, "umask": {}, "comment": {}, "loop": {},
-
-	// Common generic ones
-	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
-	"suid": {}, "nosuid": {}, "exec": {}, "noexec": {}, "auto": {}, "noauto": {},
-	"user": {}, "nouser": {}, "sync": {}, "async": {}, "dirsync": {},
-	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-	"nodev": {}, "lazytime": {}, "iversion": {}, "nofail": {},
-	"strictatime": {}, "nodiratime": {}, "users": {},
-
-	// More generic ones
-	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
-	"nolazytime": {}, "owner": {}, "group": {}, "remount": {}, "bind": {}, "rbind": {},
 }

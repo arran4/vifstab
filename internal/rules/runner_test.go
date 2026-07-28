@@ -145,7 +145,7 @@ func TestRules(t *testing.T) {
 			var validateErr error
 			for _, entry := range entries {
 				for _, r := range rulesToRun {
-					issues, err := r.Validate(ctx, entry)
+					issues, err := r.Validate(ctx, &rules.CacheFS{}, entry)
 					if err != nil {
 						validateErr = fmt.Errorf("rule %s failed: %w", r.Name(), err)
 						break

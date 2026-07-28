@@ -1,7 +1,6 @@
 package kernel
 
 import (
-
 	"regexp"
 	"strconv"
 
@@ -24,10 +23,10 @@ func parseKernelVersionStr(v string) (major, minor, patch int) {
 
 func GetHostKernelVersion(api rules.API) Ver {
 	s := api.GetHostKernelVersion()
-    if s != "" {
-        maj, min, pat := parseKernelVersionStr(s)
+	if s != "" {
+		maj, min, pat := parseKernelVersionStr(s)
 		return Ver{Major: maj, Minor: min, Patch: pat}
-    }
+	}
 	return Ver{Major: 0, Minor: 0, Patch: 0}
 }
 

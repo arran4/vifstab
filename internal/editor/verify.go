@@ -13,7 +13,7 @@ import (
 
 // VerifyAndLint reads the given file and lints it against all registered rules.
 // It returns a slice of all suggestions (warnings, errors, etc.) and an error if a technical failure occurred.
-func VerifyAndLint(cfg config.Config) ([]rules.ValidationIssue, error) {
+func VerifyAndLint(cfg config.Config, api rules.API) ([]rules.ValidationIssue, error) {
 	f, err := os.Open(cfg.FilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file for verification: %w", err)

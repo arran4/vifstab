@@ -23,5 +23,5 @@ func (r *JffsRule) Dependencies() []string {
 }
 
 func (r *JffsRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
-	return legacy.CheckFSVersion(ctx, entry, "jffs", kernel.Ver{}, kernel.Ver{Major: 2, Minor: 6, Patch: 17}, false, "", false), nil
+	return legacy.CheckFSVersion(ctx, api, entry, "jffs", kernel.Ver{}, kernel.Ver{Major: 2, Minor: 6, Patch: 17}, false, "", false), nil
 }

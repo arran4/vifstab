@@ -1,7 +1,6 @@
 package rules
 
 import (
-	"context"
 	"io/fs"
 	"os"
 )
@@ -25,8 +24,6 @@ func (ActualFS) CheckBlockDeviceExists(dev string) bool {
 	return err == nil
 }
 
-
-
 func (ActualFS) GetHostKernelVersion() string {
 	b, err := os.ReadFile("/proc/version")
 	if err == nil {
@@ -43,6 +40,17 @@ type CacheFS struct {
 	Cache *Cache
 	FS    fs.FS
 }
+
+func NewCacheFS(cache *Cache, fs fs.FS) *CacheFS {
+	if fs == nil {
+		panic("CacheFS must be initialized with a valid fs.FS")
+	}
+	return &CacheFS{
+		Cache: cache,
+		FS:    fs,
+	}
+}
+
 
 func (c *CacheFS) GetHostKernelVersion() string {
 	if c.Cache != nil {
@@ -72,8 +80,14 @@ func (c *CacheFS) CheckFileExists(path string) bool {
 			}
 		}
 	}
-	// Fallback to real OS using the raw path
-	return ActualFS{}.CheckFileExists(path)
+	if c.FS != nil {
+		if path != "" && path[0] == '/' {
+			path = path[1:]
+		}
+		_, err := fs.Stat(c.FS, path)
+		return err == nil
+	}
+	panic("CacheFS must be initialized with a valid fs.FS")
 }
 
 func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
@@ -92,6 +106,13 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
 			}
 		}
 	}
-	// Fallback to real OS using the resolved path
-	return ActualFS{}.CheckBlockDeviceExists(dev)
+	if c.FS != nil {
+		checkPath := resolvedPath
+		if checkPath != "" && checkPath[0] == '/' {
+			checkPath = checkPath[1:]
+		}
+		_, err := fs.Stat(c.FS, checkPath)
+		return err == nil
+	}
+	panic("CacheFS must be initialized with a valid fs.FS")
 }
