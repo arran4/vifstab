@@ -41,6 +41,14 @@ type CacheFS struct {
 	FS    fs.FS
 }
 
+func NewCacheFS(cache *Cache, fs fs.FS) *CacheFS {
+	return &CacheFS{
+		Cache: cache,
+		FS:    fs,
+	}
+}
+
+
 func (c *CacheFS) GetHostKernelVersion() string {
 	if c.Cache != nil {
 		if v, ok := c.Cache.Get("proc_version"); ok {
