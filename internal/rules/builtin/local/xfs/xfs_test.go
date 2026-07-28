@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/arran4/vifstab/internal/rules/builtin/local/xfs"
@@ -99,7 +100,7 @@ func TestXFSTxtarRules(t *testing.T) {
 			var validateErr error
 
 			for _, entry := range entries {
-				issues, err := rule.Validate(ctx, entry)
+				issues, err := rule.Validate(ctx, rules.NewCacheFS(c, fstest.MapFS{}), entry)
 				if err != nil {
 					validateErr = fmt.Errorf("rule %s failed: %w", rule.Name(), err)
 					break

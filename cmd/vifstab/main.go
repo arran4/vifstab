@@ -66,7 +66,7 @@ func main() {
 	}
 
 	if verifyOnly {
-		issues, err := editor.VerifyAndLint(cfg)
+		issues, err := editor.VerifyAndLint(cfg, rules.ActualFS{})
 		if err != nil {
 			handleError(err)
 		}
@@ -97,7 +97,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err := editor.EditAndLint(cfg)
+	err := editor.EditAndLint(cfg, rules.ActualFS{})
 	if err != nil {
 		handleError(err)
 	}

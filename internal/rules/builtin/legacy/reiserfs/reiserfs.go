@@ -24,5 +24,5 @@ func (r *ReiserfsRule) Dependencies() []string {
 
 func (r *ReiserfsRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	// ReiserFS was removed in 6.13
-	return legacy.CheckFSVersion(ctx, entry, "reiserfs", kernel.Ver{}, kernel.Ver{Major: 6, Minor: 13, Patch: 0}, false, "", false), nil
+	return legacy.CheckFSVersion(ctx, api, entry, "reiserfs", kernel.Ver{}, kernel.Ver{Major: 6, Minor: 13, Patch: 0}, false, "", false), nil
 }

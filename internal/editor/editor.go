@@ -16,7 +16,7 @@ import (
 	"github.com/arran4/vifstab/internal/rules/core"
 )
 
-func EditAndLint(cfg config.Config) error {
+func EditAndLint(cfg config.Config, api rules.API) error {
 	// 1. Copy target file to temp
 	tempFile, err := os.CreateTemp("", "vifstab-*")
 	if err != nil {
@@ -96,7 +96,7 @@ func EditAndLint(cfg config.Config) error {
 		var allIssues []rules.ValidationIssue
 		for _, entry := range entries {
 			for _, r := range allRules {
-				issues, err := r.Validate(ctx, entry)
+				issues, err := r.Validate(ctx, api, entry)
 				if err != nil {
 					return fmt.Errorf("rule %s failed: %w", r.Name(), err)
 				}

@@ -22,7 +22,6 @@ func (r *Nilfs2Rule) Dependencies() []string {
 	return []string{}
 }
 
-
 func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
@@ -154,6 +153,9 @@ var nilfs2RequireValueOptions = map[string]struct{}{
 var nilfs2ValuedOptions = map[string]struct{}{
 	"errors": {}, "cp": {}, "order": {},
 	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
+	// Generic valued options added automatically
+	"fstab": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "options": {}, "options-mode": {}, "options-source": {},
+	"source": {}, "target": {}, "target-prefix": {}, "test-opts": {}, "types": {}, "uuid": {},
 }
 
 var nilfs2KnownOptions = map[string]struct{}{
@@ -172,4 +174,11 @@ var nilfs2KnownOptions = map[string]struct{}{
 	// More generic ones
 	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
 	"nolazytime": {}, "owner": {}, "group": {}, "remount": {}, "bind": {}, "rbind": {},
+	// Common generic ones added automatically
+	"X-": {}, "beneath": {}, "exclusive": {}, "fake": {}, "fork": {}, "fstab": {}, "help": {}, "internal-only": {},
+	"loud": {}, "make-private": {}, "make-rprivate": {}, "make-rshared": {}, "make-rslave": {}, "make-runbindable": {}, "make-shared": {}, "make-slave": {},
+	"make-unbindable": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "no-canonicalize": {}, "no-mtab": {}, "nomand": {},
+	"nosymfollow": {}, "onlyonce": {}, "options": {}, "options-mode": {}, "options-source": {}, "options-source-force": {}, "read-only": {}, "read-write": {},
+	"show-labels": {}, "silent": {}, "source": {}, "target": {}, "target-prefix": {}, "test-opts": {}, "types": {}, "uuid": {},
+	"verbose": {}, "version": {}, "x-": {},
 }

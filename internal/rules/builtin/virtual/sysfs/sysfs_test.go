@@ -27,7 +27,7 @@ func TestSysfsRuleSimple(t *testing.T) {
 		Fields:  strings.Fields("sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0"),
 	}
 
-	suggestions, err := rule.Validate(context.Background(), entry)
+	suggestions, err := rule.Validate(context.Background(), &rules.CacheFS{}, entry)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestSysfsTxtarRules(t *testing.T) {
 			var validateErr error
 
 			for _, entry := range entries {
-				issues, err := rule.Validate(ctx, entry)
+				issues, err := rule.Validate(ctx, &rules.CacheFS{Cache: c, FS: inputFS}, entry)
 				if err != nil {
 					validateErr = fmt.Errorf("rule %s failed: %w", rule.Name(), err)
 					break

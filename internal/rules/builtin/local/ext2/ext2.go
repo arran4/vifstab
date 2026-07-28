@@ -23,7 +23,6 @@ func (r *Ext2Rule) Dependencies() []string {
 	return []string{}
 }
 
-
 func (r *Ext2Rule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
 	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
 		return nil, nil
@@ -128,9 +127,19 @@ var ext2KnownOptions = map[string]struct{}{
 
 	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
 	"nolazytime": {}, "owner": {}, "group": {},
+	// Common generic ones added automatically
+	"X-": {}, "beneath": {}, "bind": {}, "exclusive": {}, "fake": {}, "fork": {}, "fstab": {}, "help": {},
+	"internal-only": {}, "loud": {}, "make-private": {}, "make-rprivate": {}, "make-rshared": {}, "make-rslave": {}, "make-runbindable": {}, "make-shared": {},
+	"make-slave": {}, "make-unbindable": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "no-canonicalize": {}, "no-mtab": {},
+	"nomand": {}, "nosymfollow": {}, "onlyonce": {}, "options": {}, "options-mode": {}, "options-source": {}, "options-source-force": {}, "rbind": {},
+	"read-only": {}, "read-write": {}, "remount": {}, "show-labels": {}, "silent": {}, "source": {}, "target": {}, "target-prefix": {},
+	"test-opts": {}, "types": {}, "uuid": {}, "verbose": {}, "version": {}, "x-": {},
 }
 
 var ext2ValuedOptions = map[string]struct{}{
 	"check": {}, "errors": {}, "resgid": {}, "resuid": {}, "sb": {},
 	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
+	// Generic valued options added automatically
+	"fstab": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "options": {}, "options-mode": {}, "options-source": {},
+	"source": {}, "target": {}, "target-prefix": {}, "test-opts": {}, "types": {}, "uuid": {},
 }

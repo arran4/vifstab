@@ -23,5 +23,5 @@ func (r *SysvRule) Dependencies() []string {
 }
 
 func (r *SysvRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
-	return legacy.CheckFSVersion(ctx, entry, "sysv", kernel.Ver{}, kernel.Ver{}, false, "", false), nil
+	return legacy.CheckFSVersion(ctx, api, entry, "sysv", kernel.Ver{}, kernel.Ver{}, false, "", false), nil
 }
