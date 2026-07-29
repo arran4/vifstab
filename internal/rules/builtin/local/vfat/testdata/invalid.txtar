@@ -24,3 +24,9 @@ Invalid value 'invalid' for vfat mount option 'shortname' on line 9
 Invalid value 'EST' for vfat mount option 'tz' on line 10 (only 'UTC' is supported)
 Invalid value 'invalid' for vfat mount option 'errors' on line 11
 Invalid value 'invalid' for vfat mount option 'nfs' on line 12
+
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+
+-- input/etc/group --
+root:x:0:

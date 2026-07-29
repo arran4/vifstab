@@ -83,12 +83,30 @@ func (r *VfatRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		switch key {
 		case "uid", "gid", "time_offset", "codepage":
 			if val != "" {
-				if _, err := strconv.ParseInt(val, 10, 64); err != nil {
+				if num, err := strconv.ParseInt(val, 10, 64); err != nil {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("Invalid value '%s' for vfat mount option '%s' on line %d, must be an integer", val, key, entry.LineNum),
 						Line:    entry.RawLine,
 						Level:   rules.IssueLevelError,
 					})
+				} else {
+					if key == "uid" {
+						if !api.CheckUserExists(int(num)) {
+							issues = append(issues, rules.ValidationIssue{
+								Message: fmt.Sprintf("User with uid %d does not exist", num),
+								Line:    entry.RawLine,
+								Level:   rules.IssueLevelError,
+							})
+						}
+					} else if key == "gid" {
+						if !api.CheckGroupExists(int(num)) {
+							issues = append(issues, rules.ValidationIssue{
+								Message: fmt.Sprintf("Group with gid %d does not exist", num),
+								Line:    entry.RawLine,
+								Level:   rules.IssueLevelError,
+							})
+						}
+					}
 				}
 			}
 		case "umask", "dmask", "fmask", "allow_utime":

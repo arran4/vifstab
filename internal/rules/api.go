@@ -5,13 +5,61 @@ import (
 	"os"
 )
 
+import (
+	"bufio"
+	"strconv"
+	"strings"
+)
+
 type API interface {
 	CheckFileExists(path string) bool
 	CheckBlockDeviceExists(dev string) bool
 	GetHostKernelVersion() string
+	CheckUserExists(uid int) bool
+	CheckGroupExists(gid int) bool
 }
 
 type ActualFS struct{}
+
+func (ActualFS) CheckUserExists(uid int) bool {
+	f, err := os.Open("/etc/passwd")
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Split(line, ":")
+		if len(parts) >= 3 {
+			if id, err := strconv.Atoi(parts[2]); err == nil && id == uid {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (ActualFS) CheckGroupExists(gid int) bool {
+	f, err := os.Open("/etc/group")
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Split(line, ":")
+		if len(parts) >= 3 {
+			if id, err := strconv.Atoi(parts[2]); err == nil && id == gid {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 func (ActualFS) CheckFileExists(path string) bool {
 	_, err := os.Stat(path)
@@ -51,7 +99,6 @@ func NewCacheFS(cache *Cache, mockFS fs.FS) *CacheFS {
 	}
 }
 
-
 func (c *CacheFS) GetHostKernelVersion() string {
 	if c.Cache != nil {
 		if v, ok := c.Cache.Get("proc_version"); ok {
@@ -88,6 +135,50 @@ func (c *CacheFS) CheckFileExists(path string) bool {
 		return err == nil
 	}
 	panic("CacheFS must be initialized with a valid fs.FS")
+}
+
+func (c *CacheFS) CheckUserExists(uid int) bool {
+	if c.FS != nil {
+		f, err := c.FS.Open("etc/passwd")
+		if err != nil {
+			return false
+		}
+		defer f.Close()
+
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := scanner.Text()
+			parts := strings.Split(line, ":")
+			if len(parts) >= 3 {
+				if id, err := strconv.Atoi(parts[2]); err == nil && id == uid {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func (c *CacheFS) CheckGroupExists(gid int) bool {
+	if c.FS != nil {
+		f, err := c.FS.Open("etc/group")
+		if err != nil {
+			return false
+		}
+		defer f.Close()
+
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := scanner.Text()
+			parts := strings.Split(line, ":")
+			if len(parts) >= 3 {
+				if id, err := strconv.Atoi(parts[2]); err == nil && id == gid {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {

@@ -102,12 +102,21 @@ func TestVfatTxtarRules(t *testing.T) {
 
 			ctx := rules.WithCache(context.Background(), c)
 
+			mockFs := fstest.MapFS{}
+			for _, file := range ar.Files {
+				if strings.HasPrefix(file.Name, "input/") && file.Name != "input/etc/fstab" {
+					mockFs[strings.TrimPrefix(file.Name, "input/")] = &fstest.MapFile{
+						Data: file.Data,
+					}
+				}
+			}
+
 			rule := &vfat.VfatRule{}
 			var allIssues []rules.ValidationIssue
 			var validateErr error
 
 			for _, entry := range entries {
-				issues, err := rule.Validate(ctx, rules.NewCacheFS(c, fstest.MapFS{}), entry)
+				issues, err := rule.Validate(ctx, rules.NewCacheFS(c, mockFs), entry)
 				if err != nil {
 					validateErr = fmt.Errorf("rule %s failed: %w", rule.Name(), err)
 					break
@@ -130,7 +139,8 @@ func TestVfatTxtarRules(t *testing.T) {
 				}
 			}
 
-			wantOutput := expectedIssues
+			wantOutput := strings.TrimSpace(expectedIssues)
+			gotOutput = strings.TrimSpace(gotOutput)
 			if gotOutput != wantOutput {
 				t.Fatalf("mismatch output\nwant:\n%s\ngot:\n%s", wantOutput, gotOutput)
 			}
