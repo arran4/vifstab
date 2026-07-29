@@ -1,0 +1,32 @@
+-- input/etc/fstab --
+# Invalid options
+/dev/sda1 /mnt vfat unknown_opt 0 0
+/dev/sda2 /mnt vfat uid 0 0
+/dev/sda3 /mnt vfat usefree=1 0 0
+/dev/sda4 /mnt vfat uid=abc 0 0
+/dev/sda5 /mnt vfat umask=999 0 0
+/dev/sda6 /mnt vfat utf8=yesno 0 0
+/dev/sda7 /mnt vfat check=z 0 0
+/dev/sda8 /mnt vfat shortname=invalid 0 0
+/dev/sda9 /mnt vfat tz=EST 0 0
+/dev/sda10 /mnt vfat errors=invalid 0 0
+/dev/sda11 /mnt vfat nfs=invalid 0 0
+
+-- expected/validationerrors.txt --
+Unknown vfat mount option 'unknown_opt' on line 2
+Missing value for vfat mount option 'uid' on line 3
+vfat mount option 'usefree' does not take a value on line 4
+Invalid value 'abc' for vfat mount option 'uid' on line 5, must be an integer
+Invalid value '999' for vfat mount option 'umask' on line 6, must be an octal integer
+Invalid value 'yesno' for vfat mount option 'utf8' on line 7, must be a boolean (0, 1, yes, no, true, false)
+Invalid value 'z' for vfat mount option 'check' on line 8 (only 's', 'r', or 'n' are supported)
+Invalid value 'invalid' for vfat mount option 'shortname' on line 9
+Invalid value 'EST' for vfat mount option 'tz' on line 10 (only 'UTC' is supported)
+Invalid value 'invalid' for vfat mount option 'errors' on line 11
+Invalid value 'invalid' for vfat mount option 'nfs' on line 12
+
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+
+-- input/etc/group --
+root:x:0:
