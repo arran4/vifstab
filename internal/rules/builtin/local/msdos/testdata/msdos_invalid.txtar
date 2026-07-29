@@ -1,0 +1,13 @@
+-- input --
+/dev/sda1 /mnt/msdos msdos uid=notanint,gid=9999,umask=invalid,unknownopt 0 0
+-- cache --
+proc_filesystems=msdos
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+-- input/etc/group --
+root:x:0:
+-- expected/validationerrors.txt --
+Invalid value 'notanint' for msdos mount option 'uid' on line 1, must be an integer
+Group with gid 9999 does not exist
+Invalid value 'invalid' for msdos mount option 'umask' on line 1, must be an octal integer
+Unknown msdos mount option 'unknownopt' on line 1

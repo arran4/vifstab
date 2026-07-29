@@ -1,0 +1,18 @@
+-- input --
+/dev/sda1 /mnt/hfs hfs creator=c,type=xxxxx,uid=notanint,gid=9999,dir_umask=invalid,unknownopt 0 0
+/dev/sda2 /mnt/hfs2 hfs creator,type 0 0
+-- cache --
+proc_filesystems=hfs
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+-- input/etc/group --
+root:x:0:
+-- expected/validationerrors.txt --
+Invalid value 'c' for hfs mount option 'creator' on line 1, must be 4 characters long
+Invalid value 'xxxxx' for hfs mount option 'type' on line 1, must be 4 characters long
+Invalid value 'notanint' for hfs mount option 'uid' on line 1, must be an integer
+Group with gid 9999 does not exist
+Invalid value 'invalid' for hfs mount option 'dir_umask' on line 1, must be an octal integer
+Unknown hfs mount option 'unknownopt' on line 1
+Missing value for hfs mount option 'creator' on line 2
+Missing value for hfs mount option 'type' on line 2

@@ -1,0 +1,5 @@
+-- input --
+/dev/sda1 /mnt/ufs ufs ufstype=ufs2,onerror=panic 0 0
+-- cache --
+proc_filesystems=ufs
+-- expected/validationerrors.txt --

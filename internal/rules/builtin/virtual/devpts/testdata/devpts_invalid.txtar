@@ -1,0 +1,18 @@
+-- input --
+devpts /dev/pts devpts uid=notanint,gid=9999,mode=invalid,ptmxmode=invalid,unknownopt 0 0
+devpts /dev/pts devpts mode,ptmxmode,newinstance=value 0 0
+-- cache --
+proc_filesystems=devpts
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+-- input/etc/group --
+root:x:0:
+-- expected/validationerrors.txt --
+Invalid value 'notanint' for devpts mount option 'uid' on line 1, must be an integer
+Group with gid 9999 does not exist
+Invalid value 'invalid' for devpts mount option 'mode' on line 1, must be an octal integer
+Invalid value 'invalid' for devpts mount option 'ptmxmode' on line 1, must be an octal integer
+Unknown devpts mount option 'unknownopt' on line 1
+Missing value for devpts mount option 'mode' on line 2
+Missing value for devpts mount option 'ptmxmode' on line 2
+devpts mount option 'newinstance' does not take a value on line 2

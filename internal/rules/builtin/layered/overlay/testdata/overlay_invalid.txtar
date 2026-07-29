@@ -1,0 +1,16 @@
+-- input --
+overlay /mnt/overlay overlay redirect_dir=invalid,index=invalid,uuid=invalid,nfs_export=invalid,xino=invalid,metacopy=invalid,unknownopt 0 0
+overlay /mnt/overlay2 overlay index=off,nfs_export=on 0 0
+overlay /mnt/overlay3 overlay lowerdir 0 0
+-- cache --
+proc_filesystems=overlay
+-- expected/validationerrors.txt --
+Invalid value 'invalid' for overlay mount option 'redirect_dir' on line 1
+Invalid value 'invalid' for overlay mount option 'index' on line 1
+Invalid value 'invalid' for overlay mount option 'uuid' on line 1
+Invalid value 'invalid' for overlay mount option 'nfs_export' on line 1
+Invalid value 'invalid' for overlay mount option 'xino' on line 1
+Invalid value 'invalid' for overlay mount option 'metacopy' on line 1
+Unknown overlay mount option 'unknownopt' on line 1
+overlay mount options index=off,nfs_export=on are conflicting for a read-write mount on line 2
+Missing value for overlay mount option 'lowerdir' on line 3

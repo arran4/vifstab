@@ -1,0 +1,9 @@
+-- input --
+/dev/cdrom /mnt/cdrom iso9660 norock,nojoliet,check=relaxed,uid=1000,gid=1000,map=acorn,mode=0444,unhide,block=2048,cruft,session=2,sbsector=16,iocharset=utf8,utf8 0 0
+-- cache --
+proc_filesystems=iso9660
+-- input/etc/passwd --
+user:x:1000:1000:User:/home/user:/bin/bash
+-- input/etc/group --
+user:x:1000:
+-- expected/validationerrors.txt --

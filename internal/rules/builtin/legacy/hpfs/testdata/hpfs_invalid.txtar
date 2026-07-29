@@ -1,0 +1,16 @@
+-- input --
+/dev/sda1 /mnt/hpfs hpfs uid=notanint,gid=9999,umask=invalid,case=invalid,unknownopt 0 0
+/dev/sda2 /mnt/hpfs hpfs case 0 0
+-- cache --
+proc_filesystems=hpfs
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+-- input/etc/group --
+root:x:0:
+-- expected/validationerrors.txt --
+Invalid value 'notanint' for hpfs mount option 'uid' on line 1, must be an integer
+Group with gid 9999 does not exist
+Invalid value 'invalid' for hpfs mount option 'umask' on line 1, must be an octal integer
+Invalid value 'invalid' for hpfs mount option 'case' on line 1
+Unknown hpfs mount option 'unknownopt' on line 1
+Missing value for hpfs mount option 'case' on line 2

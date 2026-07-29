@@ -1,0 +1,10 @@
+-- input --
+/dev/sda1 /mnt/adfs adfs uid=1000,gid=1000,ownmask=0700,othmask=0077 0 0
+/dev/sda2 /mnt/adfs2 adfs ro,noauto 0 0
+-- cache --
+proc_filesystems=adfs
+-- input/etc/passwd --
+user:x:1000:1000:User:/home/user:/bin/bash
+-- input/etc/group --
+user:x:1000:
+-- expected/validationerrors.txt --

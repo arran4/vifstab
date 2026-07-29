@@ -1,0 +1,9 @@
+-- input --
+/dev/sda1 /mnt/ntfs3 ntfs3 iocharset=utf8,uid=1000,gid=1000,umask=022,dmask=022,fmask=133,nohidden,sys_immutable,hide_dot_files,windows_names,discard,force,sparse,showmeta,prealloc,acl 0 0
+-- cache --
+proc_filesystems=ntfs3
+-- input/etc/passwd --
+user:x:1000:1000:User:/home/user:/bin/bash
+-- input/etc/group --
+user:x:1000:
+-- expected/validationerrors.txt --

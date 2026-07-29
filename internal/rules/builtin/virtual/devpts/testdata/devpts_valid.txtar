@@ -1,0 +1,10 @@
+-- input --
+devpts /dev/pts devpts uid=1000,gid=1000,mode=0620,ptmxmode=0666,newinstance 0 0
+none /dev/pts devpts ro 0 0
+-- cache --
+proc_filesystems=devpts
+-- input/etc/passwd --
+user:x:1000:1000:User:/home/user:/bin/bash
+-- input/etc/group --
+user:x:1000:
+-- expected/validationerrors.txt --

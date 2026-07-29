@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/builtin/local/fat"
 )
 
 type MsdosRule struct{}
@@ -22,17 +23,26 @@ func (r *MsdosRule) Dependencies() []string {
 }
 
 func (r *MsdosRule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
-	if len(entry.Fields) == 0 || strings.HasPrefix(strings.TrimSpace(entry.RawLine), "#") {
-		return nil, nil
-	}
-	if len(entry.Fields) < 4 {
-		return nil, nil
-	}
+	// msdos uses same options as fat
+	fatRule := &fat.FatRule{}
 
-	fsType := entry.Fields[2]
-	if fsType != "msdos" {
-		return nil, nil
-	}
+	// Create a copy of the entry but with fsType as fat to pass fat validation
+	if len(entry.Fields) >= 3 && entry.Fields[2] == "msdos" {
+		mockEntry := *entry
+		mockEntry.Fields = append([]string{}, entry.Fields...)
+		mockEntry.Fields[2] = "fat"
 
+		fatIssues, err := fatRule.Validate(ctx, api, &mockEntry)
+		if err != nil {
+			return nil, err
+		}
+
+		var issues []rules.ValidationIssue
+		for _, issue := range fatIssues {
+			issue.Message = strings.Replace(issue.Message, "fat mount option", "msdos mount option", -1)
+			issues = append(issues, issue)
+		}
+		return issues, nil
+	}
 	return nil, nil
 }

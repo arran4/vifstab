@@ -1,0 +1,19 @@
+-- input --
+/dev/cdrom /mnt/udf udf uid=9999,gid=9999,umask=invalid,mode=invalid,dmode=invalid,bs=invalid,session=invalid,unknownopt 0 0
+/dev/cdrom2 /mnt/udf2 udf mode 0 0
+-- cache --
+proc_filesystems=udf
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+-- input/etc/group --
+root:x:0:
+-- expected/validationerrors.txt --
+User with uid 9999 does not exist
+Group with gid 9999 does not exist
+Invalid value 'invalid' for udf mount option 'umask' on line 1, must be an octal integer
+Invalid value 'invalid' for udf mount option 'mode' on line 1, must be an octal integer
+Invalid value 'invalid' for udf mount option 'dmode' on line 1, must be an octal integer
+Invalid value 'invalid' for udf mount option 'bs' on line 1, must be an integer
+Invalid value 'invalid' for udf mount option 'session' on line 1, must be an integer
+Unknown udf mount option 'unknownopt' on line 1
+Missing value for udf mount option 'mode' on line 2

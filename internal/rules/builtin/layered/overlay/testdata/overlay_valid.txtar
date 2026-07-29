@@ -1,0 +1,5 @@
+-- input --
+overlay /mnt/overlay overlay lowerdir=/lower,upperdir=/upper,workdir=/work,userxattr,redirect_dir=on,index=on,uuid=on,nfs_export=on,xino=auto,metacopy=on,volatile 0 0
+-- cache --
+proc_filesystems=overlay
+-- expected/validationerrors.txt --

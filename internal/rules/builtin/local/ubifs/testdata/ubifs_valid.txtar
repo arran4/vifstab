@@ -1,0 +1,5 @@
+-- input --
+ubi0:rootfs /mnt/ubifs ubifs bulk_read,no_bulk_read,chk_data_crc,no_chk_data_crc,compr=lzo 0 0
+-- cache --
+proc_filesystems=ubifs
+-- expected/validationerrors.txt --

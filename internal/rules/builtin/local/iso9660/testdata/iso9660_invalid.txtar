@@ -1,0 +1,18 @@
+-- input --
+/dev/cdrom /mnt/cdrom iso9660 check=invalid,uid=notanint,gid=9999,map=invalid,mode=invalid,block=1023,unknownopt 0 0
+/dev/cdrom2 /mnt/cdrom2 iso9660 map 0 0
+-- cache --
+proc_filesystems=iso9660
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+-- input/etc/group --
+root:x:0:
+-- expected/validationerrors.txt --
+Invalid value 'invalid' for iso9660 mount option 'check' on line 1
+Invalid value 'notanint' for iso9660 mount option 'uid' on line 1, must be an integer
+Group with gid 9999 does not exist
+Invalid value 'invalid' for iso9660 mount option 'map' on line 1
+Invalid value 'invalid' for iso9660 mount option 'mode' on line 1, must be an octal integer
+Invalid value '1023' for iso9660 mount option 'block' on line 1, must be 512, 1024, or 2048
+Unknown iso9660 mount option 'unknownopt' on line 1
+Missing value for iso9660 mount option 'map' on line 2

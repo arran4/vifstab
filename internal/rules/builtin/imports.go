@@ -48,6 +48,7 @@ import (
 	_ "github.com/arran4/vifstab/internal/rules/builtin/legacy/reiserfs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/legacy/sysv"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/legacy/ufs"
+	_ "github.com/arran4/vifstab/internal/rules/builtin/legacy/umsdos"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/local/btrfs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/local/cramfs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/local/erofs"
@@ -107,4 +108,5 @@ import (
 	_ "github.com/arran4/vifstab/internal/rules/builtin/virtual/smackfs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/virtual/sysfs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/virtual/tracefs"
+	_ "github.com/arran4/vifstab/internal/rules/builtin/virtual/usbfs"
 )

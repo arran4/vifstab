@@ -1,0 +1,10 @@
+-- input --
+/dev/sda1 /mnt/fat fat uid=1000,gid=1000,umask=022,dmask=022,fmask=133,allow_utime=020,check=s,codepage=437,conv=binary,debug,discard,dos1xfloppy,errors=remount-ro,fat=32,iocharset=iso8859-1,nfs,tz=UTC,time_offset=60,quiet,rodir,showexec,sys_immutable,flush,usefree,dotsOK 0 0
+none /mnt/fat2 fat blocksize=1024,nfs=stale_rw 0 0
+-- cache --
+proc_filesystems=fat
+-- input/etc/passwd --
+user:x:1000:1000:User:/home/user:/bin/bash
+-- input/etc/group --
+user:x:1000:
+-- expected/validationerrors.txt --

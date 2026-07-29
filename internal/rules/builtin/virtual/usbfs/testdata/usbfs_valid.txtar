@@ -1,0 +1,9 @@
+-- input --
+none /proc/bus/usb usbfs devuid=1000,devgid=1000,devmode=0644,busuid=1000,busgid=1000,busmode=0555,listuid=1000,listgid=1000,listmode=0444 0 0
+-- cache --
+proc_filesystems=usbfs
+-- input/etc/passwd --
+user:x:1000:1000:User:/home/user:/bin/bash
+-- input/etc/group --
+user:x:1000:
+-- expected/validationerrors.txt --
