@@ -124,6 +124,8 @@ var ntfs3KnownOptions = map[string]struct{}{
 	"iocharset": {}, "uid": {}, "gid": {}, "umask": {}, "dmask": {}, "fmask": {},
 	"nohidden": {}, "sys_immutable": {}, "hide_dot_files": {}, "windows_names": {},
 	"discard": {}, "force": {}, "sparse": {}, "showmeta": {}, "prealloc": {}, "acl": {},
+	"hidden": {}, "nosys_immutable": {}, "nohide_dot_files": {}, "nowindows_names": {},
+	"nodiscard": {}, "noforce": {}, "nosparse": {}, "noshowmeta": {}, "noprealloc": {}, "noacl": {},
 	// Generic options
 	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
 	"suid": {}, "nosuid": {}, "exec": {}, "noexec": {}, "auto": {}, "noauto": {},
