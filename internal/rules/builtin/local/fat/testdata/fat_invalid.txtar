@@ -1,0 +1,21 @@
+-- input --
+/dev/sda1 /mnt/fat fat uid=notanint,gid=9999,umask=invalid,check=invalid,tz=invalid,errors=invalid,fat=15,blocksize=4096,unknownopt 0 0
+/dev/sda2 /mnt/fat2 fat check,errors 0 0
+-- cache --
+proc_filesystems=fat
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+-- input/etc/group --
+root:x:0:
+-- expected/validationerrors.txt --
+Invalid value 'notanint' for fat mount option 'uid' on line 1, must be an integer
+Group with gid 9999 does not exist
+Invalid value 'invalid' for fat mount option 'umask' on line 1, must be an octal integer
+Invalid value 'invalid' for fat mount option 'check' on line 1 (only 's', 'r', or 'n' are supported)
+Invalid value 'invalid' for fat mount option 'tz' on line 1 (only 'UTC' is supported)
+Invalid value 'invalid' for fat mount option 'errors' on line 1
+Invalid value '15' for fat mount option 'fat' on line 1 (only 12, 16, or 32 are supported)
+Invalid value '4096' for fat mount option 'blocksize' on line 1 (only 512, 1024, or 2048 are supported)
+Unknown fat mount option 'unknownopt' on line 1
+Missing value for fat mount option 'check' on line 2
+Missing value for fat mount option 'errors' on line 2

@@ -1,0 +1,16 @@
+-- input --
+/dev/sda1 /mnt/ntfs3 ntfs3 uid=notanint,gid=9999,umask=invalid,unknownopt,force=value 0 0
+/dev/sda2 /mnt/ntfs3 ntfs3 iocharset 0 0
+-- cache --
+proc_filesystems=ntfs3
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+-- input/etc/group --
+root:x:0:
+-- expected/validationerrors.txt --
+Invalid value 'notanint' for ntfs3 mount option 'uid' on line 1, must be an integer
+Group with gid 9999 does not exist
+Invalid value 'invalid' for ntfs3 mount option 'umask' on line 1, must be an octal integer
+Unknown ntfs3 mount option 'unknownopt' on line 1
+ntfs3 mount option 'force' does not take a value on line 1
+Missing value for ntfs3 mount option 'iocharset' on line 2

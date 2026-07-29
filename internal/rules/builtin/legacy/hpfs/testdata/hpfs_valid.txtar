@@ -1,0 +1,9 @@
+-- input --
+/dev/sda1 /mnt/hpfs hpfs uid=1000,gid=1000,umask=022,case=lower,conv=binary,nocheck 0 0
+-- cache --
+proc_filesystems=hpfs
+-- input/etc/passwd --
+user:x:1000:1000:User:/home/user:/bin/bash
+-- input/etc/group --
+user:x:1000:
+-- expected/validationerrors.txt --

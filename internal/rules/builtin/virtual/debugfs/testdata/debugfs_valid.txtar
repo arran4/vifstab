@@ -1,0 +1,10 @@
+-- input --
+debugfs /sys/kernel/debug debugfs uid=1000,gid=1000,mode=0755 0 0
+none /sys/kernel/debug debugfs ro 0 0
+-- cache --
+proc_filesystems=debugfs
+-- input/etc/passwd --
+user:x:1000:1000:User:/home/user:/bin/bash
+-- input/etc/group --
+user:x:1000:
+-- expected/validationerrors.txt --

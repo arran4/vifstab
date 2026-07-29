@@ -1,0 +1,9 @@
+-- input --
+/dev/sda1 /mnt/umsdos umsdos uid=1000,gid=1000,umask=022,allow_utime=020,check=s,errors=remount-ro 0 0
+-- cache --
+proc_filesystems=umsdos
+-- input/etc/passwd --
+user:x:1000:1000:User:/home/user:/bin/bash
+-- input/etc/group --
+user:x:1000:
+-- expected/validationerrors.txt --

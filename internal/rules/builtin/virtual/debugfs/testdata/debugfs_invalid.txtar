@@ -1,0 +1,15 @@
+-- input --
+debugfs /sys/kernel/debug debugfs uid=notanint,gid=9999,mode=invalid,unknownopt 0 0
+debugfs /sys/kernel/debug debugfs mode 0 0
+-- cache --
+proc_filesystems=debugfs
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+-- input/etc/group --
+root:x:0:
+-- expected/validationerrors.txt --
+Invalid value 'notanint' for debugfs mount option 'uid' on line 1, must be an integer
+Group with gid 9999 does not exist
+Invalid value 'invalid' for debugfs mount option 'mode' on line 1, must be an octal integer
+Unknown debugfs mount option 'unknownopt' on line 1
+Missing value for debugfs mount option 'mode' on line 2

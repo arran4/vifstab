@@ -1,0 +1,13 @@
+-- input --
+/dev/sda1 /mnt/reiserfs reiserfs hash=invalid,resize=invalid,barrier=invalid,unknownopt 0 0
+/dev/sda2 /mnt/reiserfs2 reiserfs hash 0 0
+-- cache --
+proc_filesystems=reiserfs
+-- expected/validationerrors.txt --
+reiserfs is not configured in the current kernel
+Invalid value 'invalid' for reiserfs mount option 'hash' on line 1
+Invalid value 'invalid' for reiserfs mount option 'resize' on line 1, must be an integer
+Invalid value 'invalid' for reiserfs mount option 'barrier' on line 1
+Unknown reiserfs mount option 'unknownopt' on line 1
+reiserfs is not configured in the current kernel
+Missing value for reiserfs mount option 'hash' on line 2

@@ -1,0 +1,18 @@
+-- input --
+/dev/sda1 /mnt/affs affs uid=notanint,gid=9999,setuid=invalid,setgid=9999,mode=invalid,volume=thisisaverylongvolumenameexceedingthirtycharacters,bs=1023,unknownopt,reserved=abc 0 0
+-- cache --
+proc_filesystems=affs
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+-- input/etc/group --
+root:x:0:
+-- expected/validationerrors.txt --
+Invalid value 'notanint' for affs mount option 'uid' on line 1, must be an integer
+Group with gid 9999 does not exist
+Invalid value 'invalid' for affs mount option 'setuid' on line 1, must be an integer
+Group with gid 9999 does not exist
+Invalid value 'invalid' for affs mount option 'mode' on line 1, must be an octal integer
+Invalid value 'thisisaverylongvolumenameexceedingthirtycharacters' for affs mount option 'volume' on line 1, max length is 30
+Invalid value '1023' for affs mount option 'bs' on line 1, must be 512, 1024, 2048, or 4096
+Unknown affs mount option 'unknownopt' on line 1
+Invalid value 'abc' for affs mount option 'reserved' on line 1, must be an integer

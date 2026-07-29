@@ -1,0 +1,10 @@
+-- input --
+/dev/cdrom /mnt/udf udf uid=1000,gid=1000,umask=022,mode=0444,dmode=0555,bs=2048,unhide,undelete,adinicb,shortad,nostrict,iocharset=utf8,utf8,novrs,session=1,anchor=256,lastblock=10000 0 0
+/dev/cdrom2 /mnt/udf2 udf uid=forget,gid=ignore,uid=root,volume=vol 0 0
+-- cache --
+proc_filesystems=udf
+-- input/etc/passwd --
+user:x:1000:1000:User:/home/user:/bin/bash
+-- input/etc/group --
+user:x:1000:
+-- expected/validationerrors.txt --

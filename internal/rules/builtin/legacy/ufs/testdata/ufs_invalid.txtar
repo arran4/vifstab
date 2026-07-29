@@ -1,0 +1,10 @@
+-- input --
+/dev/sda1 /mnt/ufs ufs ufstype=invalid,onerror=invalid,unknownopt 0 0
+/dev/sda2 /mnt/ufs2 ufs ufstype 0 0
+-- cache --
+proc_filesystems=ufs
+-- expected/validationerrors.txt --
+Invalid value 'invalid' for ufs mount option 'ufstype' on line 1
+Invalid value 'invalid' for ufs mount option 'onerror' on line 1
+Unknown ufs mount option 'unknownopt' on line 1
+Missing value for ufs mount option 'ufstype' on line 2
