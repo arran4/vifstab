@@ -1,0 +1,9 @@
+-- input/etc/fstab --
+/dev/sda1 /mnt zonefs errors=foo 0 0
+/dev/sda1 /mnt zonefs explicit-open=1 0 0
+/dev/sda1 /mnt zonefs unknown-opt 0 0
+-- issues --
+Invalid value 'foo' for zonefs mount option 'errors' on line 1
+zonefs mount option 'explicit-open' does not take a value on line 2
+Unknown zonefs mount option 'unknown-opt' on line 3
+-- cache --

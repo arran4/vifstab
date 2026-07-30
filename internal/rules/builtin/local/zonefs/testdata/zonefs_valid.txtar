@@ -1,0 +1,8 @@
+-- input/etc/fstab --
+/dev/sda1 /mnt zonefs errors=remount-ro 0 0
+/dev/sda1 /mnt zonefs errors=zone-ro 0 0
+/dev/sda1 /mnt zonefs errors=zone-offline 0 0
+/dev/sda1 /mnt zonefs errors=repair 0 0
+/dev/sda1 /mnt zonefs explicit-open 0 0
+/dev/sda1 /mnt zonefs defaults 0 0
+-- cache --
