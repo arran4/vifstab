@@ -2,7 +2,8 @@
 /dev/sda1 /mnt/reiserfs reiserfs hash=invalid,resize=invalid,barrier=invalid,unknownopt 0 0
 /dev/sda2 /mnt/reiserfs2 reiserfs hash 0 0
 -- cache --
-proc_filesystems=reiserfs
+-- kernel --
+6.5.0
 -- expected/validationerrors.txt --
 reiserfs is not configured in the current kernel
 Invalid value 'invalid' for reiserfs mount option 'hash' on line 1

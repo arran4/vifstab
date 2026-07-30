@@ -1,6 +1,7 @@
 -- input --
 /dev/sda1 /mnt/reiserfs reiserfs conv,hash=r5,hashed_relocation,no_unhashed_relocation,noborder,nolog,notail,replayonly,resize=1000,user_xattr,acl,barrier=flush 0 0
 -- cache --
-proc_filesystems=reiserfs
+-- kernel --
+6.5.0
 -- expected/validationerrors.txt --
 reiserfs is not configured in the current kernel
