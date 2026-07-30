@@ -1,6 +1,8 @@
 -- input --
 /dev/sda1 /mnt/adfs adfs uid=notanint,gid=9999,ownmask=invalid,othmask=0077,unknownopt 0 0
 /dev/sda2 /mnt/adfs2 adfs ownmask 0 0
+/dev/sda3 /mnt/adfs3 adfs ftsuffix=2 0 0
+/dev/sda4 /mnt/adfs4 adfs ftsuffix=invalid 0 0
 -- cache --
 proc_filesystems=adfs
 -- input/etc/passwd --
@@ -13,3 +15,5 @@ Group with gid 9999 does not exist
 Invalid value 'invalid' for adfs mount option 'ownmask' on line 1, must be an octal integer
 Unknown adfs mount option 'unknownopt' on line 1
 Missing value for adfs mount option 'ownmask' on line 2
+Invalid value '2' for adfs mount option 'ftsuffix' on line 3
+Invalid value 'invalid' for adfs mount option 'ftsuffix' on line 4
