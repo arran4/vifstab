@@ -1,0 +1,4 @@
+-- input --
+/dev/sda1 /mnt/cramfs cramfs invalid_opt 0 0
+-- issues --
+Error: Unknown cramfs mount option 'invalid_opt' on line 1
