@@ -1,0 +1,3 @@
+-- input --
+/dev/sda1 /mnt/romfs romfs defaults,ro,loop 0 0
+-- issues --
