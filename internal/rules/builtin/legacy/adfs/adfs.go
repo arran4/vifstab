@@ -39,8 +39,9 @@ func (r *AdfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 }
 
 var adfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
-	"uid":     options.UIDOption{},
-	"gid":     options.GIDOption{},
-	"ownmask": options.OctalOption{},
-	"othmask": options.OctalOption{},
+	"uid":      options.UIDOption{},
+	"gid":      options.GIDOption{},
+	"ownmask":  options.OctalOption{},
+	"othmask":  options.OctalOption{},
+	"ftsuffix": options.EnumOption{Allowed: map[string]bool{"0": true, "1": true}},
 })
