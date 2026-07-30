@@ -63,7 +63,8 @@ func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 			val = parts[1]
 		}
 
-		if _, ok := jfsKnownOptions[key]; !ok {
+		validator, ok := jfsOptions[key]
+		if !ok {
 			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("jfs mount option '%s' on line %d is unknown", key, entry.LineNum),
@@ -74,44 +75,7 @@ func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 			continue
 		}
 
-		if hasEquals && val != "" {
-			if _, ok := jfsValuedOptions[key]; !ok && key != "resize" {
-				if !strings.HasPrefix(key, "X-mount.") && !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("jfs mount option '%s' on line %d does not take a value", key, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				}
-			}
-		} else if hasEquals && val == "" {
-			if _, ok := jfsRequireValueOptions[key]; ok {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Missing value for jfs mount option '%s' on line %d", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			} else if _, ok := jfsValuedOptions[key]; !ok && key != "resize" {
-				if !strings.HasPrefix(key, "X-mount.") && !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("jfs mount option '%s' on line %d does not take a value", key, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				}
-			}
-		} else {
-			if _, ok := jfsRequireValueOptions[key]; ok {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Missing value for jfs mount option '%s' on line %d", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		}
-
-		switch key {
-		case "resize":
+		if key == "resize" {
 			if !hasRemount || hasRo {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("jfs mount option 'resize' on line %d requires a read-write remount", entry.LineNum),
@@ -128,112 +92,70 @@ func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 					})
 				}
 			}
-		case "errors":
-			if val != "continue" && val != "remount-ro" && val != "panic" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("jfs mount option 'errors' on line %d has invalid value '%s'. Valid values are 'continue', 'remount-ro', 'panic'", entry.LineNum, val),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		case "uid", "gid", "umask":
-			// Can validate further if needed, but not required yet
+			continue
+		}
+
+		if validator != nil {
+			issues = append(issues, validator.ValidateOption(ctx, api, entry, "jfs", key, val, hasEquals)...)
 		}
 	}
 
 	return issues, nil
 }
 
-var jfsRequireValueOptions = map[string]struct{}{
-	"iocharset": {}, "errors": {}, "context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-	"uid": {}, "gid": {}, "umask": {},
+type jfsNoValueOption struct{}
+
+func (jfsNoValueOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	if hasVal {
+		return []rules.ValidationIssue{
+			{
+				Message: fmt.Sprintf("jfs mount option '%s' on line %d does not take a value", key, entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelError,
+			},
+		}
+	}
+	return nil
 }
 
-var jfsValuedOptions = map[string]struct{}{
-	"X-mount.file": {},
-	"X-mount.group": {},
-	"X-mount.mkdir": {},
-	"X-mount.mode": {},
-	"X-mount.owner": {},
-	"comment": {},
-	"context": {},
-	"defcontext": {},
-	"fscontext": {},
-	"iocharset": {},
-	"rootcontext": {},
-	"x-systemd.device-timeout": {},
-	"x-systemd.idle-timeout": {},
-	"x-systemd.mount-timeout": {},
-	"x-systemd.requires": {},
-	"x-systemd.requires-mounts-for": {},
-	"errors": {},
-	"uid": {}, "gid": {}, "umask": {}, "loop": {},
-}
-
-var jfsKnownOptions = map[string]struct{}{
-	"X-mount.file": {},
-	"X-mount.group": {},
-	"X-mount.mkdir": {},
-	"X-mount.mode": {},
-	"X-mount.owner": {},
-	"_netdev": {},
-	"async": {},
-	"atime": {},
-	"auto": {},
-	"bind": {},
-	"context": {},
-	"defaults": {},
-	"defcontext": {},
-	"dev": {},
-	"diratime": {},
-	"dirsync": {},
-	"exec": {},
-	"fscontext": {},
-	"group": {},
-	"iocharset": {},
-	"iversion": {},
-	"lazytime": {},
-	"loud": {},
-	"make-private": {},
-	"make-runbindable": {},
-	"make-shared": {},
-	"make-slave": {},
-	"make-unbindable": {},
-	"mand": {},
-	"noatime": {},
-	"noauto": {},
-	"nodev": {},
-	"nodiratime": {},
-	"noexec": {},
-	"nofail": {},
-	"noiversion": {},
-	"nolazytime": {},
-	"nomand": {},
-	"norelatime": {},
-	"nostrictatime": {},
-	"nosuid": {},
-	"nosymfollow": {},
-	"nouser": {},
-	"owner": {},
-	"rbind": {},
-	"relatime": {},
-	"remount": {},
-	"ro": {},
-	"rootcontext": {},
-	"rw": {},
-	"silent": {},
-	"strictatime": {},
-	"suid": {},
-	"sync": {},
-	"user": {},
-	"users": {},
-	"x-systemd.automount": {},
-	"x-systemd.device-timeout": {},
-	"x-systemd.idle-timeout": {},
-	"x-systemd.mount-timeout": {},
-	"x-systemd.requires": {},
-	"x-systemd.requires-mounts-for": {},
-	"resize": {}, "nointegrity": {}, "integrity": {},
-	"errors": {}, "noquota": {}, "quota": {}, "usrquota": {}, "grpquota": {},
-	"discard": {}, "nodiscard": {}, "uid": {}, "gid": {}, "umask": {}, "comment": {}, "loop": {},
-}
+var jfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
+	"iocharset": rules.StringOption{},
+	"errors": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+		if !hasVal || val == "" {
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("Missing value for jfs mount option 'errors' on line %d", entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				},
+			}
+		}
+		if val != "continue" && val != "remount-ro" && val != "panic" {
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("jfs mount option 'errors' on line %d has invalid value '%s'. Valid values are 'continue', 'remount-ro', 'panic'", entry.LineNum, val),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				},
+			}
+		}
+		return nil
+	}),
+	"resize":        rules.OptionalStringOption{},
+	"nointegrity":   jfsNoValueOption{},
+	"integrity":     jfsNoValueOption{},
+	"noquota":       jfsNoValueOption{},
+	"quota":         jfsNoValueOption{},
+	"usrquota":      jfsNoValueOption{},
+	"grpquota":      jfsNoValueOption{},
+	"discard":       jfsNoValueOption{},
+	"nodiscard":     jfsNoValueOption{},
+	"uid":           rules.IntOption{},
+	"gid":           rules.IntOption{},
+	"umask":         rules.OctalOption{},
+	"comment":       rules.StringOption{},
+	"loop":          rules.OptionalStringOption{},
+	"mand":          jfsNoValueOption{},
+	"norelatime":    jfsNoValueOption{},
+	"nostrictatime": jfsNoValueOption{},
+})

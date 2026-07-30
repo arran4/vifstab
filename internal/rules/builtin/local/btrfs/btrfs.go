@@ -55,9 +55,9 @@ func (r *BTRFSRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 			val = parts[1]
 		}
 
-		if _, ok := btrfsKnownOptions[key]; !ok {
+		if _, ok := btrfsOptions[key]; !ok {
 			// Ignore systemd extensions
-			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
+			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Unknown BTRFS mount option '%s' on line %d", key, entry.LineNum),
 					Line:    entry.RawLine,
@@ -424,37 +424,59 @@ func (v kernelVer) atLeast(major, minor, patch int) bool {
 	return false
 }
 
-var btrfsKnownOptions = map[string]struct{}{
-	"acl": {}, "noacl": {}, "autodefrag": {}, "noautodefrag": {},
-	"barrier": {}, "nobarrier": {}, "clear_cache": {}, "commit": {},
-	"compress": {}, "compress-force": {}, "datacow": {}, "nodatacow": {},
-	"datasum": {}, "nodatasum": {}, "degraded": {}, "device": {},
-	"discard": {}, "nodiscard": {}, "enospc_debug": {}, "noenospc_debug": {},
-	"fatal_errors": {}, "flushoncommit": {}, "noflushoncommit": {},
-	"fragment": {}, "nologreplay": {}, "max_inline": {}, "metadata_ratio": {},
-	"norecovery": {}, "rescan_uuid_tree": {}, "rescue": {}, "skip_balance": {},
-	"space_cache": {}, "nospace_cache": {}, "ssd": {}, "ssd_spread": {},
-	"nossd": {}, "nossd_spread": {}, "subvol": {}, "subvolid": {},
-	"thread_pool": {}, "treelog": {}, "notreelog": {}, "usebackuproot": {},
-	"user_subvol_rm_allowed": {}, "recovery": {}, "inode_cache": {},
-	"noinode_cache": {}, "check_int": {}, "check_int_data": {},
-	"check_int_print_mask": {},
-	// Common generic ones
-	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
-	"suid": {}, "nosuid": {}, "exec": {}, "noexec": {}, "auto": {}, "noauto": {},
-	"user": {}, "nouser": {}, "sync": {}, "async": {}, "dirsync": {},
-	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-	"nodev": {}, "lazytime": {}, "iversion": {}, "nofail": {},
-	"strictatime": {}, "nodiratime": {}, "users": {},
-	// Common generic ones added automatically
-	"X-": {}, "_netdev": {}, "atime": {}, "beneath": {}, "bind": {}, "dev": {}, "diratime": {}, "exclusive": {},
-	"fake": {}, "fork": {}, "fstab": {}, "group": {}, "help": {}, "internal-only": {}, "loud": {}, "make-private": {},
-	"make-rprivate": {}, "make-rshared": {}, "make-rslave": {}, "make-runbindable": {}, "make-shared": {}, "make-slave": {}, "make-unbindable": {}, "map-groups": {},
-	"map-users": {}, "mkdir": {}, "namespace": {}, "no-canonicalize": {}, "no-mtab": {}, "noiversion": {}, "nolazytime": {}, "nomand": {},
-	"nosymfollow": {}, "onlyonce": {}, "options": {}, "options-mode": {}, "options-source": {}, "options-source-force": {}, "owner": {}, "rbind": {},
-	"read-only": {}, "read-write": {}, "remount": {}, "show-labels": {}, "silent": {}, "source": {}, "target": {}, "target-prefix": {},
-	"test-opts": {}, "types": {}, "uuid": {}, "verbose": {}, "version": {}, "x-": {},
-}
+var btrfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
+	"acl":                    rules.NoValueOption{},
+	"noacl":                  rules.NoValueOption{},
+	"autodefrag":             rules.NoValueOption{},
+	"noautodefrag":           rules.NoValueOption{},
+	"barrier":                rules.NoValueOption{},
+	"nobarrier":              rules.NoValueOption{},
+	"clear_cache":            rules.NoValueOption{},
+	"commit":                 rules.StringOption{},
+	"compress":               rules.OptionalStringOption{},
+	"compress-force":         rules.OptionalStringOption{},
+	"datacow":                rules.NoValueOption{},
+	"nodatacow":              rules.NoValueOption{},
+	"datasum":                rules.NoValueOption{},
+	"nodatasum":              rules.NoValueOption{},
+	"degraded":               rules.NoValueOption{},
+	"device":                 rules.StringOption{},
+	"discard":                rules.OptionalStringOption{},
+	"nodiscard":              rules.NoValueOption{},
+	"enospc_debug":           rules.NoValueOption{},
+	"noenospc_debug":         rules.NoValueOption{},
+	"fatal_errors":           rules.StringOption{},
+	"flushoncommit":          rules.NoValueOption{},
+	"noflushoncommit":        rules.NoValueOption{},
+	"fragment":               rules.StringOption{},
+	"nologreplay":            rules.NoValueOption{},
+	"max_inline":             rules.StringOption{},
+	"metadata_ratio":         rules.StringOption{},
+	"norecovery":             rules.NoValueOption{},
+	"rescan_uuid_tree":       rules.NoValueOption{},
+	"rescue":                 rules.OptionalStringOption{},
+	"skip_balance":           rules.NoValueOption{},
+	"space_cache":            rules.OptionalStringOption{},
+	"nospace_cache":          rules.NoValueOption{},
+	"ssd":                    rules.NoValueOption{},
+	"ssd_spread":             rules.NoValueOption{},
+	"nossd":                  rules.NoValueOption{},
+	"nossd_spread":           rules.NoValueOption{},
+	"subvol":                 rules.StringOption{},
+	"subvolid":               rules.StringOption{},
+	"thread_pool":            rules.StringOption{},
+	"treelog":                rules.NoValueOption{},
+	"notreelog":              rules.NoValueOption{},
+	"usebackuproot":          rules.NoValueOption{},
+	"user_subvol_rm_allowed": rules.NoValueOption{},
+	"recovery":               rules.NoValueOption{},
+	"inode_cache":            rules.NoValueOption{},
+	"noinode_cache":          rules.NoValueOption{},
+	"check_int":              rules.OptionalStringOption{},
+	"check_int_data":         rules.OptionalStringOption{},
+	"check_int_print_mask":   rules.OptionalStringOption{},
+})
+
 
 func isValidMaxInline(val string) bool {
 	if val == "" {

@@ -2,8 +2,6 @@ package ext3
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
@@ -41,149 +39,45 @@ func (r *Ext3Rule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		return issues, nil
 	}
 
-	options := rules.SplitOptions(entry.Fields[3])
-
-	for _, opt := range options {
-		parts := strings.SplitN(opt, "=", 2)
-		key := parts[0]
-		var val string
-		if len(parts) > 1 {
-			val = parts[1]
-		}
-
-		if _, ok := ext3KnownOptions[key]; !ok {
-			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Unknown ext3 mount option '%s' on line %d", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-			continue
-		}
-
-		if val != "" {
-			if _, ok := ext3ValuedOptions[key]; !ok {
-				if !strings.HasPrefix(key, "X-mount.") && !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("ext3 mount option '%s' does not take a value on line %d", key, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				}
-			}
-		} else {
-			if _, ok := ext3ValuedOptions[key]; ok {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Missing value for ext3 mount option '%s' on line %d", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		}
-
-		switch key {
-		case "check":
-			if val != "none" && val != "nocheck" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Unsupported value '%s' for ext3 mount option 'check' on line %d (only 'none' or 'nocheck' are supported)", val, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		case "errors":
-			if val != "continue" && val != "remount-ro" && val != "panic" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Invalid value '%s' for ext3 mount option 'errors' on line %d", val, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		case "resgid", "resuid", "sb", "journal_dev", "commit":
-			if _, err := strconv.Atoi(val); err != nil {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Invalid value '%s' for ext3 mount option '%s' on line %d, must be an integer", val, key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		case "data":
-			if val != "journal" && val != "ordered" && val != "writeback" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Invalid value '%s' for ext3 mount option 'data' on line %d", val, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		case "data_err":
-			if val != "abort" && val != "ignore" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Invalid value '%s' for ext3 mount option 'data_err' on line %d", val, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		case "barrier":
-			if val != "0" && val != "1" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Invalid value '%s' for ext3 mount option 'barrier' on line %d", val, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		case "jqfmt":
-			if val != "vfsold" && val != "vfsv0" && val != "vfsv1" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Invalid value '%s' for ext3 mount option 'jqfmt' on line %d", val, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		}
-	}
-
-	return issues, nil
+	optsIssues := rules.ValidateOptionsMap(ctx, api, entry, "ext3", ext3Options)
+	return append(issues, optsIssues...), nil
 }
 
-var ext3KnownOptions = map[string]struct{}{
-	// ext2 options
-	"acl": {}, "noacl": {}, "bsddf": {}, "minixdf": {},
-	"check": {}, "nocheck": {}, "debug": {}, "errors": {},
-	"grpid": {}, "bsdgroups": {}, "nogrpid": {}, "sysvgroups": {},
-	"grpquota": {}, "usrquota": {}, "quota": {}, "noquota": {},
-	"nouid32": {}, "oldalloc": {}, "orlov": {}, "resgid": {},
-	"resuid": {}, "sb": {}, "user_xattr": {}, "nouser_xattr": {},
+var ext3Options = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
+	"acl":          rules.NoValueOption{},
+	"noacl":        rules.NoValueOption{},
+	"bsddf":        rules.NoValueOption{},
+	"minixdf":      rules.NoValueOption{},
+	"check":        rules.EnumOption{Allowed: map[string]bool{"none": true, "nocheck": true}, CustomErrMsg: "Unsupported value '%s' for ext3 mount option 'check' on line %d (only 'none' or 'nocheck' are supported)"},
+	"nocheck":      rules.NoValueOption{},
+	"debug":        rules.NoValueOption{},
+	"errors":       rules.EnumOption{Allowed: map[string]bool{"continue": true, "remount-ro": true, "panic": true}},
+	"grpid":        rules.NoValueOption{},
+	"bsdgroups":    rules.NoValueOption{},
+	"nogrpid":      rules.NoValueOption{},
+	"sysvgroups":   rules.NoValueOption{},
+	"grpquota":     rules.NoValueOption{},
+	"usrquota":     rules.NoValueOption{},
+	"quota":        rules.NoValueOption{},
+	"noquota":      rules.NoValueOption{},
+	"nouid32":      rules.NoValueOption{},
+	"oldalloc":     rules.NoValueOption{},
+	"orlov":        rules.NoValueOption{},
+	"resgid":       rules.IntOption{},
+	"resuid":       rules.IntOption{},
+	"sb":           rules.IntOption{},
+	"user_xattr":   rules.NoValueOption{},
+	"nouser_xattr": rules.NoValueOption{},
 
-	// ext3 options
-	"journal_dev": {}, "journal_path": {}, "norecovery": {}, "noload": {},
-	"data": {}, "data_err": {}, "barrier": {}, "commit": {},
-	"jqfmt": {}, "usrjquota": {}, "grpjquota": {},
-
-	// Generic ones
-	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
-	"suid": {}, "nosuid": {}, "exec": {}, "noexec": {}, "auto": {}, "noauto": {},
-	"user": {}, "nouser": {}, "sync": {}, "async": {}, "dirsync": {},
-	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-	"nodev": {}, "lazytime": {}, "iversion": {}, "nofail": {},
-	"strictatime": {}, "nodiratime": {}, "users": {},
-
-	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
-	"nolazytime": {}, "owner": {}, "group": {},
-	// Common generic ones added automatically
-	"X-": {}, "beneath": {}, "bind": {}, "exclusive": {}, "fake": {}, "fork": {}, "fstab": {}, "help": {},
-	"internal-only": {}, "loud": {}, "make-private": {}, "make-rprivate": {}, "make-rshared": {}, "make-rslave": {}, "make-runbindable": {}, "make-shared": {},
-	"make-slave": {}, "make-unbindable": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "no-canonicalize": {}, "no-mtab": {},
-	"nomand": {}, "nosymfollow": {}, "onlyonce": {}, "options": {}, "options-mode": {}, "options-source": {}, "options-source-force": {}, "rbind": {},
-	"read-only": {}, "read-write": {}, "remount": {}, "show-labels": {}, "silent": {}, "source": {}, "target": {}, "target-prefix": {},
-	"test-opts": {}, "types": {}, "uuid": {}, "verbose": {}, "version": {}, "x-": {},
-}
-
-var ext3ValuedOptions = map[string]struct{}{
-	"check": {}, "errors": {}, "resgid": {}, "resuid": {}, "sb": {},
-	"journal_dev": {}, "journal_path": {}, "data": {}, "data_err": {},
-	"barrier": {}, "commit": {}, "jqfmt": {}, "usrjquota": {}, "grpjquota": {},
-	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-	// Generic valued options added automatically
-	"fstab": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "options": {}, "options-mode": {}, "options-source": {},
-	"source": {}, "target": {}, "target-prefix": {}, "test-opts": {}, "types": {}, "uuid": {},
-}
+	"journal_dev":  rules.IntOption{},
+	"journal_path": rules.StringOption{},
+	"norecovery":   rules.NoValueOption{},
+	"noload":       rules.NoValueOption{},
+	"data":         rules.EnumOption{Allowed: map[string]bool{"journal": true, "ordered": true, "writeback": true}},
+	"data_err":     rules.EnumOption{Allowed: map[string]bool{"abort": true, "ignore": true}},
+	"barrier":      rules.EnumOption{Allowed: map[string]bool{"0": true, "1": true}},
+	"commit":       rules.IntOption{},
+	"jqfmt":        rules.EnumOption{Allowed: map[string]bool{"vfsold": true, "vfsv0": true, "vfsv1": true}},
+	"usrjquota":    rules.StringOption{},
+	"grpjquota":    rules.StringOption{},
+})

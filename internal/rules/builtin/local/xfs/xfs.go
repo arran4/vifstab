@@ -3,13 +3,11 @@ package xfs
 import (
 	"context"
 	"fmt"
-
 	"strconv"
 	"strings"
 
-	"github.com/arran4/vifstab/internal/rules/kernel"
-
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/kernel"
 )
 
 type XfsRule struct{}
@@ -49,7 +47,6 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 
 	var issues []rules.ValidationIssue
 	options := rules.SplitOptions(entry.Fields[3])
-
 	hostVer := kernel.GetHostKernelVersion(api)
 
 	hasNoRecovery := false
@@ -62,7 +59,6 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
 		if key == "norecovery" {
-
 			hasNoRecovery = true
 		} else if key == "ro" {
 			hasRo = true
@@ -83,12 +79,13 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
 		var val string
-		if len(parts) > 1 {
+		hasEquals := len(parts) > 1
+		if hasEquals {
 			val = parts[1]
 		}
 
-		if _, ok := xfsKnownOptions[key]; !ok {
-			// Ignore systemd and userspace extensions
+		validator, ok := xfsOptions[key]
+		if !ok {
 			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Unknown XFS mount option '%s' on line %d", key, entry.LineNum),
@@ -108,18 +105,6 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 				})
 			}
 			continue
-		}
-
-		if val != "" {
-			if _, ok := xfsValuedOptions[key]; !ok {
-				if !strings.HasPrefix(key, "X-mount.") && !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("XFS mount option '%s' does not take a value on line %d", key, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				}
-			}
 		}
 
 		switch key {
@@ -157,7 +142,6 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 				})
 			} else {
 				if num, err := strconv.Atoi(val); err == nil {
-
 					if num < 2 || num > 8 {
 						issues = append(issues, rules.ValidationIssue{
 							Message: fmt.Sprintf("Invalid value '%s' for logbufs on line %d, must be between 2 and 8 inclusive", val, entry.LineNum),
@@ -181,9 +165,6 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 					Level:   rules.IssueLevelError,
 				})
 			} else {
-				// We won't validate exact value for logbsize (16k, 32k, 64k, etc), allocsize (power of 2),
-				// or sunit/swidth (512-byte blocks) deeply here to avoid over-complicating without context,
-				// but we ensure a value is provided and roughly checks format for logbsize/allocsize ending in k/m/g or digit.
 				if key == "logbsize" || key == "allocsize" {
 					numStr := val
 					lastChar := val[len(val)-1]
@@ -197,7 +178,7 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 							Level:   rules.IssueLevelError,
 						})
 					}
-				} else { // sunit, swidth should be integers
+				} else {
 					if num, err := strconv.Atoi(val); err != nil {
 						issues = append(issues, rules.ValidationIssue{
 							Message: fmt.Sprintf("Invalid value '%s' for %s on line %d, must be an integer", val, key, entry.LineNum),
@@ -236,6 +217,10 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 					})
 				}
 			}
+		default:
+			if validator != nil {
+				issues = append(issues, validator.ValidateOption(ctx, api, entry, "XFS", key, val, hasEquals)...)
+			}
 		}
 	}
 
@@ -252,50 +237,58 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 	return issues, nil
 }
 
-var xfsKnownOptions = map[string]struct{}{
-	"allocsize": {}, "attr2": {}, "noattr2": {}, "dax": {},
-	"discard": {}, "nodiscard": {}, "grpid": {}, "bsdgroups": {},
-	"nogrpid": {}, "sysvgroups": {}, "filestreams": {}, "ikeep": {},
-	"noikeep": {}, "inode32": {}, "inode64": {}, "largeio": {},
-	"nolargeio": {}, "logbufs": {}, "logbsize": {}, "logdev": {},
-	"rtdev": {}, "noalign": {}, "norecovery": {}, "nouuid": {},
-	"noquota": {}, "uquota": {}, "usrquota": {}, "quota": {},
-	"uqnoenforce": {}, "qnoenforce": {}, "gquota": {}, "grpquota": {},
-	"gqnoenforce": {}, "pquota": {}, "prjquota": {}, "pqnoenforce": {},
-	"sunit": {}, "swidth": {}, "swalloc": {}, "wsync": {},
+var xfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
+	"allocsize":   rules.StringOption{},
+	"attr2":       rules.NoValueOption{},
+	"noattr2":     rules.NoValueOption{},
+	"dax":         rules.OptionalStringOption{},
+	"discard":     rules.NoValueOption{},
+	"nodiscard":   rules.NoValueOption{},
+	"grpid":       rules.NoValueOption{},
+	"bsdgroups":   rules.NoValueOption{},
+	"nogrpid":     rules.NoValueOption{},
+	"sysvgroups":  rules.NoValueOption{},
+	"filestreams": rules.NoValueOption{},
+	"ikeep":       rules.NoValueOption{},
+	"noikeep":     rules.NoValueOption{},
+	"inode32":     rules.NoValueOption{},
+	"inode64":     rules.NoValueOption{},
+	"largeio":     rules.NoValueOption{},
+	"nolargeio":   rules.NoValueOption{},
+	"logbufs":     rules.StringOption{},
+	"logbsize":    rules.StringOption{},
+	"logdev":      rules.StringOption{},
+	"rtdev":       rules.StringOption{},
+	"noalign":     rules.NoValueOption{},
+	"norecovery":  rules.NoValueOption{},
+	"nouuid":      rules.NoValueOption{},
+	"noquota":     rules.NoValueOption{},
+	"uquota":      rules.NoValueOption{},
+	"usrquota":    rules.NoValueOption{},
+	"quota":       rules.NoValueOption{},
+	"uqnoenforce": rules.NoValueOption{},
+	"qnoenforce":  rules.NoValueOption{},
+	"gquota":      rules.NoValueOption{},
+	"grpquota":    rules.NoValueOption{},
+	"gqnoenforce": rules.NoValueOption{},
+	"pquota":      rules.NoValueOption{},
+	"prjquota":    rules.NoValueOption{},
+	"pqnoenforce": rules.NoValueOption{},
+	"sunit":       rules.StringOption{},
+	"swidth":      rules.StringOption{},
+	"swalloc":     rules.NoValueOption{},
+	"wsync":       rules.NoValueOption{},
 
 	// Removed options
-	"delaylog": {}, "nodelaylog": {}, "ihashsize": {}, "irixsgid": {},
-	"osyncisdsync": {}, "osyncisosync": {}, "barrier": {}, "nobarrier": {},
-
-	// Common generic ones
-	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
-	"suid": {}, "nosuid": {}, "exec": {}, "noexec": {}, "auto": {}, "noauto": {},
-	"user": {}, "nouser": {}, "sync": {}, "async": {}, "dirsync": {},
-	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-	"nodev": {}, "lazytime": {}, "iversion": {}, "nofail": {},
-	"strictatime": {}, "nodiratime": {}, "users": {},
-
-	// More generic ones
-	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
-	"nolazytime": {}, "owner": {}, "group": {},
-	// Common generic ones added automatically
-	"X-": {}, "beneath": {}, "bind": {}, "exclusive": {}, "fake": {}, "fork": {}, "fstab": {}, "help": {},
-	"internal-only": {}, "loud": {}, "make-private": {}, "make-rprivate": {}, "make-rshared": {}, "make-rslave": {}, "make-runbindable": {}, "make-shared": {},
-	"make-slave": {}, "make-unbindable": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "no-canonicalize": {}, "no-mtab": {},
-	"nomand": {}, "nosymfollow": {}, "onlyonce": {}, "options": {}, "options-mode": {}, "options-source": {}, "options-source-force": {}, "rbind": {},
-	"read-only": {}, "read-write": {}, "remount": {}, "show-labels": {}, "silent": {}, "source": {}, "target": {}, "target-prefix": {},
-	"test-opts": {}, "types": {}, "uuid": {}, "verbose": {}, "version": {}, "x-": {},
-}
-
-var xfsValuedOptions = map[string]struct{}{
-	"allocsize": {}, "dax": {}, "logbufs": {}, "logbsize": {}, "logdev": {},
-	"rtdev": {}, "sunit": {}, "swidth": {}, "context": {}, "defcontext": {},
-	"rootcontext": {}, "fscontext": {},
-	// Generic valued options added automatically
-	"fstab": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "options": {}, "options-mode": {}, "options-source": {},
-	"source": {}, "target": {}, "target-prefix": {}, "test-opts": {}, "types": {}, "uuid": {},
-}
+	"delaylog":     rules.NoValueOption{},
+	"nodelaylog":   rules.NoValueOption{},
+	"ihashsize":    rules.NoValueOption{},
+	"irixsgid":     rules.NoValueOption{},
+	"osyncisdsync": rules.NoValueOption{},
+	"osyncisosync": rules.NoValueOption{},
+	"barrier":      rules.NoValueOption{},
+	"nobarrier":    rules.NoValueOption{},
+})
 
 var xfsRemovedOptions = map[string]struct {
 	major int
