@@ -1,0 +1,23 @@
+-- input/etc/fstab --
+# Valid options
+/dev/sda1 /mnt/sq1 squashfs loop 0 0
+/dev/sda2 /mnt/sq2 squashfs errors=continue 0 0
+/dev/sda3 /mnt/sq3 squashfs errors=panic 0 0
+/dev/sda4 /mnt/sq4 squashfs threads=single 0 0
+/dev/sda5 /mnt/sq5 squashfs threads=multi 0 0
+/dev/sda6 /mnt/sq6 squashfs threads=percpu 0 0
+/dev/sda7 /mnt/sq7 squashfs threads=4 0 0
+# Invalid options
+/dev/sda8 /mnt/sq8 squashfs errors=invalid 0 0
+/dev/sda9 /mnt/sq9 squashfs threads=invalid 0 0
+/dev/sda10 /mnt/sq10 squashfs threads=0 0 0
+/dev/sda11 /mnt/sq11 squashfs threads=-1 0 0
+/dev/sda12 /mnt/sq12 squashfs unknown_opt 0 0
+/dev/sda13 /mnt/sq13 squashfs threads 0 0
+-- issues --
+Invalid value 'invalid' for squashfs mount option 'errors' on line 10
+Invalid value 'invalid' for squashfs mount option 'threads' on line 11, must be 'single', 'multi', 'percpu', or an integer > 0
+Invalid value '0' for squashfs mount option 'threads' on line 12, must be 'single', 'multi', 'percpu', or an integer > 0
+Invalid value '-1' for squashfs mount option 'threads' on line 13, must be 'single', 'multi', 'percpu', or an integer > 0
+Unknown squashfs mount option 'unknown_opt' on line 14
+Missing value for squashfs mount option 'threads' on line 15
