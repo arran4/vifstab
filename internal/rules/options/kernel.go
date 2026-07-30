@@ -10,10 +10,52 @@ import (
 )
 
 // KernelVersionCase pairs kernel version constraints with an OptionValidator.
+// It can be used standalone as a conditional "If" validator, or grouped inside a KernelVersionSwitch.
 type KernelVersionCase struct {
-	MinVer    kernel.Ver      // Inclusive minimum kernel version
-	MaxVer    kernel.Ver      // Inclusive maximum kernel version
-	Validator OptionValidator // Validator to use if kernel version falls within bounds
+	MinVer    kernel.Ver       // Inclusive minimum kernel version required
+	MaxVer    kernel.Ver       // Inclusive maximum kernel version allowed
+	Validator OptionValidator  // Validator to execute if kernel version falls within bounds
+	Level     rules.IssueLevel // Issue level if kernel version requirement fails (default: IssueLevelError)
+}
+
+func (c KernelVersionCase) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
+	hostVer := kernel.GetHostKernelVersion(api)
+
+	if !hostVer.IsZero() {
+		matchesMin := c.MinVer.IsZero() || hostVer.AtLeast(c.MinVer.Major, c.MinVer.Minor, c.MinVer.Patch)
+		matchesMax := c.MaxVer.IsZero() || hostVer.LessThan(c.MaxVer.Major, c.MaxVer.Minor, c.MaxVer.Patch) || hostVer == c.MaxVer
+
+		level := c.Level
+		if level == "" {
+			level = rules.IssueLevelError
+		}
+
+		if !matchesMin {
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("%s mount option '%s' on line %d requires kernel %s+ (host kernel is %s)", fsName, key, entry.LineNum, c.MinVer.String(), hostVer.String()),
+					Line:    entry.RawLine,
+					Level:   level,
+				},
+			}
+		}
+
+		if !matchesMax {
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("%s mount option '%s' on line %d is not supported on kernel > %s (host kernel is %s)", fsName, key, entry.LineNum, c.MaxVer.String(), hostVer.String()),
+					Line:    entry.RawLine,
+					Level:   level,
+				},
+			}
+		}
+	}
+
+	if c.Validator != nil {
+		return c.Validator.ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
+	}
+
+	return nil
 }
 
 // KernelVersionSwitch selects and executes an OptionValidator based on host kernel version.

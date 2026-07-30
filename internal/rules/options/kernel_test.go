@@ -9,6 +9,36 @@ import (
 	"github.com/arran4/vifstab/internal/rules/options"
 )
 
+func TestKernelVersionCaseStandalone(t *testing.T) {
+	ctx := context.Background()
+	entry := &rules.FstabEntry{LineNum: 7}
+
+	caseOpt := options.KernelVersionCase{
+		MinVer:    kernel.Ver{Major: 6, Minor: 1, Patch: 0},
+		Validator: options.NoValueOption{},
+	}
+
+	t.Run("fails when host kernel below MinVer", func(t *testing.T) {
+		api := &mockAPI{kernelVerStr: "5.15.0"}
+		issues := caseOpt.ValidateOption(ctx, api, entry, "ext4", "fast_commit", "", false, nil)
+		if len(issues) != 1 {
+			t.Fatalf("expected 1 issue, got %d", len(issues))
+		}
+		expectedMsg := "ext4 mount option 'fast_commit' on line 7 requires kernel 6.1.0+ (host kernel is 5.15.0)"
+		if issues[0].Message != expectedMsg {
+			t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
+		}
+	})
+
+	t.Run("passes when host kernel meets MinVer", func(t *testing.T) {
+		api := &mockAPI{kernelVerStr: "6.5.0"}
+		issues := caseOpt.ValidateOption(ctx, api, entry, "ext4", "fast_commit", "", false, nil)
+		if len(issues) != 0 {
+			t.Errorf("expected 0 issues, got %d", len(issues))
+		}
+	})
+}
+
 func TestKernelVersionSwitch(t *testing.T) {
 	ctx := context.Background()
 	entry := &rules.FstabEntry{LineNum: 10}
