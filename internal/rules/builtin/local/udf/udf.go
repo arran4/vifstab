@@ -82,27 +82,27 @@ func (r *UdfRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 
 		switch key {
 		case "uid", "gid":
-			if val != "" && val != "forget" && val != "ignore" {
-				if _, err := strconv.ParseInt(val, 10, 64); err != nil {
-					// could be a string user name, man page says "valid user name or the corresponding decimal user id"
-					// We'll just check if CheckUserExists for ID works, but we don't have GetUserByName.
-					// For simplicity we check if it is numeric, then CheckUserExists
+			if val != "" && val != "forget" {
+				if num, err := strconv.ParseInt(val, 10, 64); err != nil {
+					issues = append(issues, rules.ValidationIssue{
+						Message: fmt.Sprintf("Invalid value '%s' for udf mount option '%s' on line %d, must be an integer or 'forget'", val, key, entry.LineNum),
+						Line:    entry.RawLine,
+						Level:   rules.IssueLevelError,
+					})
 				} else {
-					if num, err := strconv.ParseInt(val, 10, 64); err == nil {
-						if key == "uid" && !api.CheckUserExists(int(num)) {
-							issues = append(issues, rules.ValidationIssue{
-								Message: fmt.Sprintf("User with uid %d does not exist", num),
-								Line:    entry.RawLine,
-								Level:   rules.IssueLevelError,
-							})
-						}
-						if key == "gid" && !api.CheckGroupExists(int(num)) {
-							issues = append(issues, rules.ValidationIssue{
-								Message: fmt.Sprintf("Group with gid %d does not exist", num),
-								Line:    entry.RawLine,
-								Level:   rules.IssueLevelError,
-							})
-						}
+					if key == "uid" && !api.CheckUserExists(int(num)) {
+						issues = append(issues, rules.ValidationIssue{
+							Message: fmt.Sprintf("User with uid %d does not exist", num),
+							Line:    entry.RawLine,
+							Level:   rules.IssueLevelError,
+						})
+					}
+					if key == "gid" && !api.CheckGroupExists(int(num)) {
+						issues = append(issues, rules.ValidationIssue{
+							Message: fmt.Sprintf("Group with gid %d does not exist", num),
+							Line:    entry.RawLine,
+							Level:   rules.IssueLevelError,
+						})
 					}
 				}
 			}
@@ -135,9 +135,8 @@ func (r *UdfRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 var udfKnownOptions = map[string]struct{}{
 	"uid": {}, "gid": {}, "umask": {}, "mode": {}, "dmode": {}, "bs": {},
 	"unhide": {}, "undelete": {}, "adinicb": {}, "noadinicb": {}, "shortad": {},
-	"longad": {}, "nostrict": {}, "iocharset": {}, "utf8": {}, "novrs": {},
-	"session": {}, "anchor": {}, "lastblock": {}, "volume": {}, "partition": {},
-	"fileset": {}, "rootdir": {},
+	"longad": {}, "nostrict": {}, "iocharset": {}, "novrs": {},
+	"session": {}, "anchor": {}, "lastblock": {},
 	// Generic options
 	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
 	"suid": {}, "nosuid": {}, "exec": {}, "noexec": {}, "auto": {}, "noauto": {},
@@ -157,8 +156,7 @@ var udfKnownOptions = map[string]struct{}{
 
 var udfValuedOptions = map[string]struct{}{
 	"uid": {}, "gid": {}, "umask": {}, "mode": {}, "dmode": {}, "bs": {},
-	"iocharset": {}, "session": {}, "anchor": {}, "lastblock": {}, "volume": {},
-	"partition": {}, "fileset": {}, "rootdir": {},
+	"iocharset": {}, "session": {}, "anchor": {}, "lastblock": {},
 	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
 	"fstab": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "options": {}, "options-mode": {}, "options-source": {},
 	"source": {}, "target": {}, "target-prefix": {}, "test-opts": {}, "types": {}, "uuid": {},
