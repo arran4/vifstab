@@ -1,0 +1,11 @@
+-- input/etc/fstab --
+/dev/sda1 /mnt1 erofs user_xattr,acl,cache_strategy=readahead,dax,device=/dev/sdb,directio,domain_id=123,fsoffset=1024,inode_share 0 0
+/dev/sda2 /mnt2 erofs nouser_xattr,noacl,cache_strategy=readaround,dax=always 0 0
+/dev/sda3 /mnt3 erofs cache_strategy=disabled,dax=never 0 0
+/dev/sda4 /mnt4 erofs dax=invalidopt,cache_strategy=bad,fsoffset=abc,invalidopt 0 0
+
+-- expected/validationerrors.txt --
+Error: Invalid value 'invalidopt' for erofs mount option 'dax' on line 4
+Error: Invalid value 'bad' for erofs mount option 'cache_strategy' on line 4
+Error: Invalid value 'abc' for erofs mount option 'fsoffset' on line 4, must be an integer
+Error: Unknown erofs mount option 'invalidopt' on line 4
