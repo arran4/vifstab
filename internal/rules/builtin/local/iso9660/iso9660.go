@@ -104,11 +104,11 @@ func (r *Iso9660Rule) Validate(ctx context.Context, api rules.API, entry *rules.
 					}
 				}
 			}
-		case "mode":
+		case "mode", "dmode", "umask":
 			if val != "" {
 				if _, err := strconv.ParseUint(val, 8, 32); err != nil {
 					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("Invalid value '%s' for iso9660 mount option 'mode' on line %d, must be an octal integer", val, entry.LineNum),
+						Message: fmt.Sprintf("Invalid value '%s' for iso9660 mount option '%s' on line %d, must be an octal integer", val, key, entry.LineNum),
 						Line:    entry.RawLine,
 						Level:   rules.IssueLevelError,
 					})
@@ -145,9 +145,10 @@ func (r *Iso9660Rule) Validate(ctx context.Context, api rules.API, entry *rules.
 }
 
 var iso9660KnownOptions = map[string]struct{}{
-	"norock": {}, "nojoliet": {}, "check": {}, "uid": {}, "gid": {}, "map": {},
-	"mode": {}, "unhide": {}, "block": {}, "conv": {}, "cruft": {}, "session": {},
-	"sbsector": {}, "iocharset": {}, "utf8": {},
+	"norock": {}, "rock": {}, "nojoliet": {}, "joliet": {}, "check": {}, "uid": {}, "gid": {}, "map": {},
+	"mode": {}, "dmode": {}, "umask": {}, "unhide": {}, "nounhide": {}, "block": {}, "conv": {}, "cruft": {}, "nocruft": {}, "session": {},
+	"sbsector": {}, "iocharset": {}, "utf8": {}, "noutf8": {},
+	"overriderockperm": {}, "nooverriderockperm": {}, "hide": {}, "nohide": {}, "showassoc": {}, "noshowassoc": {},
 	// Generic options
 	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
 	"suid": {}, "nosuid": {}, "exec": {}, "noexec": {}, "auto": {}, "noauto": {},
@@ -166,7 +167,7 @@ var iso9660KnownOptions = map[string]struct{}{
 }
 
 var iso9660ValuedOptions = map[string]struct{}{
-	"check": {}, "uid": {}, "gid": {}, "map": {}, "mode": {}, "block": {},
+	"check": {}, "uid": {}, "gid": {}, "map": {}, "mode": {}, "dmode": {}, "umask": {}, "block": {},
 	"conv": {}, "session": {}, "sbsector": {}, "iocharset": {},
 	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
 	"fstab": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "options": {}, "options-mode": {}, "options-source": {},
