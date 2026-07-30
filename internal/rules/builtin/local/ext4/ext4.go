@@ -67,7 +67,7 @@ var ext4Options = options.MergeOptions(options.CommonOptions(), map[string]optio
 	"nouser_xattr": options.NoValueOption{},
 
 	"journal_dev":  options.IntOption{},
-	"journal_path": options.StringOption{},
+	"journal_path": options.TODOOption{Comment: "validate journal device path"},
 	"norecovery":   options.NoValueOption{},
 	"noload":       options.NoValueOption{},
 	"data":         options.EnumOption{Allowed: map[string]bool{"journal": true, "ordered": true, "writeback": true}},
@@ -75,8 +75,8 @@ var ext4Options = options.MergeOptions(options.CommonOptions(), map[string]optio
 	"barrier":      options.EnumOption{Allowed: map[string]bool{"0": true, "1": true}},
 	"commit":       options.IntOption{},
 	"jqfmt":        options.EnumOption{Allowed: map[string]bool{"vfsold": true, "vfsv0": true, "vfsv1": true}},
-	"usrjquota":    options.StringOption{},
-	"grpjquota":    options.StringOption{},
+	"usrjquota":    options.TODOOption{Comment: "validate user quota path"},
+	"grpjquota":    options.TODOOption{Comment: "validate group quota path"},
 
 	"journal_checksum":     options.NoValueOption{},
 	"nojournal_checksum":   options.NoValueOption{},

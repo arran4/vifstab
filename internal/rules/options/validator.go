@@ -28,13 +28,21 @@ func (f OptionValidatorFunc) ValidateOption(ctx context.Context, api rules.API, 
 }
 
 // TODOValidator is a placeholder validator for options where specific validation logic is planned for future implementation.
+// By default, if no Validator is specified, it behaves like StringOption to ensure value presence.
 type TODOValidator struct {
-	Comment string
+	Validator OptionValidator
+	Comment   string
 }
 
 func (t TODOValidator) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
-	return nil
+	if t.Validator != nil {
+		return t.Validator.ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
+	}
+	return (StringOption{}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
 }
+
+// TODOOption is an alias for TODOValidator for cleaner option map declarations.
+type TODOOption = TODOValidator
 
 // MergeOptions merges multiple OptionValidator maps into a single map.
 func MergeOptions(maps ...map[string]OptionValidator) map[string]OptionValidator {

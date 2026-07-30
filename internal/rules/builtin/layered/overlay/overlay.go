@@ -62,9 +62,9 @@ func (r *OverlayRule) Validate(ctx context.Context, api rules.API, entry *rules.
 }
 
 var overlayOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
-	"lowerdir":     options.StringOption{},
-	"upperdir":     options.StringOption{},
-	"workdir":      options.StringOption{},
+	"lowerdir":     options.TODOOption{Comment: "validate path/multi-path syntax and existence"},
+	"upperdir":     options.TODOOption{Comment: "validate path syntax and existence"},
+	"workdir":      options.TODOOption{Comment: "validate path syntax and existence"},
 	"userxattr":    options.NoValueOption{},
 	"redirect_dir": options.EnumOption{Allowed: map[string]bool{"on": true, "off": true, "follow": true, "nofollow": true}},
 	"index":        options.EnumOption{Allowed: map[string]bool{"on": true, "off": true}},
