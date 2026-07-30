@@ -8,6 +8,7 @@ type mockAPI struct {
 	rules.API
 	existingUsers  map[int]bool
 	existingGroups map[int]bool
+	kernelVerStr   string
 }
 
 func (m *mockAPI) CheckUserExists(uid int) bool {
@@ -22,4 +23,8 @@ func (m *mockAPI) CheckGroupExists(gid int) bool {
 		return false
 	}
 	return m.existingGroups[gid]
+}
+
+func (m *mockAPI) GetHostKernelVersion() string {
+	return m.kernelVerStr
 }
