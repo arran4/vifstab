@@ -27,13 +27,25 @@ func CommonOptions() map[string]OptionValidator {
 		"silent": NoValueOption{}, "verbose": NoValueOption{}, "version": NoValueOption{},
 		"X-": NoValueOption{}, "x-": NoValueOption{},
 
-		// Valued generic options
-		"context": StringOption{}, "defcontext": StringOption{}, "rootcontext": StringOption{},
-		"fscontext": StringOption{}, "fstab": StringOption{}, "map-groups": StringOption{},
-		"map-users": StringOption{}, "mkdir": StringOption{}, "namespace": StringOption{},
-		"options": StringOption{}, "options-mode": StringOption{}, "options-source": StringOption{},
-		"source": StringOption{}, "target": StringOption{}, "target-prefix": StringOption{},
-		"test-opts": StringOption{}, "types": StringOption{}, "uuid": StringOption{},
+		// Valued generic options marked for future detailed validation
+		"context":        TODOOption{Comment: "validate SELinux context string"},
+		"defcontext":     TODOOption{Comment: "validate SELinux default context string"},
+		"rootcontext":    TODOOption{Comment: "validate SELinux root context string"},
+		"fscontext":      TODOOption{Comment: "validate SELinux fs context string"},
+		"fstab":          TODOOption{Comment: "validate fstab file path"},
+		"map-groups":     TODOOption{Comment: "validate group mapping file/string"},
+		"map-users":      TODOOption{Comment: "validate user mapping file/string"},
+		"mkdir":          TODOOption{Comment: "validate octal mode for auto mkdir"},
+		"namespace":      TODOOption{Comment: "validate namespace string"},
+		"options":        TODOOption{Comment: "validate nested mount options string"},
+		"options-mode":   TODOOption{Comment: "validate options mode string"},
+		"options-source": TODOOption{Comment: "validate options source path"},
+		"source":         TODOOption{Comment: "validate mount source path/device"},
+		"target":         TODOOption{Comment: "validate mount target directory"},
+		"target-prefix":  TODOOption{Comment: "validate target prefix path"},
+		"test-opts":      TODOOption{Comment: "validate test options string"},
+		"types":          TODOOption{Comment: "validate filesystem types list"},
+		"uuid":           TODOOption{Comment: "validate UUID format"},
 	}
 	return opts
 }
