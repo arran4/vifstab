@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type F2fsRule struct{}
@@ -79,7 +80,9 @@ func (r *F2fsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 			val = parts[1]
 		}
 
-		if _, ok := f2fsKnownOptions[key]; !ok {
+		hasVal := len(parts) > 1
+		validator, ok := f2fsOptions[key]
+		if !ok {
 			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Unknown f2fs mount option '%s' on line %d", key, entry.LineNum),
@@ -90,32 +93,8 @@ func (r *F2fsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 			continue
 		}
 
-		if val != "" {
-			if _, ok := f2fsValuedOptions[key]; !ok {
-				if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
-					// Check for some options that could have empty values like usrjquota=
-					if !(key == "usrjquota" || key == "grpjquota" || key == "prjjquota") {
-						issues = append(issues, rules.ValidationIssue{
-							Message: fmt.Sprintf("f2fs mount option '%s' does not take a value on line %d", key, entry.LineNum),
-							Line:    entry.RawLine,
-							Level:   rules.IssueLevelError,
-						})
-					}
-				}
-			}
-		} else {
-			if _, ok := f2fsValuedOptions[key]; ok {
-				// Some can be empty to turn off
-				if key == "usrjquota" || key == "grpjquota" || key == "prjjquota" || key == "test_dummy_encryption" {
-					// allowed empty
-				} else {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("Missing value for f2fs mount option '%s' on line %d", key, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				}
-			}
+		if validator != nil {
+			issues = append(issues, validator.ValidateOption(ctx, api, entry, "f2fs", key, val, hasVal, nil)...)
 		}
 
 		switch key {
@@ -267,148 +246,70 @@ func (r *F2fsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 	return issues, nil
 }
 
-var f2fsKnownOptions = map[string]struct{}{
-	"background_gc":         {},
-	"gc_merge":              {},
-	"nogc_merge":            {},
-	"disable_roll_forward":  {},
-	"norecovery":            {},
-	"discard":               {},
-	"nodiscard":             {},
-	"heap":                  {},
-	"no_heap":               {},
-	"nouser_xattr":          {},
-	"noacl":                 {},
-	"active_logs":           {},
-	"disable_ext_identify":  {},
-	"inline_xattr":          {},
-	"noinline_xattr":        {},
-	"inline_xattr_size":     {},
-	"inline_data":           {},
-	"inline_dentry":         {},
-	"noinline_dentry":       {},
-	"flush_merge":           {},
-	"nobarrier":             {},
-	"barrier":               {},
-	"fastboot":              {},
-	"extent_cache":          {},
-	"noextent_cache":        {},
-	"noinline_data":         {},
-	"data_flush":            {},
-	"reserve_root":          {},
-	"reserve_node":          {},
-	"resuid":                {},
-	"resgid":                {},
-	"fault_injection":       {},
-	"fault_type":            {},
-	"mode":                  {},
-	"usrquota":              {},
-	"grpquota":              {},
-	"prjquota":              {},
-	"usrjquota":             {},
-	"grpjquota":             {},
-	"prjjquota":             {},
-	"jqfmt":                 {},
-	"quota":                 {},
-	"noquota":               {},
-	"alloc_mode":            {},
-	"fsync_mode":            {},
-	"test_dummy_encryption": {},
-	"checkpoint":            {},
-	"checkpoint_merge":      {},
-	"nocheckpoint_merge":    {},
-	"compress_algorithm":    {},
-	"compress_log_size":     {},
-	"compress_extension":    {},
-	"nocompress_extension":  {},
-	"compress_chksum":       {},
-	"compress_mode":         {},
-	"compress_cache":        {},
-	"inlinecrypt":           {},
-	"atgc":                  {},
-	"discard_unit":          {},
-	"memory":                {},
-	"age_extent_cache":      {},
-	"errors":                {},
-	"nat_bits":              {},
-	"lookup_mode":           {},
-	"defaults":              {},
-	"rw":                    {},
-	"ro":                    {},
-	"noatime":               {},
-	"relatime":              {},
-	"suid":                  {},
-	"nosuid":                {},
-	"exec":                  {},
-	"noexec":                {},
-	"auto":                  {},
-	"noauto":                {},
-	"user":                  {},
-	"nouser":                {},
-	"sync":                  {},
-	"async":                 {},
-	"dirsync":               {},
-	"context":               {},
-	"defcontext":            {},
-	"rootcontext":           {},
-	"fscontext":             {},
-	"nodev":                 {},
-	"lazytime":              {},
-	"iversion":              {},
-	"nofail":                {},
-	"strictatime":           {},
-	"nodiratime":            {},
-	"users":                 {},
-	"_netdev":               {},
-	"dev":                   {},
-	"atime":                 {},
-	"diratime":              {},
-	"noiversion":            {},
-	"nolazytime":            {},
-	"owner":                 {},
-	"group":                 {},
-	// Common generic ones added automatically
-	"X-": {}, "beneath": {}, "bind": {}, "exclusive": {}, "fake": {}, "fork": {}, "fstab": {}, "help": {},
-	"internal-only": {}, "loud": {}, "make-private": {}, "make-rprivate": {}, "make-rshared": {}, "make-rslave": {}, "make-runbindable": {}, "make-shared": {},
-	"make-slave": {}, "make-unbindable": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "no-canonicalize": {}, "no-mtab": {},
-	"nomand": {}, "nosymfollow": {}, "onlyonce": {}, "options": {}, "options-mode": {}, "options-source": {}, "options-source-force": {}, "rbind": {},
-	"read-only": {}, "read-write": {}, "remount": {}, "show-labels": {}, "silent": {}, "source": {}, "target": {}, "target-prefix": {},
-	"test-opts": {}, "types": {}, "uuid": {}, "verbose": {}, "version": {}, "x-": {},
-}
+var f2fsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"background_gc":         options.OptionalStringOption{},
+	"gc_merge":              options.NoValueOption{},
+	"nogc_merge":            options.NoValueOption{},
+	"disable_roll_forward":  options.NoValueOption{},
+	"norecovery":            options.NoValueOption{},
+	"discard":               options.NoValueOption{},
+	"nodiscard":             options.NoValueOption{},
+	"heap":                  options.NoValueOption{},
+	"no_heap":               options.NoValueOption{},
+	"nouser_xattr":          options.NoValueOption{},
+	"noacl":                 options.NoValueOption{},
+	"active_logs":           options.StringOption{},
+	"disable_ext_identify":  options.NoValueOption{},
+	"inline_xattr":          options.NoValueOption{},
+	"noinline_xattr":        options.NoValueOption{},
+	"inline_xattr_size":     options.StringOption{},
+	"inline_data":           options.NoValueOption{},
+	"inline_dentry":         options.NoValueOption{},
+	"noinline_dentry":       options.NoValueOption{},
+	"flush_merge":           options.NoValueOption{},
+	"nobarrier":             options.NoValueOption{},
+	"barrier":               options.NoValueOption{},
+	"fastboot":              options.NoValueOption{},
+	"extent_cache":          options.NoValueOption{},
+	"noextent_cache":        options.NoValueOption{},
+	"noinline_data":         options.NoValueOption{},
+	"data_flush":            options.NoValueOption{},
+	"reserve_root":          options.StringOption{},
+	"reserve_node":          options.StringOption{},
+	"resuid":                options.UIDOption{},
+	"resgid":                options.GIDOption{},
+	"fault_injection":       options.StringOption{},
+	"fault_type":            options.StringOption{},
+	"mode":                  options.StringOption{},
+	"usrquota":              options.NoValueOption{},
+	"grpquota":              options.NoValueOption{},
+	"prjquota":              options.NoValueOption{},
+	"usrjquota":             options.OptionalStringOption{},
+	"grpjquota":             options.OptionalStringOption{},
+	"prjjquota":             options.OptionalStringOption{},
+	"jqfmt":                 options.StringOption{},
+	"quota":                 options.NoValueOption{},
+	"noquota":               options.NoValueOption{},
+	"alloc_mode":            options.StringOption{},
+	"fsync_mode":            options.StringOption{},
+	"test_dummy_encryption": options.OptionalStringOption{},
+	"checkpoint":            options.StringOption{},
+	"checkpoint_merge":      options.NoValueOption{},
+	"nocheckpoint_merge":    options.NoValueOption{},
+	"compress_algorithm":    options.StringOption{},
+	"compress_log_size":     options.StringOption{},
+	"compress_extension":    options.StringOption{},
+	"nocompress_extension":  options.StringOption{},
+	"compress_chksum":       options.NoValueOption{},
+	"compress_mode":         options.StringOption{},
+	"compress_cache":        options.NoValueOption{},
+	"inlinecrypt":           options.NoValueOption{},
+	"atgc":                  options.NoValueOption{},
+	"discard_unit":          options.StringOption{},
+	"memory":                options.StringOption{},
+	"age_extent_cache":      options.NoValueOption{},
+	"errors":                options.StringOption{},
+	"nat_bits":              options.NoValueOption{},
+	"lookup_mode":           options.StringOption{},
+})
 
-var f2fsValuedOptions = map[string]struct{}{
-	"background_gc":         {},
-	"active_logs":           {},
-	"inline_xattr_size":     {},
-	"reserve_root":          {},
-	"reserve_node":          {},
-	"resuid":                {},
-	"resgid":                {},
-	"fault_injection":       {},
-	"fault_type":            {},
-	"mode":                  {},
-	"usrjquota":             {},
-	"grpjquota":             {},
-	"prjjquota":             {},
-	"jqfmt":                 {},
-	"alloc_mode":            {},
-	"fsync_mode":            {},
-	"test_dummy_encryption": {},
-	"checkpoint":            {},
-	"compress_algorithm":    {},
-	"compress_log_size":     {},
-	"compress_extension":    {},
-	"nocompress_extension":  {},
-	"compress_mode":         {},
-	"discard_unit":          {},
-	"memory":                {},
-	"errors":                {},
-	"lookup_mode":           {},
-	"context":               {},
-	"defcontext":            {},
-	"rootcontext":           {},
-	"fscontext":             {},
-	// Generic valued options added automatically
-	"fstab": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "options": {}, "options-mode": {}, "options-source": {},
-	"source": {}, "target": {}, "target-prefix": {}, "test-opts": {}, "types": {}, "uuid": {},
-}

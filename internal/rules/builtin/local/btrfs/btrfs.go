@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 	"github.com/arran4/vifstab/internal/rules/kernel"
 )
 
@@ -55,9 +56,9 @@ func (r *BTRFSRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 			val = parts[1]
 		}
 
-		if _, ok := btrfsKnownOptions[key]; !ok {
+		if _, ok := btrfsOptions[key]; !ok {
 			// Ignore systemd extensions
-			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
+			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Unknown BTRFS mount option '%s' on line %d", key, entry.LineNum),
 					Line:    entry.RawLine,
@@ -424,37 +425,59 @@ func (v kernelVer) atLeast(major, minor, patch int) bool {
 	return false
 }
 
-var btrfsKnownOptions = map[string]struct{}{
-	"acl": {}, "noacl": {}, "autodefrag": {}, "noautodefrag": {},
-	"barrier": {}, "nobarrier": {}, "clear_cache": {}, "commit": {},
-	"compress": {}, "compress-force": {}, "datacow": {}, "nodatacow": {},
-	"datasum": {}, "nodatasum": {}, "degraded": {}, "device": {},
-	"discard": {}, "nodiscard": {}, "enospc_debug": {}, "noenospc_debug": {},
-	"fatal_errors": {}, "flushoncommit": {}, "noflushoncommit": {},
-	"fragment": {}, "nologreplay": {}, "max_inline": {}, "metadata_ratio": {},
-	"norecovery": {}, "rescan_uuid_tree": {}, "rescue": {}, "skip_balance": {},
-	"space_cache": {}, "nospace_cache": {}, "ssd": {}, "ssd_spread": {},
-	"nossd": {}, "nossd_spread": {}, "subvol": {}, "subvolid": {},
-	"thread_pool": {}, "treelog": {}, "notreelog": {}, "usebackuproot": {},
-	"user_subvol_rm_allowed": {}, "recovery": {}, "inode_cache": {},
-	"noinode_cache": {}, "check_int": {}, "check_int_data": {},
-	"check_int_print_mask": {},
-	// Common generic ones
-	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
-	"suid": {}, "nosuid": {}, "exec": {}, "noexec": {}, "auto": {}, "noauto": {},
-	"user": {}, "nouser": {}, "sync": {}, "async": {}, "dirsync": {},
-	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-	"nodev": {}, "lazytime": {}, "iversion": {}, "nofail": {},
-	"strictatime": {}, "nodiratime": {}, "users": {},
-	// Common generic ones added automatically
-	"X-": {}, "_netdev": {}, "atime": {}, "beneath": {}, "bind": {}, "dev": {}, "diratime": {}, "exclusive": {},
-	"fake": {}, "fork": {}, "fstab": {}, "group": {}, "help": {}, "internal-only": {}, "loud": {}, "make-private": {},
-	"make-rprivate": {}, "make-rshared": {}, "make-rslave": {}, "make-runbindable": {}, "make-shared": {}, "make-slave": {}, "make-unbindable": {}, "map-groups": {},
-	"map-users": {}, "mkdir": {}, "namespace": {}, "no-canonicalize": {}, "no-mtab": {}, "noiversion": {}, "nolazytime": {}, "nomand": {},
-	"nosymfollow": {}, "onlyonce": {}, "options": {}, "options-mode": {}, "options-source": {}, "options-source-force": {}, "owner": {}, "rbind": {},
-	"read-only": {}, "read-write": {}, "remount": {}, "show-labels": {}, "silent": {}, "source": {}, "target": {}, "target-prefix": {},
-	"test-opts": {}, "types": {}, "uuid": {}, "verbose": {}, "version": {}, "x-": {},
-}
+var btrfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"acl":                    options.NoValueOption{},
+	"noacl":                  options.NoValueOption{},
+	"autodefrag":             options.NoValueOption{},
+	"noautodefrag":           options.NoValueOption{},
+	"barrier":                options.NoValueOption{},
+	"nobarrier":              options.NoValueOption{},
+	"clear_cache":            options.NoValueOption{},
+	"commit":                 options.StringOption{},
+	"compress":               options.OptionalStringOption{},
+	"compress-force":         options.OptionalStringOption{},
+	"datacow":                options.NoValueOption{},
+	"nodatacow":              options.NoValueOption{},
+	"datasum":                options.NoValueOption{},
+	"nodatasum":              options.NoValueOption{},
+	"degraded":               options.NoValueOption{},
+	"device":                 options.StringOption{},
+	"discard":                options.OptionalStringOption{},
+	"nodiscard":              options.NoValueOption{},
+	"enospc_debug":           options.NoValueOption{},
+	"noenospc_debug":         options.NoValueOption{},
+	"fatal_errors":           options.StringOption{},
+	"flushoncommit":          options.NoValueOption{},
+	"noflushoncommit":        options.NoValueOption{},
+	"fragment":               options.StringOption{},
+	"nologreplay":            options.NoValueOption{},
+	"max_inline":             options.StringOption{},
+	"metadata_ratio":         options.StringOption{},
+	"norecovery":             options.NoValueOption{},
+	"rescan_uuid_tree":       options.NoValueOption{},
+	"rescue":                 options.OptionalStringOption{},
+	"skip_balance":           options.NoValueOption{},
+	"space_cache":            options.OptionalStringOption{},
+	"nospace_cache":          options.NoValueOption{},
+	"ssd":                    options.NoValueOption{},
+	"ssd_spread":             options.NoValueOption{},
+	"nossd":                  options.NoValueOption{},
+	"nossd_spread":           options.NoValueOption{},
+	"subvol":                 options.StringOption{},
+	"subvolid":               options.StringOption{},
+	"thread_pool":            options.StringOption{},
+	"treelog":                options.NoValueOption{},
+	"notreelog":              options.NoValueOption{},
+	"usebackuproot":          options.NoValueOption{},
+	"user_subvol_rm_allowed": options.NoValueOption{},
+	"recovery":               options.NoValueOption{},
+	"inode_cache":            options.NoValueOption{},
+	"noinode_cache":          options.NoValueOption{},
+	"check_int":              options.OptionalStringOption{},
+	"check_int_data":         options.OptionalStringOption{},
+	"check_int_print_mask":   options.OptionalStringOption{},
+})
+
 
 func isValidMaxInline(val string) bool {
 	if val == "" {

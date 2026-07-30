@@ -3,10 +3,10 @@ package ntfs3g
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type Ntfs3GRule struct{}
@@ -36,209 +36,95 @@ func (r *Ntfs3GRule) Validate(ctx context.Context, api rules.API, entry *rules.F
 		return nil, nil
 	}
 
-	var issues []rules.ValidationIssue
-	options := rules.SplitOptions(entry.Fields[3])
+	return options.ValidateOptionsMap(ctx, api, entry, "ntfs-3g", ntfs3gOptions), nil
+}
 
-	for _, opt := range options {
-		parts := strings.SplitN(opt, "=", 2)
-		key := parts[0]
-		var val string
-		if len(parts) > 1 {
-			val = parts[1]
+var ntfs3gOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"acl":         options.NoValueOption{},
+	"allow_other": options.NoValueOption{},
+	"big_writes":  options.NoValueOption{},
+	"compression": options.NoValueOption{},
+	"debug":       options.NoValueOption{},
+	"delay_mtime": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
+		if hasVal && val != "" {
+			return (options.IntOption{}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, nil)
 		}
-
-		if _, ok := ntfs3gKnownOptions[key]; !ok {
-			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Unknown ntfs-3g mount option '%s' on line %d", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-			continue
-		}
-
-		if val != "" {
-			if _, ok := ntfs3gValuedOptions[key]; !ok && key != "delay_mtime" {
-				if !strings.HasPrefix(key, "X-mount.") && !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("ntfs-3g mount option '%s' does not take a value on line %d", key, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				}
-			}
-		} else {
-			if _, ok := ntfs3gValuedOptions[key]; ok && key != "delay_mtime" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Missing value for ntfs-3g mount option '%s' on line %d", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		}
-
-		switch key {
-		case "uid":
-			if val != "" {
-				if uid, err := strconv.Atoi(val); err != nil {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("Invalid value '%s' for ntfs-3g mount option 'uid' on line %d, must be an integer", val, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				} else {
-					if !api.CheckUserExists(uid) {
-						issues = append(issues, rules.ValidationIssue{
-							Message: fmt.Sprintf("User ID '%s' specified in 'uid' option on line %d does not exist", val, entry.LineNum),
-							Line:    entry.RawLine,
-							Level:   rules.IssueLevelWarning,
-						})
-					}
-				}
-			}
-		case "gid":
-			if val != "" {
-				if gid, err := strconv.Atoi(val); err != nil {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("Invalid value '%s' for ntfs-3g mount option 'gid' on line %d, must be an integer", val, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				} else {
-					if !api.CheckGroupExists(gid) {
-						issues = append(issues, rules.ValidationIssue{
-							Message: fmt.Sprintf("Group ID '%s' specified in 'gid' option on line %d does not exist", val, entry.LineNum),
-							Line:    entry.RawLine,
-							Level:   rules.IssueLevelWarning,
-						})
-					}
-				}
-			}
-		case "dmask", "fmask", "umask":
-			if val != "" {
-				if _, err := strconv.ParseUint(val, 8, 32); err != nil {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("Invalid value '%s' for ntfs-3g mount option '%s' on line %d, must be an octal value", val, key, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				}
-			}
-		case "delay_mtime", "max_read":
-			if val != "" {
-				if _, err := strconv.Atoi(val); err != nil {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("Invalid value '%s' for ntfs-3g mount option '%s' on line %d, must be an integer", val, key, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				}
-			}
-		case "special_files":
-			if val != "interix" && val != "wsl" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Invalid value '%s' for ntfs-3g mount option 'special_files' on line %d (must be 'interix' or 'wsl')", val, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		case "streams_interface":
-			if val != "none" && val != "windows" && val != "xattr" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Invalid value '%s' for ntfs-3g mount option 'streams_interface' on line %d (must be 'none', 'windows', or 'xattr')", val, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			} else if val == "windows" && fsType == "lowntfs-3g" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("streams_interface=windows is not supported with lowntfs-3g on line %d", entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		case "ignore_case":
-			if fsType != "lowntfs-3g" {
-				issues = append(issues, rules.ValidationIssue{
+		return nil
+	}),
+	"dmask":          options.OctalOption{CustomErrFormat: "must be an octal value"},
+	"efs_raw":        options.NoValueOption{},
+	"fmask":          options.OctalOption{CustomErrFormat: "must be an octal value"},
+	"force":          options.NoValueOption{},
+	"hide_dot_files": options.NoValueOption{},
+	"hide_hid_files": options.NoValueOption{},
+	"ignore_case": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
+		if entry.Fields[2] != "lowntfs-3g" {
+			return []rules.ValidationIssue{
+				{
 					Message: fmt.Sprintf("ignore_case is only supported with lowntfs-3g on line %d", entry.LineNum),
 					Line:    entry.RawLine,
 					Level:   rules.IssueLevelError,
-				})
+				},
 			}
 		}
-	}
-
-	return issues, nil
-}
-
-var ntfs3gKnownOptions = map[string]struct{}{
-	"acl":               {},
-	"allow_other":       {},
-	"atime":             {},
-	"noatime":           {},
-	"relatime":          {},
-	"big_writes":        {},
-	"compression":       {},
-	"debug":             {},
-	"delay_mtime":       {},
-	"dmask":             {},
-	"efs_raw":           {},
-	"fmask":             {},
-	"force":             {},
-	"hide_dot_files":    {},
-	"hide_hid_files":    {},
-	"ignore_case":       {},
-	"inherit":           {},
-	"locale":            {},
-	"max_read":          {},
-	"no_def_opts":       {},
-	"no_detach":         {},
-	"nocompression":     {},
-	"norecover":         {},
-	"permissions":       {},
-	"posix_nlink":       {},
-	"recover":           {},
-	"remove_hiberfile":  {},
-	"ro":                {},
-	"rw":                {},
-	"show_sys_files":    {},
-	"silent":            {},
-	"special_files":     {},
-	"streams_interface": {},
-	"uid":               {},
-	"gid":               {},
-	"umask":             {},
-	"usermapping":       {},
-	"user_xattr":        {},
-	"windows_names":     {},
-
-	// Common generic ones added automatically
-	"X-": {}, "beneath": {}, "bind": {}, "exclusive": {}, "fake": {}, "fork": {}, "fstab": {}, "help": {},
-	"internal-only": {}, "loud": {}, "make-private": {}, "make-rprivate": {}, "make-rshared": {}, "make-rslave": {}, "make-runbindable": {}, "make-shared": {},
-	"make-slave": {}, "make-unbindable": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "no-canonicalize": {}, "no-mtab": {},
-	"nomand": {}, "nosymfollow": {}, "onlyonce": {}, "options": {}, "options-mode": {}, "options-source": {}, "options-source-force": {}, "rbind": {},
-	"read-only": {}, "read-write": {}, "remount": {}, "show-labels": {}, "source": {}, "target": {}, "target-prefix": {},
-	"test-opts": {}, "types": {}, "uuid": {}, "verbose": {}, "version": {}, "x-": {},
-	"defaults": {}, "suid": {}, "nosuid": {}, "exec": {}, "noexec": {}, "auto": {}, "noauto": {},
-	"user": {}, "nouser": {}, "sync": {}, "async": {}, "dirsync": {}, "nodev": {}, "lazytime": {},
-	"nofail": {}, "strictatime": {}, "nodiratime": {}, "users": {}, "_netdev": {}, "dev": {}, "diratime": {},
-	"noiversion": {}, "nolazytime": {}, "owner": {}, "group": {}, "iversion": {}, "context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-}
-
-var ntfs3gValuedOptions = map[string]struct{}{
-	"delay_mtime":       {},
-	"dmask":             {},
-	"fmask":             {},
-	"locale":            {},
-	"max_read":          {},
-	"special_files":     {},
-	"streams_interface": {},
-	"uid":               {},
-	"gid":               {},
-	"umask":             {},
-	"usermapping":       {},
-	// Generic valued options
-	"fstab": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "options": {}, "options-mode": {}, "options-source": {},
-	"source": {}, "target": {}, "target-prefix": {}, "test-opts": {}, "types": {}, "uuid": {},
-	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-}
+		return nil
+	}),
+	"inherit":          options.NoValueOption{},
+	"locale":           options.StringOption{},
+	"max_read":         options.IntOption{},
+	"no_def_opts":      options.NoValueOption{},
+	"no_detach":        options.NoValueOption{},
+	"nocompression":    options.NoValueOption{},
+	"norecover":        options.NoValueOption{},
+	"permissions":      options.NoValueOption{},
+	"posix_nlink":      options.NoValueOption{},
+	"recover":          options.NoValueOption{},
+	"remove_hiberfile": options.NoValueOption{},
+	"show_sys_files":   options.NoValueOption{},
+	"special_files": options.EnumOption{
+		Allowed:      map[string]bool{"interix": true, "wsl": true},
+		CustomErrMsg: "Invalid value '%s' for ntfs-3g mount option 'special_files' on line %d (must be 'interix' or 'wsl')",
+	},
+	"streams_interface": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
+		if !hasVal || val == "" {
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("Missing value for %s mount option '%s' on line %d", fsName, key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				},
+			}
+		}
+		if val != "none" && val != "windows" && val != "xattr" {
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("Invalid value '%s' for ntfs-3g mount option 'streams_interface' on line %d (must be 'none', 'windows', or 'xattr')", val, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				},
+			}
+		}
+		if val == "windows" && entry.Fields[2] == "lowntfs-3g" {
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("streams_interface=windows is not supported with lowntfs-3g on line %d", entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				},
+			}
+		}
+		return nil
+	}),
+	"uid": options.UIDOption{
+		CustomUserNotFound: "User ID '%s' specified in 'uid' option on line %d does not exist",
+		Level:              rules.IssueLevelWarning,
+	},
+	"gid": options.GIDOption{
+		CustomGroupNotFound: "Group ID '%s' specified in 'gid' option on line %d does not exist",
+		Level:               rules.IssueLevelWarning,
+	},
+	"umask":         options.OctalOption{CustomErrFormat: "must be an octal value"},
+	"usermapping":   options.StringOption{},
+	"user_xattr":    options.NoValueOption{},
+	"windows_names": options.NoValueOption{},
+})

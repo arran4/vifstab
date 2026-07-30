@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type Nilfs2Rule struct{}
@@ -35,7 +36,6 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 		return nil, nil
 	}
 
-	var issues []rules.ValidationIssue
 	options := rules.SplitOptions(entry.Fields[3])
 	hasRo := false
 	hasRw := false
@@ -49,6 +49,7 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 		}
 	}
 
+	var issues []rules.ValidationIssue
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
@@ -58,7 +59,8 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 			val = parts[1]
 		}
 
-		if _, ok := nilfs2KnownOptions[key]; !ok {
+		validator, ok := nilfs2Options[key]
+		if !ok {
 			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("nilfs2 mount option '%s' on line %d is unknown", key, entry.LineNum),
@@ -69,69 +71,19 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 			continue
 		}
 
-		if hasEquals && val != "" {
-			if _, ok := nilfs2ValuedOptions[key]; !ok {
-				if !strings.HasPrefix(key, "X-mount.") && !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("nilfs2 mount option '%s' on line %d does not take a value", key, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				}
-			}
-		} else if hasEquals && val == "" {
-			if _, ok := nilfs2RequireValueOptions[key]; ok {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Missing value for nilfs2 mount option '%s' on line %d", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			} else if _, ok := nilfs2ValuedOptions[key]; !ok {
-				if !strings.HasPrefix(key, "X-mount.") && !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("nilfs2 mount option '%s' on line %d does not take a value", key, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				}
-			}
-		} else {
-			if _, ok := nilfs2RequireValueOptions[key]; ok {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Missing value for nilfs2 mount option '%s' on line %d", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
+		if validator != nil {
+			issues = append(issues, validator.ValidateOption(ctx, api, entry, "nilfs2", key, val, hasEquals, nil)...)
 		}
 
-		switch key {
-		case "errors":
-			if val != "continue" && val != "remount-ro" && val != "panic" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("nilfs2 mount option 'errors' on line %d has invalid value '%s'. Valid values are 'continue', 'remount-ro', 'panic'", entry.LineNum, val),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		case "order":
-			if val != "relaxed" && val != "strict" {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("nilfs2 mount option 'order' on line %d has invalid value '%s'. Valid values are 'relaxed', 'strict'", entry.LineNum, val),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		case "cp":
-			if !hasRo || hasRw { // Note: 'ro' must be explicitly specified (or defaults without rw, but explicit rw breaks it)
-				// According to docs: "Snapshot is read-only, so a read-only mount option must be specified together."
+		if key == "cp" {
+			if !hasRo || hasRw {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("nilfs2 mount option 'cp' on line %d requires a read-only mount option ('ro')", entry.LineNum),
 					Line:    entry.RawLine,
 					Level:   rules.IssueLevelError,
 				})
 			}
-		case "norecovery":
+		} else if key == "norecovery" {
 			if !hasRo {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("nilfs2 mount option 'norecovery' on line %d will fail for r/w mounts on an unclean volume. Using read-only ('ro') is recommended.", entry.LineNum),
@@ -145,40 +97,68 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 	return issues, nil
 }
 
-var nilfs2RequireValueOptions = map[string]struct{}{
-	"errors": {}, "cp": {}, "order": {},
-	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
+type nilfs2NoValueOption struct{}
+
+func (nilfs2NoValueOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
+	if hasVal && val != "" {
+		return []rules.ValidationIssue{
+			{
+				Message: fmt.Sprintf("nilfs2 mount option '%s' on line %d does not take a value", key, entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelError,
+			},
+		}
+	}
+	return nil
 }
 
-var nilfs2ValuedOptions = map[string]struct{}{
-	"errors": {}, "cp": {}, "order": {},
-	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-	// Generic valued options added automatically
-	"fstab": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "options": {}, "options-mode": {}, "options-source": {},
-	"source": {}, "target": {}, "target-prefix": {}, "test-opts": {}, "types": {}, "uuid": {},
-}
-
-var nilfs2KnownOptions = map[string]struct{}{
-	// nilfs2 specific options
-	"barrier": {}, "nobarrier": {}, "errors": {}, "cp": {},
-	"order": {}, "norecovery": {}, "discard": {}, "nodiscard": {},
-
-	// Common generic ones
-	"defaults": {}, "rw": {}, "ro": {}, "noatime": {}, "relatime": {},
-	"suid": {}, "nosuid": {}, "exec": {}, "noexec": {}, "auto": {}, "noauto": {},
-	"user": {}, "nouser": {}, "sync": {}, "async": {}, "dirsync": {},
-	"context": {}, "defcontext": {}, "rootcontext": {}, "fscontext": {},
-	"nodev": {}, "lazytime": {}, "iversion": {}, "nofail": {},
-	"strictatime": {}, "nodiratime": {}, "users": {},
-
-	// More generic ones
-	"_netdev": {}, "dev": {}, "atime": {}, "diratime": {}, "noiversion": {},
-	"nolazytime": {}, "owner": {}, "group": {}, "remount": {}, "bind": {}, "rbind": {},
-	// Common generic ones added automatically
-	"X-": {}, "beneath": {}, "exclusive": {}, "fake": {}, "fork": {}, "fstab": {}, "help": {}, "internal-only": {},
-	"loud": {}, "make-private": {}, "make-rprivate": {}, "make-rshared": {}, "make-rslave": {}, "make-runbindable": {}, "make-shared": {}, "make-slave": {},
-	"make-unbindable": {}, "map-groups": {}, "map-users": {}, "mkdir": {}, "namespace": {}, "no-canonicalize": {}, "no-mtab": {}, "nomand": {},
-	"nosymfollow": {}, "onlyonce": {}, "options": {}, "options-mode": {}, "options-source": {}, "options-source-force": {}, "read-only": {}, "read-write": {},
-	"show-labels": {}, "silent": {}, "source": {}, "target": {}, "target-prefix": {}, "test-opts": {}, "types": {}, "uuid": {},
-	"verbose": {}, "version": {}, "x-": {},
-}
+var nilfs2Options = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"barrier":   nilfs2NoValueOption{},
+	"nobarrier": nilfs2NoValueOption{},
+	"errors": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
+		if !hasVal || val == "" {
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("Missing value for nilfs2 mount option 'errors' on line %d", entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				},
+			}
+		}
+		if val != "continue" && val != "remount-ro" && val != "panic" {
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("nilfs2 mount option 'errors' on line %d has invalid value '%s'. Valid values are 'continue', 'remount-ro', 'panic'", entry.LineNum, val),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				},
+			}
+		}
+		return nil
+	}),
+	"cp": options.StringOption{},
+	"order": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
+		if !hasVal || val == "" {
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("Missing value for nilfs2 mount option 'order' on line %d", entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				},
+			}
+		}
+		if val != "relaxed" && val != "strict" {
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("nilfs2 mount option 'order' on line %d has invalid value '%s'. Valid values are 'relaxed', 'strict'", entry.LineNum, val),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				},
+			}
+		}
+		return nil
+	}),
+	"norecovery": nilfs2NoValueOption{},
+	"discard":    nilfs2NoValueOption{},
+	"nodiscard":  nilfs2NoValueOption{},
+})
