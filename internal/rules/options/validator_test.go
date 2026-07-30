@@ -28,6 +28,18 @@ func TestMergeOptions(t *testing.T) {
 	}
 }
 
+func TestTODOValidator(t *testing.T) {
+	ctx := context.Background()
+	api := &mockAPI{}
+	entry := &rules.FstabEntry{LineNum: 1}
+	todoOpt := options.TODOValidator{Comment: "Custom validator coming soon"}
+
+	issues := todoOpt.ValidateOption(ctx, api, entry, "ext4", "custom_opt", "val", true, nil)
+	if len(issues) != 0 {
+		t.Errorf("expected 0 issues from TODOValidator, got %d", len(issues))
+	}
+}
+
 func TestValidateOptionsMap(t *testing.T) {
 	ctx := context.Background()
 	api := &mockAPI{}
