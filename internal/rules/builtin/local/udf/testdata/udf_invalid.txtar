@@ -1,6 +1,7 @@
 -- input --
 /dev/cdrom /mnt/udf udf uid=9999,gid=9999,umask=invalid,mode=invalid,dmode=invalid,bs=invalid,session=invalid,unknownopt 0 0
 /dev/cdrom2 /mnt/udf2 udf mode 0 0
+/dev/cdrom3 /mnt/udf3 udf uid=root,gid=ignore,volume=vol 0 0
 -- cache --
 proc_filesystems=udf
 -- input/etc/passwd --
@@ -17,3 +18,6 @@ Invalid value 'invalid' for udf mount option 'bs' on line 1, must be an integer
 Invalid value 'invalid' for udf mount option 'session' on line 1, must be an integer
 Unknown udf mount option 'unknownopt' on line 1
 Missing value for udf mount option 'mode' on line 2
+Invalid value 'root' for udf mount option 'uid' on line 3, must be an integer or 'forget'
+Invalid value 'ignore' for udf mount option 'gid' on line 3, must be an integer or 'forget'
+Unknown udf mount option 'volume' on line 3
