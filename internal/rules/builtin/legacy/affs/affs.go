@@ -42,12 +42,15 @@ func (r *AffsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 var affsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
 	"uid":      options.OptionalUIDOption{},
 	"setuid":   options.OptionalUIDOption{},
-	"gid":      options.OptionalGIDOption{},
-	"setgid":   options.OptionalGIDOption{},
-	"mode":     options.OctalOption{},
-	"protect":  options.NoValueOption{},
-	"usemp":    options.NoValueOption{},
-	"prefix":   options.StringOption{},
+	"gid":                options.OptionalGIDOption{},
+	"setgid":             options.OptionalGIDOption{},
+	"mode":               options.OctalOption{},
+	"nofilenametruncate": options.NoValueOption{},
+	"protect":            options.NoValueOption{},
+	"quiet":              options.NoValueOption{},
+	"mufs":               options.NoValueOption{},
+	"usemp":              options.NoValueOption{},
+	"prefix":             options.StringOption{},
 	"volume": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
