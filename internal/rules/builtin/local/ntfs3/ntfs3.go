@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type Ntfs3Rule struct{}
@@ -34,34 +35,34 @@ func (r *Ntfs3Rule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "ntfs3", ntfs3Options), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "ntfs3", ntfs3Options), nil
 }
 
-var ntfs3Options = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"iocharset":        rules.StringOption{},
-	"uid":              rules.UIDOption{},
-	"gid":              rules.GIDOption{},
-	"umask":            rules.OctalOption{},
-	"dmask":            rules.OctalOption{},
-	"fmask":            rules.OctalOption{},
-	"nohidden":         rules.NoValueOption{},
-	"sys_immutable":    rules.NoValueOption{},
-	"hide_dot_files":   rules.NoValueOption{},
-	"windows_names":    rules.NoValueOption{},
-	"discard":          rules.NoValueOption{},
-	"force":            rules.NoValueOption{},
-	"sparse":           rules.NoValueOption{},
-	"showmeta":         rules.NoValueOption{},
-	"prealloc":         rules.NoValueOption{},
-	"acl":              rules.NoValueOption{},
-	"hidden":           rules.NoValueOption{},
-	"nosys_immutable":  rules.NoValueOption{},
-	"nohide_dot_files": rules.NoValueOption{},
-	"nowindows_names":  rules.NoValueOption{},
-	"nodiscard":        rules.NoValueOption{},
-	"noforce":          rules.NoValueOption{},
-	"nosparse":         rules.NoValueOption{},
-	"noshowmeta":       rules.NoValueOption{},
-	"noprealloc":       rules.NoValueOption{},
-	"noacl":            rules.NoValueOption{},
+var ntfs3Options = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"iocharset":        options.StringOption{},
+	"uid":              options.UIDOption{},
+	"gid":              options.GIDOption{},
+	"umask":            options.OctalOption{},
+	"dmask":            options.OctalOption{},
+	"fmask":            options.OctalOption{},
+	"nohidden":         options.NoValueOption{},
+	"sys_immutable":    options.NoValueOption{},
+	"hide_dot_files":   options.NoValueOption{},
+	"windows_names":    options.NoValueOption{},
+	"discard":          options.NoValueOption{},
+	"force":            options.NoValueOption{},
+	"sparse":           options.NoValueOption{},
+	"showmeta":         options.NoValueOption{},
+	"prealloc":         options.NoValueOption{},
+	"acl":              options.NoValueOption{},
+	"hidden":           options.NoValueOption{},
+	"nosys_immutable":  options.NoValueOption{},
+	"nohide_dot_files": options.NoValueOption{},
+	"nowindows_names":  options.NoValueOption{},
+	"nodiscard":        options.NoValueOption{},
+	"noforce":          options.NoValueOption{},
+	"nosparse":         options.NoValueOption{},
+	"noshowmeta":       options.NoValueOption{},
+	"noprealloc":       options.NoValueOption{},
+	"noacl":            options.NoValueOption{},
 })

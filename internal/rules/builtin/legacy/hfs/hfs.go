@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type HfsRule struct{}
@@ -35,11 +36,11 @@ func (r *HfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "hfs", hfsOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "hfs", hfsOptions), nil
 }
 
-var hfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"creator": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+var hfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"creator": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{
@@ -60,7 +61,7 @@ var hfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.Opti
 		}
 		return nil
 	}),
-	"type": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"type": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{
@@ -81,12 +82,12 @@ var hfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.Opti
 		}
 		return nil
 	}),
-	"uid":        rules.UIDOption{},
-	"gid":        rules.GIDOption{},
-	"dir_umask":  rules.OctalOption{},
-	"file_umask": rules.OctalOption{},
-	"umask":      rules.OctalOption{},
-	"session":    rules.IntOption{},
-	"part":       rules.IntOption{},
-	"quiet":      rules.NoValueOption{},
+	"uid":        options.UIDOption{},
+	"gid":        options.GIDOption{},
+	"dir_umask":  options.OctalOption{},
+	"file_umask": options.OctalOption{},
+	"umask":      options.OctalOption{},
+	"session":    options.IntOption{},
+	"part":       options.IntOption{},
+	"quiet":      options.NoValueOption{},
 })

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type UdfRule struct{}
@@ -36,11 +37,11 @@ func (r *UdfRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "udf", udfOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "udf", udfOptions), nil
 }
 
-var udfOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"uid": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+var udfOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"uid": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if val == "forget" {
 			return nil
 		}
@@ -68,7 +69,7 @@ var udfOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.Opti
 		}
 		return nil
 	}),
-	"gid": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"gid": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if val == "forget" {
 			return nil
 		}
@@ -96,20 +97,20 @@ var udfOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.Opti
 		}
 		return nil
 	}),
-	"umask":     rules.OctalOption{},
-	"mode":      rules.OctalOption{},
-	"dmode":     rules.OctalOption{},
-	"bs":        rules.IntOption{},
-	"unhide":    rules.NoValueOption{},
-	"undelete":  rules.NoValueOption{},
-	"adinicb":   rules.NoValueOption{},
-	"noadinicb": rules.NoValueOption{},
-	"shortad":   rules.NoValueOption{},
-	"longad":    rules.NoValueOption{},
-	"nostrict":  rules.NoValueOption{},
-	"iocharset": rules.StringOption{},
-	"novrs":     rules.NoValueOption{},
-	"session":   rules.IntOption{},
-	"anchor":    rules.IntOption{},
-	"lastblock": rules.IntOption{},
+	"umask":     options.OctalOption{},
+	"mode":      options.OctalOption{},
+	"dmode":     options.OctalOption{},
+	"bs":        options.IntOption{},
+	"unhide":    options.NoValueOption{},
+	"undelete":  options.NoValueOption{},
+	"adinicb":   options.NoValueOption{},
+	"noadinicb": options.NoValueOption{},
+	"shortad":   options.NoValueOption{},
+	"longad":    options.NoValueOption{},
+	"nostrict":  options.NoValueOption{},
+	"iocharset": options.StringOption{},
+	"novrs":     options.NoValueOption{},
+	"session":   options.IntOption{},
+	"anchor":    options.IntOption{},
+	"lastblock": options.IntOption{},
 })

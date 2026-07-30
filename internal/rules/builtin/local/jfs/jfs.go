@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 	"github.com/arran4/vifstab/internal/rules/builtin/legacy"
 	"github.com/arran4/vifstab/internal/rules/kernel"
 )
@@ -118,9 +119,9 @@ func (jfsNoValueOption) ValidateOption(ctx context.Context, api rules.API, entry
 	return nil
 }
 
-var jfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"iocharset": rules.StringOption{},
-	"errors": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+var jfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"iocharset": options.StringOption{},
+	"errors": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{
@@ -141,7 +142,7 @@ var jfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.Opti
 		}
 		return nil
 	}),
-	"resize":        rules.OptionalStringOption{},
+	"resize":        options.OptionalStringOption{},
 	"nointegrity":   jfsNoValueOption{},
 	"integrity":     jfsNoValueOption{},
 	"noquota":       jfsNoValueOption{},
@@ -150,11 +151,11 @@ var jfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.Opti
 	"grpquota":      jfsNoValueOption{},
 	"discard":       jfsNoValueOption{},
 	"nodiscard":     jfsNoValueOption{},
-	"uid":           rules.IntOption{},
-	"gid":           rules.IntOption{},
-	"umask":         rules.OctalOption{},
-	"comment":       rules.StringOption{},
-	"loop":          rules.OptionalStringOption{},
+	"uid":           options.IntOption{},
+	"gid":           options.IntOption{},
+	"umask":         options.OctalOption{},
+	"comment":       options.StringOption{},
+	"loop":          options.OptionalStringOption{},
 	"mand":          jfsNoValueOption{},
 	"norelatime":    jfsNoValueOption{},
 	"nostrictatime": jfsNoValueOption{},

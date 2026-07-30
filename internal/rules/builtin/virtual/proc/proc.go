@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 	"github.com/arran4/vifstab/internal/rules/kernel"
 )
 
@@ -36,11 +37,11 @@ func (r *ProcRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "proc", procOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "proc", procOptions), nil
 }
 
-var procOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"hidepid": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+var procOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"hidepid": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		var issues []rules.ValidationIssue
 		if !hasVal || val == "" {
 			issues = append(issues, rules.ValidationIssue{
@@ -59,7 +60,7 @@ var procOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.Opt
 		}
 		return issues
 	}),
-	"gid": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"gid": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		var issues []rules.ValidationIssue
 		if !hasVal || val == "" {
 			issues = append(issues, rules.ValidationIssue{
@@ -78,7 +79,7 @@ var procOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.Opt
 		}
 		return issues
 	}),
-	"subset": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"subset": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		var issues []rules.ValidationIssue
 		if !hasVal || val == "" {
 			issues = append(issues, rules.ValidationIssue{

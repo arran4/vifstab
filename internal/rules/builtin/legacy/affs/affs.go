@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type AffsRule struct{}
@@ -35,19 +36,19 @@ func (r *AffsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "affs", affsOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "affs", affsOptions), nil
 }
 
-var affsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"uid":      rules.OptionalUIDOption{},
-	"setuid":   rules.OptionalUIDOption{},
-	"gid":      rules.OptionalGIDOption{},
-	"setgid":   rules.OptionalGIDOption{},
-	"mode":     rules.OctalOption{},
-	"protect":  rules.NoValueOption{},
-	"usemp":    rules.NoValueOption{},
-	"prefix":   rules.StringOption{},
-	"volume": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+var affsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"uid":      options.OptionalUIDOption{},
+	"setuid":   options.OptionalUIDOption{},
+	"gid":      options.OptionalGIDOption{},
+	"setgid":   options.OptionalGIDOption{},
+	"mode":     options.OctalOption{},
+	"protect":  options.NoValueOption{},
+	"usemp":    options.NoValueOption{},
+	"prefix":   options.StringOption{},
+	"volume": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{
@@ -68,14 +69,14 @@ var affsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.Opt
 		}
 		return nil
 	}),
-	"reserved": rules.IntOption{},
-	"root":     rules.IntOption{},
-	"bs": rules.EnumOption{
+	"reserved": options.IntOption{},
+	"root":     options.IntOption{},
+	"bs": options.EnumOption{
 		Allowed:      map[string]bool{"512": true, "1024": true, "2048": true, "4096": true},
 		CustomErrMsg: "Invalid value '%s' for affs mount option 'bs' on line %d, must be 512, 1024, 2048, or 4096",
 	},
-	"grpquota": rules.NoValueOption{},
-	"noquota":  rules.NoValueOption{},
-	"quota":    rules.NoValueOption{},
-	"usrquota": rules.NoValueOption{},
+	"grpquota": options.NoValueOption{},
+	"noquota":  options.NoValueOption{},
+	"quota":    options.NoValueOption{},
+	"usrquota": options.NoValueOption{},
 })

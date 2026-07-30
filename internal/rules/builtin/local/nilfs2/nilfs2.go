@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type Nilfs2Rule struct{}
@@ -111,10 +112,10 @@ func (nilfs2NoValueOption) ValidateOption(ctx context.Context, api rules.API, en
 	return nil
 }
 
-var nilfs2Options = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
+var nilfs2Options = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
 	"barrier":   nilfs2NoValueOption{},
 	"nobarrier": nilfs2NoValueOption{},
-	"errors": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"errors": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{
@@ -135,8 +136,8 @@ var nilfs2Options = rules.MergeOptions(rules.CommonOptions(), map[string]rules.O
 		}
 		return nil
 	}),
-	"cp": rules.StringOption{},
-	"order": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"cp": options.StringOption{},
+	"order": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{

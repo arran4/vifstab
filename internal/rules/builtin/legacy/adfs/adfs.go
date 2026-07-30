@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type AdfsRule struct{}
@@ -34,12 +35,12 @@ func (r *AdfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "adfs", adfsOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "adfs", adfsOptions), nil
 }
 
-var adfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"uid":     rules.UIDOption{},
-	"gid":     rules.GIDOption{},
-	"ownmask": rules.OctalOption{},
-	"othmask": rules.OctalOption{},
+var adfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"uid":     options.UIDOption{},
+	"gid":     options.GIDOption{},
+	"ownmask": options.OctalOption{},
+	"othmask": options.OctalOption{},
 })

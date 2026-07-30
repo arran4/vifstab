@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type UbifsRule struct{}
@@ -34,13 +35,13 @@ func (r *UbifsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "ubifs", ubifsOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "ubifs", ubifsOptions), nil
 }
 
-var ubifsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"bulk_read":       rules.NoValueOption{},
-	"no_bulk_read":    rules.NoValueOption{},
-	"chk_data_crc":    rules.NoValueOption{},
-	"no_chk_data_crc": rules.NoValueOption{},
-	"compr":           rules.EnumOption{Allowed: map[string]bool{"none": true, "lzo": true, "zlib": true}},
+var ubifsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"bulk_read":       options.NoValueOption{},
+	"no_bulk_read":    options.NoValueOption{},
+	"chk_data_crc":    options.NoValueOption{},
+	"no_chk_data_crc": options.NoValueOption{},
+	"compr":           options.EnumOption{Allowed: map[string]bool{"none": true, "lzo": true, "zlib": true}},
 })

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type HpfsRule struct{}
@@ -34,14 +35,14 @@ func (r *HpfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "hpfs", hpfsOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "hpfs", hpfsOptions), nil
 }
 
-var hpfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"uid":     rules.UIDOption{},
-	"gid":     rules.GIDOption{},
-	"umask":   rules.OctalOption{},
-	"case":    rules.EnumOption{Allowed: map[string]bool{"lower": true, "asis": true}},
-	"conv":    rules.StringOption{},
-	"nocheck": rules.NoValueOption{},
+var hpfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"uid":     options.UIDOption{},
+	"gid":     options.GIDOption{},
+	"umask":   options.OctalOption{},
+	"case":    options.EnumOption{Allowed: map[string]bool{"lower": true, "asis": true}},
+	"conv":    options.StringOption{},
+	"nocheck": options.NoValueOption{},
 })

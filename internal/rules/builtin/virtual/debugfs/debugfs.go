@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type DebugfsRule struct{}
@@ -34,11 +35,11 @@ func (r *DebugfsRule) Validate(ctx context.Context, api rules.API, entry *rules.
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "debugfs", debugfsOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "debugfs", debugfsOptions), nil
 }
 
-var debugfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"uid":  rules.UIDOption{},
-	"gid":  rules.GIDOption{},
-	"mode": rules.OctalOption{},
+var debugfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"uid":  options.UIDOption{},
+	"gid":  options.GIDOption{},
+	"mode": options.OctalOption{},
 })

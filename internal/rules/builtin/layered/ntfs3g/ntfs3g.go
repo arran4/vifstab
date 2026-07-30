@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type Ntfs3GRule struct{}
@@ -35,28 +36,28 @@ func (r *Ntfs3GRule) Validate(ctx context.Context, api rules.API, entry *rules.F
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "ntfs-3g", ntfs3gOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "ntfs-3g", ntfs3gOptions), nil
 }
 
-var ntfs3gOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"acl":         rules.NoValueOption{},
-	"allow_other": rules.NoValueOption{},
-	"big_writes":  rules.NoValueOption{},
-	"compression": rules.NoValueOption{},
-	"debug":       rules.NoValueOption{},
-	"delay_mtime": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+var ntfs3gOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"acl":         options.NoValueOption{},
+	"allow_other": options.NoValueOption{},
+	"big_writes":  options.NoValueOption{},
+	"compression": options.NoValueOption{},
+	"debug":       options.NoValueOption{},
+	"delay_mtime": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if hasVal && val != "" {
-			return (rules.IntOption{}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal)
+			return (options.IntOption{}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal)
 		}
 		return nil
 	}),
-	"dmask":          rules.OctalOption{CustomErrFormat: "must be an octal value"},
-	"efs_raw":        rules.NoValueOption{},
-	"fmask":          rules.OctalOption{CustomErrFormat: "must be an octal value"},
-	"force":          rules.NoValueOption{},
-	"hide_dot_files": rules.NoValueOption{},
-	"hide_hid_files": rules.NoValueOption{},
-	"ignore_case": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"dmask":          options.OctalOption{CustomErrFormat: "must be an octal value"},
+	"efs_raw":        options.NoValueOption{},
+	"fmask":          options.OctalOption{CustomErrFormat: "must be an octal value"},
+	"force":          options.NoValueOption{},
+	"hide_dot_files": options.NoValueOption{},
+	"hide_hid_files": options.NoValueOption{},
+	"ignore_case": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if entry.Fields[2] != "lowntfs-3g" {
 			return []rules.ValidationIssue{
 				{
@@ -68,23 +69,23 @@ var ntfs3gOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.O
 		}
 		return nil
 	}),
-	"inherit":          rules.NoValueOption{},
-	"locale":           rules.StringOption{},
-	"max_read":         rules.IntOption{},
-	"no_def_opts":      rules.NoValueOption{},
-	"no_detach":        rules.NoValueOption{},
-	"nocompression":    rules.NoValueOption{},
-	"norecover":        rules.NoValueOption{},
-	"permissions":      rules.NoValueOption{},
-	"posix_nlink":      rules.NoValueOption{},
-	"recover":          rules.NoValueOption{},
-	"remove_hiberfile": rules.NoValueOption{},
-	"show_sys_files":   rules.NoValueOption{},
-	"special_files": rules.EnumOption{
+	"inherit":          options.NoValueOption{},
+	"locale":           options.StringOption{},
+	"max_read":         options.IntOption{},
+	"no_def_opts":      options.NoValueOption{},
+	"no_detach":        options.NoValueOption{},
+	"nocompression":    options.NoValueOption{},
+	"norecover":        options.NoValueOption{},
+	"permissions":      options.NoValueOption{},
+	"posix_nlink":      options.NoValueOption{},
+	"recover":          options.NoValueOption{},
+	"remove_hiberfile": options.NoValueOption{},
+	"show_sys_files":   options.NoValueOption{},
+	"special_files": options.EnumOption{
 		Allowed:      map[string]bool{"interix": true, "wsl": true},
 		CustomErrMsg: "Invalid value '%s' for ntfs-3g mount option 'special_files' on line %d (must be 'interix' or 'wsl')",
 	},
-	"streams_interface": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"streams_interface": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{
@@ -114,16 +115,16 @@ var ntfs3gOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.O
 		}
 		return nil
 	}),
-	"uid": rules.UIDOption{
+	"uid": options.UIDOption{
 		CustomUserNotFound: "User ID '%s' specified in 'uid' option on line %d does not exist",
 		Level:              rules.IssueLevelWarning,
 	},
-	"gid": rules.GIDOption{
+	"gid": options.GIDOption{
 		CustomGroupNotFound: "Group ID '%s' specified in 'gid' option on line %d does not exist",
 		Level:               rules.IssueLevelWarning,
 	},
-	"umask":         rules.OctalOption{CustomErrFormat: "must be an octal value"},
-	"usermapping":   rules.StringOption{},
-	"user_xattr":    rules.NoValueOption{},
-	"windows_names": rules.NoValueOption{},
+	"umask":         options.OctalOption{CustomErrFormat: "must be an octal value"},
+	"usermapping":   options.StringOption{},
+	"user_xattr":    options.NoValueOption{},
+	"windows_names": options.NoValueOption{},
 })

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type SysfsRule struct{}
@@ -34,7 +35,7 @@ func (r *SysfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "sysfs", sysfsOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "sysfs", sysfsOptions), nil
 }
 
-var sysfsOptions = rules.CommonOptions()
+var sysfsOptions = options.CommonOptions()

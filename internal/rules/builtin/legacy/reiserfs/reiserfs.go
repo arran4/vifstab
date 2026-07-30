@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 	"github.com/arran4/vifstab/internal/rules/builtin/legacy"
 	"github.com/arran4/vifstab/internal/rules/kernel"
 )
@@ -39,21 +40,21 @@ func (r *ReiserfsRule) Validate(ctx context.Context, api rules.API, entry *rules
 	// ReiserFS was removed in 6.13
 	issues := legacy.CheckFSVersion(ctx, api, entry, "reiserfs", kernel.Ver{}, kernel.Ver{Major: 6, Minor: 13, Patch: 0}, false, "", false)
 
-	optsIssues := rules.ValidateOptionsMap(ctx, api, entry, "reiserfs", reiserfsOptions)
+	optsIssues := options.ValidateOptionsMap(ctx, api, entry, "reiserfs", reiserfsOptions)
 	return append(issues, optsIssues...), nil
 }
 
-var reiserfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"conv":                   rules.NoValueOption{},
-	"hash":                   rules.EnumOption{Allowed: map[string]bool{"rupasov": true, "tea": true, "r5": true, "detect": true}},
-	"hashed_relocation":      rules.NoValueOption{},
-	"no_unhashed_relocation": rules.NoValueOption{},
-	"noborder":               rules.NoValueOption{},
-	"nolog":                  rules.NoValueOption{},
-	"notail":                 rules.NoValueOption{},
-	"replayonly":             rules.NoValueOption{},
-	"resize":                 rules.IntOption{},
-	"user_xattr":             rules.NoValueOption{},
-	"acl":                    rules.NoValueOption{},
-	"barrier":                rules.EnumOption{Allowed: map[string]bool{"none": true, "flush": true}},
+var reiserfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"conv":                   options.NoValueOption{},
+	"hash":                   options.EnumOption{Allowed: map[string]bool{"rupasov": true, "tea": true, "r5": true, "detect": true}},
+	"hashed_relocation":      options.NoValueOption{},
+	"no_unhashed_relocation": options.NoValueOption{},
+	"noborder":               options.NoValueOption{},
+	"nolog":                  options.NoValueOption{},
+	"notail":                 options.NoValueOption{},
+	"replayonly":             options.NoValueOption{},
+	"resize":                 options.IntOption{},
+	"user_xattr":             options.NoValueOption{},
+	"acl":                    options.NoValueOption{},
+	"barrier":                options.EnumOption{Allowed: map[string]bool{"none": true, "flush": true}},
 })

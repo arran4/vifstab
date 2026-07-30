@@ -1,3 +1,3 @@
 package vfat
 
-// Using options map[string]rules.OptionValidator for unified option handling.
+// Using options map[string]options.OptionValidator for unified option handling.

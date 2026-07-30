@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type Iso9660Rule struct{}
@@ -34,36 +35,36 @@ func (r *Iso9660Rule) Validate(ctx context.Context, api rules.API, entry *rules.
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "iso9660", iso9660Options), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "iso9660", iso9660Options), nil
 }
 
-var iso9660Options = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"norock":             rules.NoValueOption{},
-	"rock":               rules.NoValueOption{},
-	"nojoliet":           rules.NoValueOption{},
-	"joliet":             rules.NoValueOption{},
-	"check":              rules.EnumOption{Allowed: map[string]bool{"r": true, "relaxed": true, "s": true, "strict": true}},
-	"uid":                rules.UIDOption{},
-	"gid":                rules.GIDOption{},
-	"map":                rules.EnumOption{Allowed: map[string]bool{"n": true, "normal": true, "o": true, "off": true, "a": true, "acorn": true}},
-	"mode":               rules.OctalOption{},
-	"dmode":              rules.OctalOption{},
-	"umask":              rules.OctalOption{},
-	"unhide":             rules.NoValueOption{},
-	"nounhide":           rules.NoValueOption{},
-	"block":              rules.EnumOption{Allowed: map[string]bool{"512": true, "1024": true, "2048": true}, CustomErrMsg: "Invalid value '%s' for iso9660 mount option 'block' on line %d, must be 512, 1024, or 2048"},
-	"conv":               rules.StringOption{},
-	"cruft":              rules.NoValueOption{},
-	"nocruft":            rules.NoValueOption{},
-	"session":            rules.IntOption{},
-	"sbsector":           rules.IntOption{},
-	"iocharset":          rules.StringOption{},
-	"utf8":               rules.NoValueOption{},
-	"noutf8":             rules.NoValueOption{},
-	"overriderockperm":   rules.NoValueOption{},
-	"nooverriderockperm": rules.NoValueOption{},
-	"hide":               rules.NoValueOption{},
-	"nohide":             rules.NoValueOption{},
-	"showassoc":          rules.NoValueOption{},
-	"noshowassoc":        rules.NoValueOption{},
+var iso9660Options = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"norock":             options.NoValueOption{},
+	"rock":               options.NoValueOption{},
+	"nojoliet":           options.NoValueOption{},
+	"joliet":             options.NoValueOption{},
+	"check":              options.EnumOption{Allowed: map[string]bool{"r": true, "relaxed": true, "s": true, "strict": true}},
+	"uid":                options.UIDOption{},
+	"gid":                options.GIDOption{},
+	"map":                options.EnumOption{Allowed: map[string]bool{"n": true, "normal": true, "o": true, "off": true, "a": true, "acorn": true}},
+	"mode":               options.OctalOption{},
+	"dmode":              options.OctalOption{},
+	"umask":              options.OctalOption{},
+	"unhide":             options.NoValueOption{},
+	"nounhide":           options.NoValueOption{},
+	"block":              options.EnumOption{Allowed: map[string]bool{"512": true, "1024": true, "2048": true}, CustomErrMsg: "Invalid value '%s' for iso9660 mount option 'block' on line %d, must be 512, 1024, or 2048"},
+	"conv":               options.StringOption{},
+	"cruft":              options.NoValueOption{},
+	"nocruft":            options.NoValueOption{},
+	"session":            options.IntOption{},
+	"sbsector":           options.IntOption{},
+	"iocharset":          options.StringOption{},
+	"utf8":               options.NoValueOption{},
+	"noutf8":             options.NoValueOption{},
+	"overriderockperm":   options.NoValueOption{},
+	"nooverriderockperm": options.NoValueOption{},
+	"hide":               options.NoValueOption{},
+	"nohide":             options.NoValueOption{},
+	"showassoc":          options.NoValueOption{},
+	"noshowassoc":        options.NoValueOption{},
 })

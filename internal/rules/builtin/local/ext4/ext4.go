@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type Ext4Rule struct{}
@@ -36,52 +37,52 @@ func (r *Ext4Rule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "ext4", ext4Options), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "ext4", ext4Options), nil
 }
 
-var ext4Options = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"acl":          rules.NoValueOption{},
-	"noacl":        rules.NoValueOption{},
-	"bsddf":        rules.NoValueOption{},
-	"minixdf":      rules.NoValueOption{},
-	"check":        rules.EnumOption{Allowed: map[string]bool{"none": true, "nocheck": true}, CustomErrMsg: "Unsupported value '%s' for ext4 mount option 'check' on line %d (only 'none' or 'nocheck' are supported)"},
-	"nocheck":      rules.NoValueOption{},
-	"debug":        rules.NoValueOption{},
-	"errors":       rules.EnumOption{Allowed: map[string]bool{"continue": true, "remount-ro": true, "panic": true}},
-	"grpid":        rules.NoValueOption{},
-	"bsdgroups":    rules.NoValueOption{},
-	"nogrpid":      rules.NoValueOption{},
-	"sysvgroups":   rules.NoValueOption{},
-	"grpquota":     rules.NoValueOption{},
-	"usrquota":     rules.NoValueOption{},
-	"quota":        rules.NoValueOption{},
-	"noquota":      rules.NoValueOption{},
-	"nouid32":      rules.NoValueOption{},
-	"oldalloc":     rules.NoValueOption{},
-	"orlov":        rules.NoValueOption{},
-	"resgid":       rules.IntOption{},
-	"resuid":       rules.IntOption{},
-	"sb":           rules.IntOption{},
-	"user_xattr":   rules.NoValueOption{},
-	"nouser_xattr": rules.NoValueOption{},
+var ext4Options = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"acl":          options.NoValueOption{},
+	"noacl":        options.NoValueOption{},
+	"bsddf":        options.NoValueOption{},
+	"minixdf":      options.NoValueOption{},
+	"check":        options.EnumOption{Allowed: map[string]bool{"none": true, "nocheck": true}, CustomErrMsg: "Unsupported value '%s' for ext4 mount option 'check' on line %d (only 'none' or 'nocheck' are supported)"},
+	"nocheck":      options.NoValueOption{},
+	"debug":        options.NoValueOption{},
+	"errors":       options.EnumOption{Allowed: map[string]bool{"continue": true, "remount-ro": true, "panic": true}},
+	"grpid":        options.NoValueOption{},
+	"bsdgroups":    options.NoValueOption{},
+	"nogrpid":      options.NoValueOption{},
+	"sysvgroups":   options.NoValueOption{},
+	"grpquota":     options.NoValueOption{},
+	"usrquota":     options.NoValueOption{},
+	"quota":        options.NoValueOption{},
+	"noquota":      options.NoValueOption{},
+	"nouid32":      options.NoValueOption{},
+	"oldalloc":     options.NoValueOption{},
+	"orlov":        options.NoValueOption{},
+	"resgid":       options.IntOption{},
+	"resuid":       options.IntOption{},
+	"sb":           options.IntOption{},
+	"user_xattr":   options.NoValueOption{},
+	"nouser_xattr": options.NoValueOption{},
 
-	"journal_dev":  rules.IntOption{},
-	"journal_path": rules.StringOption{},
-	"norecovery":   rules.NoValueOption{},
-	"noload":       rules.NoValueOption{},
-	"data":         rules.EnumOption{Allowed: map[string]bool{"journal": true, "ordered": true, "writeback": true}},
-	"data_err":     rules.EnumOption{Allowed: map[string]bool{"abort": true, "ignore": true}},
-	"barrier":      rules.EnumOption{Allowed: map[string]bool{"0": true, "1": true}},
-	"commit":       rules.IntOption{},
-	"jqfmt":        rules.EnumOption{Allowed: map[string]bool{"vfsold": true, "vfsv0": true, "vfsv1": true}},
-	"usrjquota":    rules.StringOption{},
-	"grpjquota":    rules.StringOption{},
+	"journal_dev":  options.IntOption{},
+	"journal_path": options.StringOption{},
+	"norecovery":   options.NoValueOption{},
+	"noload":       options.NoValueOption{},
+	"data":         options.EnumOption{Allowed: map[string]bool{"journal": true, "ordered": true, "writeback": true}},
+	"data_err":     options.EnumOption{Allowed: map[string]bool{"abort": true, "ignore": true}},
+	"barrier":      options.EnumOption{Allowed: map[string]bool{"0": true, "1": true}},
+	"commit":       options.IntOption{},
+	"jqfmt":        options.EnumOption{Allowed: map[string]bool{"vfsold": true, "vfsv0": true, "vfsv1": true}},
+	"usrjquota":    options.StringOption{},
+	"grpjquota":    options.StringOption{},
 
-	"journal_checksum":     rules.NoValueOption{},
-	"nojournal_checksum":   rules.NoValueOption{},
-	"journal_async_commit": rules.NoValueOption{},
-	"nobarrier":            rules.NoValueOption{},
-	"inode_readahead_blks": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"journal_checksum":     options.NoValueOption{},
+	"nojournal_checksum":   options.NoValueOption{},
+	"journal_async_commit": options.NoValueOption{},
+	"nobarrier":            options.NoValueOption{},
+	"inode_readahead_blks": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{
@@ -112,12 +113,12 @@ var ext4Options = rules.MergeOptions(rules.CommonOptions(), map[string]rules.Opt
 		}
 		return nil
 	}),
-	"stripe":          rules.IntOption{},
-	"delalloc":        rules.NoValueOption{},
-	"nodelalloc":      rules.NoValueOption{},
-	"max_batch_time":  rules.IntOption{},
-	"min_batch_time":  rules.IntOption{},
-	"journal_ioprio": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"stripe":          options.IntOption{},
+	"delalloc":        options.NoValueOption{},
+	"nodelalloc":      options.NoValueOption{},
+	"max_batch_time":  options.IntOption{},
+	"min_batch_time":  options.IntOption{},
+	"journal_ioprio": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{
@@ -148,19 +149,19 @@ var ext4Options = rules.MergeOptions(rules.CommonOptions(), map[string]rules.Opt
 		}
 		return nil
 	}),
-	"abort":            rules.NoValueOption{},
-	"auto_da_alloc":    rules.NoValueOption{},
-	"noauto_da_alloc":  rules.NoValueOption{},
-	"noinit_itable":    rules.NoValueOption{},
-	"init_itable":      rules.IntOption{},
-	"discard":          rules.NoValueOption{},
-	"nodiscard":        rules.NoValueOption{},
-	"block_validity":   rules.NoValueOption{},
-	"noblock_validity": rules.NoValueOption{},
-	"dioread_lock":     rules.NoValueOption{},
-	"dioread_nolock":   rules.NoValueOption{},
-	"max_dir_size_kb":  rules.IntOption{},
-	"i_version":        rules.NoValueOption{},
-	"nombcache":        rules.NoValueOption{},
-	"prjquota":         rules.NoValueOption{},
+	"abort":            options.NoValueOption{},
+	"auto_da_alloc":    options.NoValueOption{},
+	"noauto_da_alloc":  options.NoValueOption{},
+	"noinit_itable":    options.NoValueOption{},
+	"init_itable":      options.IntOption{},
+	"discard":          options.NoValueOption{},
+	"nodiscard":        options.NoValueOption{},
+	"block_validity":   options.NoValueOption{},
+	"noblock_validity": options.NoValueOption{},
+	"dioread_lock":     options.NoValueOption{},
+	"dioread_nolock":   options.NoValueOption{},
+	"max_dir_size_kb":  options.IntOption{},
+	"i_version":        options.NoValueOption{},
+	"nombcache":        options.NoValueOption{},
+	"prjquota":         options.NoValueOption{},
 })

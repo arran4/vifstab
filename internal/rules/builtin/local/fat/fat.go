@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type FatRule struct{}
@@ -35,38 +36,38 @@ func (r *FatRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "fat", fatOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "fat", fatOptions), nil
 }
 
-var fatOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"blocksize": rules.EnumOption{
+var fatOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"blocksize": options.EnumOption{
 		Allowed:      map[string]bool{"512": true, "1024": true, "2048": true},
 		CustomErrMsg: "Invalid value '%s' for fat mount option 'blocksize' on line %d (only 512, 1024, or 2048 are supported)",
 	},
-	"uid":         rules.UIDOption{},
-	"gid":         rules.GIDOption{},
-	"umask":       rules.OctalOption{},
-	"dmask":       rules.OctalOption{},
-	"fmask":       rules.OctalOption{},
-	"allow_utime": rules.OctalOption{},
-	"check": rules.EnumOption{
+	"uid":         options.UIDOption{},
+	"gid":         options.GIDOption{},
+	"umask":       options.OctalOption{},
+	"dmask":       options.OctalOption{},
+	"fmask":       options.OctalOption{},
+	"allow_utime": options.OctalOption{},
+	"check": options.EnumOption{
 		Allowed:      map[string]bool{"s": true, "strict": true, "r": true, "relaxed": true, "n": true, "normal": true},
 		CustomErrMsg: "Invalid value '%s' for fat mount option 'check' on line %d (only 's', 'r', or 'n' are supported)",
 	},
-	"codepage":    rules.IntOption{},
-	"conv":        rules.StringOption{},
-	"cvf_format":  rules.StringOption{},
-	"cvf_option":  rules.StringOption{},
-	"debug":       rules.NoValueOption{},
-	"discard":     rules.NoValueOption{},
-	"dos1xfloppy": rules.BoolOption{},
-	"errors":      rules.EnumOption{Allowed: map[string]bool{"panic": true, "continue": true, "remount-ro": true}},
-	"fat": rules.EnumOption{
+	"codepage":    options.IntOption{},
+	"conv":        options.StringOption{},
+	"cvf_format":  options.StringOption{},
+	"cvf_option":  options.StringOption{},
+	"debug":       options.NoValueOption{},
+	"discard":     options.NoValueOption{},
+	"dos1xfloppy": options.BoolOption{},
+	"errors":      options.EnumOption{Allowed: map[string]bool{"panic": true, "continue": true, "remount-ro": true}},
+	"fat": options.EnumOption{
 		Allowed:      map[string]bool{"12": true, "16": true, "32": true},
 		CustomErrMsg: "Invalid value '%s' for fat mount option 'fat' on line %d (only 12, 16, or 32 are supported)",
 	},
-	"iocharset": rules.StringOption{},
-	"nfs": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"iocharset": options.StringOption{},
+	"nfs": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if hasVal && val != "" {
 			if val != "stale_rw" && val != "nostale_ro" {
 				return []rules.ValidationIssue{
@@ -80,18 +81,18 @@ var fatOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.Opti
 		}
 		return nil
 	}),
-	"tz": rules.EnumOption{
+	"tz": options.EnumOption{
 		Allowed:      map[string]bool{"UTC": true},
 		CustomErrMsg: "Invalid value '%s' for fat mount option 'tz' on line %d (only 'UTC' is supported)",
 	},
-	"time_offset":   rules.IntOption{},
-	"quiet":         rules.NoValueOption{},
-	"rodir":         rules.NoValueOption{},
-	"showexec":      rules.NoValueOption{},
-	"sys_immutable": rules.NoValueOption{},
-	"flush":         rules.NoValueOption{},
-	"usefree":       rules.NoValueOption{},
-	"dots":          rules.NoValueOption{},
-	"nodots":        rules.NoValueOption{},
-	"dotsOK":        rules.BoolOption{},
+	"time_offset":   options.IntOption{},
+	"quiet":         options.NoValueOption{},
+	"rodir":         options.NoValueOption{},
+	"showexec":      options.NoValueOption{},
+	"sys_immutable": options.NoValueOption{},
+	"flush":         options.NoValueOption{},
+	"usefree":       options.NoValueOption{},
+	"dots":          options.NoValueOption{},
+	"nodots":        options.NoValueOption{},
+	"dotsOK":        options.BoolOption{},
 })

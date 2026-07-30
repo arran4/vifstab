@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type UsbfsRule struct{}
@@ -34,17 +35,17 @@ func (r *UsbfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "usbfs", usbfsOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "usbfs", usbfsOptions), nil
 }
 
-var usbfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"devuid":   rules.UIDOption{},
-	"busuid":   rules.UIDOption{},
-	"listuid":  rules.UIDOption{},
-	"devgid":   rules.GIDOption{},
-	"busgid":   rules.GIDOption{},
-	"listgid":  rules.GIDOption{},
-	"devmode":  rules.OctalOption{},
-	"busmode":  rules.OctalOption{},
-	"listmode": rules.OctalOption{},
+var usbfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"devuid":   options.UIDOption{},
+	"busuid":   options.UIDOption{},
+	"listuid":  options.UIDOption{},
+	"devgid":   options.GIDOption{},
+	"busgid":   options.GIDOption{},
+	"listgid":  options.GIDOption{},
+	"devmode":  options.OctalOption{},
+	"busmode":  options.OctalOption{},
+	"listmode": options.OctalOption{},
 })

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type OverlayRule struct{}
@@ -35,7 +36,7 @@ func (r *OverlayRule) Validate(ctx context.Context, api rules.API, entry *rules.
 		return nil, nil
 	}
 
-	issues := rules.ValidateOptionsMap(ctx, api, entry, "overlay", overlayOptions)
+	issues := options.ValidateOptionsMap(ctx, api, entry, "overlay", overlayOptions)
 
 	// Check cross-option conflict: index=off,nfs_export=on
 	options := rules.SplitOptions(entry.Fields[3])
@@ -60,16 +61,16 @@ func (r *OverlayRule) Validate(ctx context.Context, api rules.API, entry *rules.
 	return issues, nil
 }
 
-var overlayOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"lowerdir":     rules.StringOption{},
-	"upperdir":     rules.StringOption{},
-	"workdir":      rules.StringOption{},
-	"userxattr":    rules.NoValueOption{},
-	"redirect_dir": rules.EnumOption{Allowed: map[string]bool{"on": true, "off": true, "follow": true, "nofollow": true}},
-	"index":        rules.EnumOption{Allowed: map[string]bool{"on": true, "off": true}},
-	"uuid":         rules.EnumOption{Allowed: map[string]bool{"on": true, "off": true}},
-	"nfs_export":   rules.EnumOption{Allowed: map[string]bool{"on": true, "off": true}},
-	"xino":         rules.EnumOption{Allowed: map[string]bool{"on": true, "off": true, "auto": true}},
-	"metacopy":     rules.EnumOption{Allowed: map[string]bool{"on": true, "off": true}},
-	"volatile":     rules.NoValueOption{},
+var overlayOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"lowerdir":     options.StringOption{},
+	"upperdir":     options.StringOption{},
+	"workdir":      options.StringOption{},
+	"userxattr":    options.NoValueOption{},
+	"redirect_dir": options.EnumOption{Allowed: map[string]bool{"on": true, "off": true, "follow": true, "nofollow": true}},
+	"index":        options.EnumOption{Allowed: map[string]bool{"on": true, "off": true}},
+	"uuid":         options.EnumOption{Allowed: map[string]bool{"on": true, "off": true}},
+	"nfs_export":   options.EnumOption{Allowed: map[string]bool{"on": true, "off": true}},
+	"xino":         options.EnumOption{Allowed: map[string]bool{"on": true, "off": true, "auto": true}},
+	"metacopy":     options.EnumOption{Allowed: map[string]bool{"on": true, "off": true}},
+	"volatile":     options.NoValueOption{},
 })

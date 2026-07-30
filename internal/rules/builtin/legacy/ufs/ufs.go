@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type UfsRule struct{}
@@ -34,14 +35,14 @@ func (r *UfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "ufs", ufsOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "ufs", ufsOptions), nil
 }
 
-var ufsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"ufstype": rules.EnumOption{Allowed: map[string]bool{
+var ufsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"ufstype": options.EnumOption{Allowed: map[string]bool{
 		"old": true, "44bsd": true, "ufs2": true, "5xbsd": true, "sun": true, "sunx86": true, "hp": true, "nextstep": true, "nextstep-cd": true, "openstep": true,
 	}},
-	"onerror": rules.EnumOption{Allowed: map[string]bool{
+	"onerror": options.EnumOption{Allowed: map[string]bool{
 		"panic": true, "lock": true, "umount": true, "repair": true,
 	}},
 })

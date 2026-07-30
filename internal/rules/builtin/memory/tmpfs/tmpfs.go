@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type TmpfsRule struct{}
@@ -35,21 +36,21 @@ func (r *TmpfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 		return nil, nil
 	}
 
-	return rules.ValidateOptionsMap(ctx, api, entry, "tmpfs", tmpfsOptions), nil
+	return options.ValidateOptionsMap(ctx, api, entry, "tmpfs", tmpfsOptions), nil
 }
 
-var tmpfsOptions = rules.MergeOptions(rules.CommonOptions(), map[string]rules.OptionValidator{
-	"size":      rules.StringOption{},
-	"nr_blocks": rules.StringOption{},
-	"nr_inodes": rules.StringOption{},
-	"noswap":    rules.NoValueOption{},
-	"mode":      rules.OctalOption{},
-	"gid":       rules.GIDOption{},
-	"uid":       rules.UIDOption{},
-	"huge": rules.EnumOption{
+var tmpfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"size":      options.StringOption{},
+	"nr_blocks": options.StringOption{},
+	"nr_inodes": options.StringOption{},
+	"noswap":    options.NoValueOption{},
+	"mode":      options.OctalOption{},
+	"gid":       options.GIDOption{},
+	"uid":       options.UIDOption{},
+	"huge": options.EnumOption{
 		Allowed: map[string]bool{"never": true, "always": true, "within_size": true, "advise": true, "deny": true, "force": true},
 	},
-	"mpol": rules.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"mpol": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{
