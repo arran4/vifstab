@@ -44,4 +44,6 @@ var ubifsOptions = options.MergeOptions(options.CommonOptions(), map[string]opti
 	"chk_data_crc":    options.NoValueOption{},
 	"no_chk_data_crc": options.NoValueOption{},
 	"compr":           options.EnumOption{Allowed: map[string]bool{"none": true, "lzo": true, "zlib": true}},
+	"auth_key":        options.StringOption{},
+	"auth_hash_name":  options.StringOption{},
 })

@@ -1,9 +1,11 @@
 -- input --
 ubi0:rootfs /mnt/ubifs ubifs compr=invalid,unknownopt 0 0
-ubi0:rootfs /mnt/ubifs2 ubifs compr 0 0
+ubi0:rootfs /mnt/ubifs2 ubifs compr,auth_key,auth_hash_name 0 0
 -- cache --
 proc_filesystems=ubifs
 -- expected/validationerrors.txt --
 Invalid value 'invalid' for ubifs mount option 'compr' on line 1
 Unknown ubifs mount option 'unknownopt' on line 1
 Missing value for ubifs mount option 'compr' on line 2
+Missing value for ubifs mount option 'auth_key' on line 2
+Missing value for ubifs mount option 'auth_hash_name' on line 2
