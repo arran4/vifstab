@@ -2,7 +2,7 @@ test: invalid ext3 options
 -- cache --
 proc_filesystems=ext3
 -- kernel --
-6.5.0
+3.0.0
 -- input --
 /dev/sda1 /mnt/ext3 ext3 invalid_opt,data=invalid,commit=notanint,jqfmt=value,barrier=2 0 0
 -- issues --

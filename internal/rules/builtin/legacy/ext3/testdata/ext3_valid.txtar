@@ -3,7 +3,7 @@ test: valid ext3 options
 file_exists:/dev/sda1=true
 proc_filesystems=ext3
 -- kernel --
-6.5.0
+3.0.0
 -- input --
 /dev/sda1 /mnt/ext3 ext3 defaults,rw,noatime,data=ordered,commit=5,usrjquota=aquota.user 0 0
 -- issues --
