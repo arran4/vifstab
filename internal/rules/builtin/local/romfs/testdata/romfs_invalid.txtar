@@ -1,0 +1,4 @@
+-- input --
+/dev/sda1 /mnt/romfs romfs invalid_opt 0 0
+-- issues --
+Error: Unknown romfs mount option 'invalid_opt' on line 1
