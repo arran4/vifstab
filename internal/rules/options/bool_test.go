@@ -18,7 +18,7 @@ func TestBoolOption(t *testing.T) {
 	for _, val := range validValues {
 		t.Run("valid value "+val, func(t *testing.T) {
 			hasVal := val != ""
-			issues := opt.ValidateOption(ctx, api, entry, "sysfs", "show", val, hasVal)
+			issues := opt.ValidateOption(ctx, api, entry, "sysfs", "show", val, hasVal, nil)
 			if len(issues) != 0 {
 				t.Errorf("expected 0 issues for %q, got %d", val, len(issues))
 			}
@@ -26,11 +26,23 @@ func TestBoolOption(t *testing.T) {
 	}
 
 	t.Run("invalid boolean value", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "sysfs", "show", "maybe", true)
+		issues := opt.ValidateOption(ctx, api, entry, "sysfs", "show", "maybe", true, nil)
 		if len(issues) != 1 {
 			t.Fatalf("expected 1 issue, got %d", len(issues))
 		}
 		expectedMsg := "Invalid value 'maybe' for sysfs mount option 'show' on line 12, must be a boolean (0, 1, yes, no, true, false)"
+		if issues[0].Message != expectedMsg {
+			t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
+		}
+	})
+
+	t.Run("custom bool sets", func(t *testing.T) {
+		customOpt := options.BoolOption{Sets: options.BoolSetYesNo}
+		issues := customOpt.ValidateOption(ctx, api, entry, "sysfs", "show", "true", true, nil)
+		if len(issues) != 1 {
+			t.Fatalf("expected 1 issue for 'true' when only yes/no allowed, got %d", len(issues))
+		}
+		expectedMsg := "Invalid value 'true' for sysfs mount option 'show' on line 12, must be a boolean (yes, no)"
 		if issues[0].Message != expectedMsg {
 			t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
 		}

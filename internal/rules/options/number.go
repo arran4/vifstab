@@ -9,12 +9,9 @@ import (
 )
 
 // IntOption validates that an option has an integer value.
-type IntOption struct {
-	Min *int64
-	Max *int64
-}
+type IntOption struct{}
 
-func (i IntOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+func (i IntOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
 	if !hasVal || val == "" {
 		return []rules.ValidationIssue{
 			{
@@ -24,8 +21,7 @@ func (i IntOption) ValidateOption(ctx context.Context, api rules.API, entry *rul
 			},
 		}
 	}
-	num, err := strconv.ParseInt(val, 10, 64)
-	if err != nil {
+	if _, err := strconv.ParseInt(val, 10, 64); err != nil {
 		return []rules.ValidationIssue{
 			{
 				Message: fmt.Sprintf("Invalid value '%s' for %s mount option '%s' on line %d, must be an integer", val, fsName, key, entry.LineNum),
@@ -34,6 +30,35 @@ func (i IntOption) ValidateOption(ctx context.Context, api rules.API, entry *rul
 			},
 		}
 	}
+	return nil
+}
+
+// IntRangeOption validates that an option has an integer value within specified Min/Max bounds.
+type IntRangeOption struct {
+	Min *int64
+	Max *int64
+}
+
+// NewIntRange creates an IntRangeOption with both minimum and maximum bounds.
+func NewIntRange(min, max int64) IntRangeOption {
+	return IntRangeOption{Min: &min, Max: &max}
+}
+
+// NewIntMin creates an IntRangeOption with a minimum bound.
+func NewIntMin(min int64) IntRangeOption {
+	return IntRangeOption{Min: &min}
+}
+
+// NewIntMax creates an IntRangeOption with a maximum bound.
+func NewIntMax(max int64) IntRangeOption {
+	return IntRangeOption{Max: &max}
+}
+
+func (i IntRangeOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
+	if issues := (IntOption{}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts); len(issues) > 0 {
+		return issues
+	}
+	num, _ := strconv.ParseInt(val, 10, 64)
 	if i.Min != nil && num < *i.Min {
 		return []rules.ValidationIssue{
 			{
@@ -60,7 +85,7 @@ type OctalOption struct {
 	CustomErrFormat string
 }
 
-func (o OctalOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+func (o OctalOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
 	if !hasVal || val == "" {
 		return []rules.ValidationIssue{
 			{

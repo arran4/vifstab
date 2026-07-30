@@ -14,7 +14,7 @@ type UIDOption struct {
 	Level              rules.IssueLevel
 }
 
-func (u UIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+func (u UIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
 	if !hasVal || val == "" {
 		return []rules.ValidationIssue{
 			{
@@ -60,7 +60,7 @@ type GIDOption struct {
 	Level               rules.IssueLevel
 }
 
-func (g GIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+func (g GIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
 	if !hasVal || val == "" {
 		return []rules.ValidationIssue{
 			{
@@ -103,19 +103,19 @@ func (g GIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rul
 // OptionalUIDOption allows no value or a UID integer value.
 type OptionalUIDOption struct{}
 
-func (o OptionalUIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+func (o OptionalUIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
 	if !hasVal || val == "" {
 		return nil
 	}
-	return (UIDOption{}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal)
+	return (UIDOption{}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
 }
 
 // OptionalGIDOption allows no value or a GID integer value.
 type OptionalGIDOption struct{}
 
-func (o OptionalGIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+func (o OptionalGIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
 	if !hasVal || val == "" {
 		return nil
 	}
-	return (GIDOption{}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal)
+	return (GIDOption{}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
 }

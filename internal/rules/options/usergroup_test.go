@@ -17,14 +17,14 @@ func TestUIDOption(t *testing.T) {
 	opt := options.UIDOption{}
 
 	t.Run("existing UID", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "uid", "1000", true)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "uid", "1000", true, nil)
 		if len(issues) != 0 {
 			t.Errorf("expected 0 issues, got %d", len(issues))
 		}
 	})
 
 	t.Run("non-existing UID", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "uid", "9999", true)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "uid", "9999", true, nil)
 		if len(issues) != 1 {
 			t.Fatalf("expected 1 issue, got %d", len(issues))
 		}
@@ -35,7 +35,7 @@ func TestUIDOption(t *testing.T) {
 	})
 
 	t.Run("invalid UID format", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "uid", "notanint", true)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "uid", "notanint", true, nil)
 		if len(issues) != 1 {
 			t.Fatalf("expected 1 issue, got %d", len(issues))
 		}
@@ -55,14 +55,14 @@ func TestGIDOption(t *testing.T) {
 	opt := options.GIDOption{}
 
 	t.Run("existing GID", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "gid", "1000", true)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "gid", "1000", true, nil)
 		if len(issues) != 0 {
 			t.Errorf("expected 0 issues, got %d", len(issues))
 		}
 	})
 
 	t.Run("non-existing GID", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "gid", "9999", true)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "gid", "9999", true, nil)
 		if len(issues) != 1 {
 			t.Fatalf("expected 1 issue, got %d", len(issues))
 		}
@@ -80,14 +80,14 @@ func TestOptionalUIDOption(t *testing.T) {
 	opt := options.OptionalUIDOption{}
 
 	t.Run("no value provided", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "uid", "", false)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "uid", "", false, nil)
 		if len(issues) != 0 {
 			t.Errorf("expected 0 issues, got %d", len(issues))
 		}
 	})
 
 	t.Run("valid value provided", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "uid", "1000", true)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "uid", "1000", true, nil)
 		if len(issues) != 0 {
 			t.Errorf("expected 0 issues, got %d", len(issues))
 		}

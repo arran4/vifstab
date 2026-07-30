@@ -15,14 +15,14 @@ func TestStringOption(t *testing.T) {
 	opt := options.StringOption{}
 
 	t.Run("valid string option with value", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "label", "root", true)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "label", "root", true, nil)
 		if len(issues) != 0 {
 			t.Errorf("expected no issues, got %d", len(issues))
 		}
 	})
 
 	t.Run("missing value", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "label", "", false)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "label", "", false, nil)
 		if len(issues) != 1 {
 			t.Fatalf("expected 1 issue, got %d", len(issues))
 		}
@@ -40,14 +40,14 @@ func TestOptionalStringOption(t *testing.T) {
 	opt := options.OptionalStringOption{}
 
 	t.Run("allows empty value", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "btrfs", "compress", "", false)
+		issues := opt.ValidateOption(ctx, api, entry, "btrfs", "compress", "", false, nil)
 		if len(issues) != 0 {
 			t.Errorf("expected no issues, got %d", len(issues))
 		}
 	})
 
 	t.Run("allows non-empty value", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "btrfs", "compress", "zstd", true)
+		issues := opt.ValidateOption(ctx, api, entry, "btrfs", "compress", "zstd", true, nil)
 		if len(issues) != 0 {
 			t.Errorf("expected no issues, got %d", len(issues))
 		}

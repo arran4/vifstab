@@ -220,7 +220,7 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 			}
 		default:
 			if validator != nil {
-				issues = append(issues, validator.ValidateOption(ctx, api, entry, "XFS", key, val, hasEquals)...)
+				issues = append(issues, validator.ValidateOption(ctx, api, entry, "XFS", key, val, hasEquals, nil)...)
 			}
 		}
 	}

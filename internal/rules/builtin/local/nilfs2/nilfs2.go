@@ -72,7 +72,7 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 		}
 
 		if validator != nil {
-			issues = append(issues, validator.ValidateOption(ctx, api, entry, "nilfs2", key, val, hasEquals)...)
+			issues = append(issues, validator.ValidateOption(ctx, api, entry, "nilfs2", key, val, hasEquals, nil)...)
 		}
 
 		if key == "cp" {
@@ -99,7 +99,7 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 
 type nilfs2NoValueOption struct{}
 
-func (nilfs2NoValueOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+func (nilfs2NoValueOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 	if hasVal && val != "" {
 		return []rules.ValidationIssue{
 			{
@@ -115,7 +115,7 @@ func (nilfs2NoValueOption) ValidateOption(ctx context.Context, api rules.API, en
 var nilfs2Options = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
 	"barrier":   nilfs2NoValueOption{},
 	"nobarrier": nilfs2NoValueOption{},
-	"errors": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"errors": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{
@@ -137,7 +137,7 @@ var nilfs2Options = options.MergeOptions(options.CommonOptions(), map[string]opt
 		return nil
 	}),
 	"cp": options.StringOption{},
-	"order": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"order": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{

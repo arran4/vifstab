@@ -67,7 +67,7 @@ var fatOptions = options.MergeOptions(options.CommonOptions(), map[string]option
 		CustomErrMsg: "Invalid value '%s' for fat mount option 'fat' on line %d (only 12, 16, or 32 are supported)",
 	},
 	"iocharset": options.StringOption{},
-	"nfs": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"nfs": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if hasVal && val != "" {
 			if val != "stale_rw" && val != "nostale_ro" {
 				return []rules.ValidationIssue{

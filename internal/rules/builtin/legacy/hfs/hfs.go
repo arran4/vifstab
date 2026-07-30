@@ -40,7 +40,7 @@ func (r *HfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 }
 
 var hfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
-	"creator": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"creator": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{
@@ -61,7 +61,7 @@ var hfsOptions = options.MergeOptions(options.CommonOptions(), map[string]option
 		}
 		return nil
 	}),
-	"type": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"type": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{

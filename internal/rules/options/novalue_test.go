@@ -15,14 +15,14 @@ func TestNoValueOption(t *testing.T) {
 	opt := options.NoValueOption{}
 
 	t.Run("valid option with no value", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "ro", "", false)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "ro", "", false, nil)
 		if len(issues) != 0 {
 			t.Errorf("expected no issues, got %d", len(issues))
 		}
 	})
 
 	t.Run("invalid option with value provided", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "ro", "true", true)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "ro", "true", true, nil)
 		if len(issues) != 1 {
 			t.Fatalf("expected 1 issue, got %d", len(issues))
 		}
@@ -33,7 +33,7 @@ func TestNoValueOption(t *testing.T) {
 	})
 
 	t.Run("x- prefix options allow values", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "x-custom", "value", true)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "x-custom", "value", true, nil)
 		if len(issues) != 0 {
 			t.Errorf("expected 0 issues for x- prefix option, got %d", len(issues))
 		}

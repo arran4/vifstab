@@ -13,7 +13,7 @@ type EnumOption struct {
 	CustomErrMsg string
 }
 
-func (e EnumOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+func (e EnumOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
 	if !hasVal || val == "" {
 		return []rules.ValidationIssue{
 			{

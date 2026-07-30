@@ -17,14 +17,14 @@ func TestEnumOption(t *testing.T) {
 	}
 
 	t.Run("valid enum value", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "errors", "remount-ro", true)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "errors", "remount-ro", true, nil)
 		if len(issues) != 0 {
 			t.Errorf("expected 0 issues, got %d", len(issues))
 		}
 	})
 
 	t.Run("invalid enum value", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "errors", "ignore", true)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "errors", "ignore", true, nil)
 		if len(issues) != 1 {
 			t.Fatalf("expected 1 issue, got %d", len(issues))
 		}
@@ -35,7 +35,7 @@ func TestEnumOption(t *testing.T) {
 	})
 
 	t.Run("missing value", func(t *testing.T) {
-		issues := opt.ValidateOption(ctx, api, entry, "ext4", "errors", "", false)
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "errors", "", false, nil)
 		if len(issues) != 1 {
 			t.Fatalf("expected 1 issue, got %d", len(issues))
 		}

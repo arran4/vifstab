@@ -66,7 +66,7 @@ func TestValidateOptionsMap(t *testing.T) {
 
 	t.Run("option validator func adapter", func(t *testing.T) {
 		customCalled := false
-		customOpt := options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+		customOpt := options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 			customCalled = true
 			return nil
 		})

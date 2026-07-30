@@ -50,7 +50,7 @@ var tmpfsOptions = options.MergeOptions(options.CommonOptions(), map[string]opti
 	"huge": options.EnumOption{
 		Allowed: map[string]bool{"never": true, "always": true, "within_size": true, "advise": true, "deny": true, "force": true},
 	},
-	"mpol": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"mpol": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{

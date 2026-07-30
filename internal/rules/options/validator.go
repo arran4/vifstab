@@ -8,16 +8,23 @@ import (
 	"github.com/arran4/vifstab/internal/rules"
 )
 
+// OptionState holds the key, value, and presence flag of a parsed mount option.
+type OptionState struct {
+	Key    string
+	Value  string
+	HasVal bool
+}
+
 // OptionValidator defines the interface for validating mount options.
 type OptionValidator interface {
-	ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue
+	ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue
 }
 
 // OptionValidatorFunc allows plain functions to satisfy OptionValidator.
-type OptionValidatorFunc func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue
+type OptionValidatorFunc func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue
 
-func (f OptionValidatorFunc) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
-	return f(ctx, api, entry, fsName, key, val, hasVal)
+func (f OptionValidatorFunc) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
+	return f(ctx, api, entry, fsName, key, val, hasVal, allOpts)
 }
 
 // MergeOptions merges multiple OptionValidator maps into a single map.
@@ -39,6 +46,18 @@ func ValidateOptionsMap(ctx context.Context, api rules.API, entry *rules.FstabEn
 
 	var issues []rules.ValidationIssue
 	parsedOpts := rules.SplitOptions(entry.Fields[3])
+
+	allOpts := make(map[string]OptionState, len(parsedOpts))
+	for _, opt := range parsedOpts {
+		parts := strings.SplitN(opt, "=", 2)
+		key := parts[0]
+		var val string
+		hasVal := len(parts) > 1
+		if hasVal {
+			val = parts[1]
+		}
+		allOpts[key] = OptionState{Key: key, Value: val, HasVal: hasVal}
+	}
 
 	for _, opt := range parsedOpts {
 		parts := strings.SplitN(opt, "=", 2)
@@ -62,7 +81,7 @@ func ValidateOptionsMap(ctx context.Context, api rules.API, entry *rules.FstabEn
 		}
 
 		if validator != nil {
-			issues = append(issues, validator.ValidateOption(ctx, api, entry, fsName, key, val, hasVal)...)
+			issues = append(issues, validator.ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)...)
 		}
 	}
 

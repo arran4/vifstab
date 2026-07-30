@@ -48,7 +48,7 @@ var affsOptions = options.MergeOptions(options.CommonOptions(), map[string]optio
 	"protect":  options.NoValueOption{},
 	"usemp":    options.NoValueOption{},
 	"prefix":   options.StringOption{},
-	"volume": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"volume": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{

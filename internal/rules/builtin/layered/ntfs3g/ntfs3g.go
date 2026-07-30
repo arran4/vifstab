@@ -45,9 +45,9 @@ var ntfs3gOptions = options.MergeOptions(options.CommonOptions(), map[string]opt
 	"big_writes":  options.NoValueOption{},
 	"compression": options.NoValueOption{},
 	"debug":       options.NoValueOption{},
-	"delay_mtime": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"delay_mtime": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if hasVal && val != "" {
-			return (options.IntOption{}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal)
+			return (options.IntOption{}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, nil)
 		}
 		return nil
 	}),
@@ -57,7 +57,7 @@ var ntfs3gOptions = options.MergeOptions(options.CommonOptions(), map[string]opt
 	"force":          options.NoValueOption{},
 	"hide_dot_files": options.NoValueOption{},
 	"hide_hid_files": options.NoValueOption{},
-	"ignore_case": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"ignore_case": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if entry.Fields[2] != "lowntfs-3g" {
 			return []rules.ValidationIssue{
 				{
@@ -85,7 +85,7 @@ var ntfs3gOptions = options.MergeOptions(options.CommonOptions(), map[string]opt
 		Allowed:      map[string]bool{"interix": true, "wsl": true},
 		CustomErrMsg: "Invalid value '%s' for ntfs-3g mount option 'special_files' on line %d (must be 'interix' or 'wsl')",
 	},
-	"streams_interface": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"streams_interface": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{

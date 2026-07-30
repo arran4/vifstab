@@ -82,7 +82,7 @@ var ext4Options = options.MergeOptions(options.CommonOptions(), map[string]optio
 	"nojournal_checksum":   options.NoValueOption{},
 	"journal_async_commit": options.NoValueOption{},
 	"nobarrier":            options.NoValueOption{},
-	"inode_readahead_blks": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"inode_readahead_blks": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{
@@ -118,7 +118,7 @@ var ext4Options = options.MergeOptions(options.CommonOptions(), map[string]optio
 	"nodelalloc":      options.NoValueOption{},
 	"max_batch_time":  options.IntOption{},
 	"min_batch_time":  options.IntOption{},
-	"journal_ioprio": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"journal_ioprio": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{

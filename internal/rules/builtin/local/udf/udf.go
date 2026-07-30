@@ -41,7 +41,7 @@ func (r *UdfRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 }
 
 var udfOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
-	"uid": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"uid": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if val == "forget" {
 			return nil
 		}
@@ -69,7 +69,7 @@ var udfOptions = options.MergeOptions(options.CommonOptions(), map[string]option
 		}
 		return nil
 	}),
-	"gid": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"gid": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if val == "forget" {
 			return nil
 		}

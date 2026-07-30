@@ -94,7 +94,7 @@ func (r *F2fsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		}
 
 		if validator != nil {
-			issues = append(issues, validator.ValidateOption(ctx, api, entry, "f2fs", key, val, hasVal)...)
+			issues = append(issues, validator.ValidateOption(ctx, api, entry, "f2fs", key, val, hasVal, nil)...)
 		}
 
 		switch key {

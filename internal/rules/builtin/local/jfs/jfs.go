@@ -97,7 +97,7 @@ func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 		}
 
 		if validator != nil {
-			issues = append(issues, validator.ValidateOption(ctx, api, entry, "jfs", key, val, hasEquals)...)
+			issues = append(issues, validator.ValidateOption(ctx, api, entry, "jfs", key, val, hasEquals, nil)...)
 		}
 	}
 
@@ -106,7 +106,7 @@ func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 
 type jfsNoValueOption struct{}
 
-func (jfsNoValueOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+func (jfsNoValueOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 	if hasVal {
 		return []rules.ValidationIssue{
 			{
@@ -121,7 +121,7 @@ func (jfsNoValueOption) ValidateOption(ctx context.Context, api rules.API, entry
 
 var jfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
 	"iocharset": options.StringOption{},
-	"errors": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"errors": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
 				{

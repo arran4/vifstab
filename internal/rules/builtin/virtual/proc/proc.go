@@ -41,7 +41,7 @@ func (r *ProcRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 }
 
 var procOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
-	"hidepid": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"hidepid": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		var issues []rules.ValidationIssue
 		if !hasVal || val == "" {
 			issues = append(issues, rules.ValidationIssue{
@@ -60,7 +60,7 @@ var procOptions = options.MergeOptions(options.CommonOptions(), map[string]optio
 		}
 		return issues
 	}),
-	"gid": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"gid": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		var issues []rules.ValidationIssue
 		if !hasVal || val == "" {
 			issues = append(issues, rules.ValidationIssue{
@@ -79,7 +79,7 @@ var procOptions = options.MergeOptions(options.CommonOptions(), map[string]optio
 		}
 		return issues
 	}),
-	"subset": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+	"subset": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		var issues []rules.ValidationIssue
 		if !hasVal || val == "" {
 			issues = append(issues, rules.ValidationIssue{

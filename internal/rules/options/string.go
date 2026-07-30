@@ -10,7 +10,7 @@ import (
 // StringOption validates that an option requires a string value.
 type StringOption struct{}
 
-func (StringOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+func (StringOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
 	if !hasVal || val == "" {
 		return []rules.ValidationIssue{
 			{
@@ -26,6 +26,6 @@ func (StringOption) ValidateOption(ctx context.Context, api rules.API, entry *ru
 // OptionalStringOption allows either no value or any string value.
 type OptionalStringOption struct{}
 
-func (OptionalStringOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool) []rules.ValidationIssue {
+func (OptionalStringOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
 	return nil
 }
