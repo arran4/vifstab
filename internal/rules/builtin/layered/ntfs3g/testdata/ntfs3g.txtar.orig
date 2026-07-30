@@ -1,0 +1,23 @@
+-- input --
+/dev/sda1 /mnt/ntfs1 ntfs-3g rw,acl,uid=1000,gid=1000,dmask=022,fmask=133 0 0
+/dev/sda2 /mnt/ntfs2 ntfs-3g rw,invalidopt,delay_mtime,special_files=invalid,streams_interface=none 0 0
+/dev/sda3 /mnt/ntfs3 ntfs-3g rw,uid=abc,gid=def,dmask=999,max_read=xyz 0 0
+/dev/sda4 /mnt/ntfs4 lowntfs-3g rw,streams_interface=windows,ignore_case 0 0
+/dev/sda5 /mnt/ntfs5 ntfs-3g rw,uid=2000,gid=2000 0 0
+-- cache --
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+user:x:1000:1000:user,,,:/home/user:/bin/bash
+-- input/etc/group --
+root:x:0:
+user:x:1000:
+-- issues --
+Error: Unknown ntfs-3g mount option 'invalidopt' on line 2
+Error: Invalid value 'invalid' for ntfs-3g mount option 'special_files' on line 2 (must be 'interix' or 'wsl')
+Error: Invalid value 'abc' for ntfs-3g mount option 'uid' on line 3, must be an integer
+Error: Invalid value 'def' for ntfs-3g mount option 'gid' on line 3, must be an integer
+Error: Invalid value '999' for ntfs-3g mount option 'dmask' on line 3, must be an octal value
+Error: Invalid value 'xyz' for ntfs-3g mount option 'max_read' on line 3, must be an integer
+Error: streams_interface=windows is not supported with lowntfs-3g on line 4
+Warning: User ID '2000' specified in 'uid' option on line 5 does not exist
+Warning: Group ID '2000' specified in 'gid' option on line 5 does not exist

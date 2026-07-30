@@ -1,0 +1,16 @@
+--- internal/rules/builtin/layered/ntfs3g/ntfs3g.go
++++ internal/rules/builtin/layered/ntfs3g/ntfs3g.go
+@@ -141,6 +141,14 @@
+					Level:   rules.IssueLevelError,
+				})
+			}
++		case "ignore_case":
++			if fsType != "lowntfs-3g" {
++				issues = append(issues, rules.ValidationIssue{
++					Message: fmt.Sprintf("ignore_case is only supported with lowntfs-3g on line %d", entry.LineNum),
++					Line:    entry.RawLine,
++					Level:   rules.IssueLevelError,
++				})
++			}
+		}
+	}
