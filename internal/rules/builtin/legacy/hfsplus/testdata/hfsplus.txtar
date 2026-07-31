@@ -1,0 +1,28 @@
+-- input/etc/fstab --
+# Valid hfsplus options
+/dev/sda1 /mnt/1 hfsplus defaults,creator=MAC?,type=TEXT,uid=1000,gid=1000,umask=022,session=1,part=2,decompose,nodecompose,force,nls=utf8 0 0
+
+# Invalid hfsplus options
+/dev/sda2 /mnt/2 hfsplus creator,type=TEX,uid=root,gid=-1,umask=999,session=abc,part=xyz,nls=unknown 0 0
+
+# Unrecognized option
+/dev/sda3 /mnt/3 hfsplus invalidopt 0 0
+
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+user:x:1000:1000:user:/home/user:/bin/bash
+
+-- input/etc/group --
+root:x:0:
+user:x:1000:
+
+-- issues --
+Missing value for hfsplus mount option 'creator' on line 5
+Invalid value 'TEX' for hfsplus mount option 'type' on line 5, must be 4 characters long
+Invalid value 'root' for hfsplus mount option 'uid' on line 5, must be an integer
+Group with gid -1 does not exist
+Invalid value '999' for hfsplus mount option 'umask' on line 5, must be an octal integer
+Invalid value 'abc' for hfsplus mount option 'session' on line 5, must be an integer
+Invalid value 'xyz' for hfsplus mount option 'part' on line 5, must be an integer
+Invalid value 'unknown' for hfsplus mount option 'nls' on line 5
+Unknown hfsplus mount option 'invalidopt' on line 8
