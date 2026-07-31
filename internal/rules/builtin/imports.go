@@ -82,7 +82,7 @@ import (
 	_ "github.com/arran4/vifstab/internal/rules/builtin/network/cifs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/network/coda"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/network/gfs2"
-	_ "github.com/arran4/vifstab/internal/rules/builtin/network/kafs"
+	_ "github.com/arran4/vifstab/internal/rules/builtin/network/afs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/network/ksmbd"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/network/nfs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/network/nfsd"
