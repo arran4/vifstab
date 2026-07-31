@@ -108,7 +108,7 @@ var udfOptions = options.MergeOptions(options.CommonOptions(), map[string]option
 	"shortad":   options.NoValueOption{},
 	"longad":    options.NoValueOption{},
 	"nostrict":  options.NoValueOption{},
-	"iocharset": options.StringOption{},
+	"iocharset": options.IOCharsetOption{},
 	"novrs":     options.NoValueOption{},
 	"session":   options.IntOption{},
 	"anchor":    options.IntOption{},

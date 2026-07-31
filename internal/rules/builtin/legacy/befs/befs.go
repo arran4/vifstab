@@ -11,7 +11,7 @@ import (
 var befsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
 	"uid":       options.UIDOption{},
 	"gid":       options.GIDOption{},
-	"iocharset": options.StringOption{},
+	"iocharset": options.IOCharsetOption{},
 	"debug":     options.NoValueOption{},
 })
 
