@@ -90,4 +90,6 @@ var hfsOptions = options.MergeOptions(options.CommonOptions(), map[string]option
 	"session":    options.IntOption{},
 	"part":       options.IntOption{},
 	"quiet":      options.NoValueOption{},
+	"codepage":   options.CodepageOption{},
+	"iocharset":  options.IOCharsetOption{},
 })

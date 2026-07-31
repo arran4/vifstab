@@ -54,7 +54,7 @@ var fatOptions = options.MergeOptions(options.CommonOptions(), map[string]option
 		Allowed:      map[string]bool{"s": true, "strict": true, "r": true, "relaxed": true, "n": true, "normal": true},
 		CustomErrMsg: "Invalid value '%s' for fat mount option 'check' on line %d (only 's', 'r', or 'n' are supported)",
 	},
-	"codepage":    options.IntOption{},
+	"codepage":    options.CodepageOption{},
 	"conv":        options.StringOption{},
 	"cvf_format":  options.StringOption{},
 	"cvf_option":  options.StringOption{},
