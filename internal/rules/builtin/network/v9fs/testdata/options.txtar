@@ -1,0 +1,38 @@
+-- kernel --
+Linux version 5.10.0
+-- cache --
+proc_filesystems:
+nodev	9p
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+jules:x:1000:1000:jules:/home/jules:/bin/bash
+-- input/etc/group --
+root:x:0:
+jules:x:1000:
+-- input/etc/fstab --
+10.10.1.2 /mnt/9 9p defaults 0 0
+10.10.1.2 /mnt/9 9p trans=virtio,uname=root,access=any,version=9p2000.L 0 0
+10.10.1.2 /mnt/9 9p cache=loose,msize=8192,port=1234,directio 0 0
+10.10.1.2 /mnt/9 9p dfltuid=1000,dfltgid=1000 0 0
+10.10.1.2 /mnt/9 9p trans=fake_trans 0 0
+10.10.1.2 /mnt/9 9p version=fake_version 0 0
+10.10.1.2 /mnt/9 9p dfltuid=9999 0 0
+10.10.1.2 /mnt/9 9p dfltgid=9999 0 0
+10.10.1.2 /mnt/9 9p msize=notanumber 0 0
+10.10.1.2 /mnt/9 9p fake_option 0 0
+10.10.1.2 /mnt/9 9p directio=1 0 0
+10.10.1.2 /mnt/9 9p access=user 0 0
+10.10.1.2 /mnt/9 9p access=client 0 0
+10.10.1.2 /mnt/9 9p access=1000 0 0
+10.10.1.2 /mnt/9 9p access=9999 0 0
+10.10.1.2 /mnt/9 9p access=invalid_access 0 0
+-- expected/validationerrors.txt --
+Invalid value 'fake_trans' for 9p mount option 'trans' on line 5
+Invalid value 'fake_version' for 9p mount option 'version' on line 6
+User with uid 9999 does not exist
+Group with gid 9999 does not exist
+Invalid value 'notanumber' for 9p mount option 'msize' on line 9, must be an integer
+Unknown 9p mount option 'fake_option' on line 10
+9p mount option 'directio' does not take a value on line 11
+Invalid value '9999' for 9p mount option 'access' on line 15, must be an allowed string or a valid UID
+Invalid value 'invalid_access' for 9p mount option 'access' on line 16, must be an allowed string or a valid UID
