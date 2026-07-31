@@ -1,0 +1,16 @@
+-- kernel --
+6.5.0
+-- input/etc/fstab --
+/dev/sda1 /mnt/omfs omfs uid=1000,gid=1000,umask=022,fmask=022,dmask=022 0 0
+/dev/sda2 /mnt/omfs2 omfs uid=1001,gid=1001,umask=999,invalidopt=1 0 0
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+user:x:1000:1000:user:/home/user:/bin/bash
+-- input/etc/group --
+root:x:0:
+user:x:1000:
+-- issues --
+User with uid 1001 does not exist
+Group with gid 1001 does not exist
+Invalid value '999' for omfs mount option 'umask' on line 2, must be an octal integer
+Unknown omfs mount option 'invalidopt' on line 2

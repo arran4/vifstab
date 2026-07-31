@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type OmfsRule struct{}
@@ -34,5 +35,13 @@ func (r *OmfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		return nil, nil
 	}
 
-	return nil, nil
+	return options.ValidateOptionsMap(ctx, api, entry, "omfs", omfsOptions), nil
 }
+
+var omfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"uid":   options.UIDOption{},
+	"gid":   options.GIDOption{},
+	"umask": options.UmaskOption{},
+	"fmask": options.UmaskOption{},
+	"dmask": options.UmaskOption{},
+})
