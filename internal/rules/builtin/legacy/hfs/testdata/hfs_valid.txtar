@@ -1,5 +1,5 @@
 -- input --
-/dev/sda1 /mnt/hfs hfs creator=cccc,type=cccc,uid=1000,gid=1000,dir_umask=022,file_umask=133,umask=022,session=1,part=2,quiet 0 0
+/dev/sda1 /mnt/hfs hfs creator=cccc,type=cccc,uid=1000,gid=1000,dir_umask=022,file_umask=133,umask=022,session=1,part=2,quiet,codepage=cp437,iocharset=utf8 0 0
 -- cache --
 proc_filesystems=hfs
 -- input/etc/passwd --
