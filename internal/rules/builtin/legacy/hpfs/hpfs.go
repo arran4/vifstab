@@ -39,10 +39,14 @@ func (r *HpfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 }
 
 var hpfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
-	"uid":     options.UIDOption{},
-	"gid":     options.GIDOption{},
-	"umask":   options.OctalOption{},
-	"case":    options.EnumOption{Allowed: map[string]bool{"lower": true, "asis": true}},
-	"conv":    options.StringOption{},
-	"nocheck": options.NoValueOption{},
+	"uid":       options.UIDOption{},
+	"gid":       options.GIDOption{},
+	"umask":     options.UmaskOption{},
+	"case":      options.EnumOption{Allowed: map[string]bool{"lower": true, "asis": true}},
+	"conv":      options.EnumOption{Allowed: map[string]bool{"binary": true, "text": true, "auto": true}},
+	"check":     options.EnumOption{Allowed: map[string]bool{"none": true, "normal": true, "strict": true}},
+	"errors":    options.EnumOption{Allowed: map[string]bool{"continue": true, "remount-ro": true, "panic": true}},
+	"chkdsk":    options.EnumOption{Allowed: map[string]bool{"no": true, "errors": true, "always": true}},
+	"eas":       options.EnumOption{Allowed: map[string]bool{"no": true, "ro": true, "rw": true}},
+	"timeshift": options.IntOption{},
 })
