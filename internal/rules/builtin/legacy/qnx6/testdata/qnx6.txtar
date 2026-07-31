@@ -1,0 +1,7 @@
+-- input/etc/fstab --
+/dev/sda1 /mnt/qnx6 qnx6 defaults 0 0
+/dev/sda2 /mnt/qnx6_2 qnx6 mmi_fs 0 0
+/dev/sda3 /mnt/qnx6_3 qnx6 nommi_fs 0 0
+/dev/sda4 /mnt/qnx6_bad qnx6 badopt 0 0
+-- issues --
+Unknown qnx6 mount option 'badopt' on line 4
