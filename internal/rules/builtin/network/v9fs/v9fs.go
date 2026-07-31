@@ -32,7 +32,7 @@ var v9fsOptions = options.MergeOptions(options.CommonOptions(), map[string]optio
 	"noignoreqv": options.NoValueOption{},
 	"noxattr":    options.NoValueOption{},
 	"xattr":      options.NoValueOption{},
-	"access":     options.StringOption{}, // could be user, <uid>, any, client
+	"access":     options.UIDOrEnumOption{AllowedEnum: map[string]bool{"user": true, "any": true, "client": true}},
 	"cachetag":   options.StringOption{},
 	"negtimeout": options.IntOption{},
 })

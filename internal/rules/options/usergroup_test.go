@@ -46,6 +46,53 @@ func TestUIDOption(t *testing.T) {
 	})
 }
 
+func TestUIDOrEnumOption(t *testing.T) {
+	ctx := context.Background()
+	api := &mockAPI{
+		existingUsers: map[int]bool{1000: true},
+	}
+	entry := &rules.FstabEntry{LineNum: 4}
+	opt := options.UIDOrEnumOption{
+		AllowedEnum: map[string]bool{"any": true, "user": true},
+	}
+
+	t.Run("valid enum string", func(t *testing.T) {
+		issues := opt.ValidateOption(ctx, api, entry, "9p", "access", "any", true, nil)
+		if len(issues) != 0 {
+			t.Errorf("expected 0 issues, got %d", len(issues))
+		}
+	})
+
+	t.Run("existing UID", func(t *testing.T) {
+		issues := opt.ValidateOption(ctx, api, entry, "9p", "access", "1000", true, nil)
+		if len(issues) != 0 {
+			t.Errorf("expected 0 issues, got %d", len(issues))
+		}
+	})
+
+	t.Run("non-existing UID", func(t *testing.T) {
+		issues := opt.ValidateOption(ctx, api, entry, "9p", "access", "9999", true, nil)
+		if len(issues) != 1 {
+			t.Fatalf("expected 1 issue, got %d", len(issues))
+		}
+		expectedMsg := "Invalid value '9999' for 9p mount option 'access' on line 4, must be an allowed string or a valid UID"
+		if issues[0].Message != expectedMsg {
+			t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
+		}
+	})
+
+	t.Run("invalid string and not a UID", func(t *testing.T) {
+		issues := opt.ValidateOption(ctx, api, entry, "9p", "access", "invalid_enum", true, nil)
+		if len(issues) != 1 {
+			t.Fatalf("expected 1 issue, got %d", len(issues))
+		}
+		expectedMsg := "Invalid value 'invalid_enum' for 9p mount option 'access' on line 4, must be an allowed string or a valid UID"
+		if issues[0].Message != expectedMsg {
+			t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
+		}
+	})
+}
+
 func TestGIDOption(t *testing.T) {
 	ctx := context.Background()
 	api := &mockAPI{
