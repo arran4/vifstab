@@ -1,6 +1,6 @@
 -- input --
-/dev/sda1 /mnt/hpfs hpfs uid=notanint,gid=9999,umask=invalid,case=invalid,unknownopt 0 0
-/dev/sda2 /mnt/hpfs hpfs case 0 0
+/dev/sda1 /mnt/hpfs hpfs uid=notanint,gid=9999,umask=invalid,case=invalid,conv=invalid,check=invalid,errors=invalid,chkdsk=invalid,eas=invalid,timeshift=invalid,unknownopt 0 0
+/dev/sda2 /mnt/hpfs hpfs case,conv,check,errors,chkdsk,eas,timeshift 0 0
 -- cache --
 proc_filesystems=hpfs
 -- input/etc/passwd --
@@ -12,5 +12,17 @@ Invalid value 'notanint' for hpfs mount option 'uid' on line 1, must be an integ
 Group with gid 9999 does not exist
 Invalid value 'invalid' for hpfs mount option 'umask' on line 1, must be an octal integer
 Invalid value 'invalid' for hpfs mount option 'case' on line 1
+Invalid value 'invalid' for hpfs mount option 'conv' on line 1
+Invalid value 'invalid' for hpfs mount option 'check' on line 1
+Invalid value 'invalid' for hpfs mount option 'errors' on line 1
+Invalid value 'invalid' for hpfs mount option 'chkdsk' on line 1
+Invalid value 'invalid' for hpfs mount option 'eas' on line 1
+Invalid value 'invalid' for hpfs mount option 'timeshift' on line 1, must be an integer
 Unknown hpfs mount option 'unknownopt' on line 1
 Missing value for hpfs mount option 'case' on line 2
+Missing value for hpfs mount option 'conv' on line 2
+Missing value for hpfs mount option 'check' on line 2
+Missing value for hpfs mount option 'errors' on line 2
+Missing value for hpfs mount option 'chkdsk' on line 2
+Missing value for hpfs mount option 'eas' on line 2
+Missing value for hpfs mount option 'timeshift' on line 2

@@ -1,5 +1,7 @@
 -- input --
-/dev/sda1 /mnt/hpfs hpfs uid=1000,gid=1000,umask=022,case=lower,conv=binary,nocheck 0 0
+/dev/sda1 /mnt/hpfs hpfs uid=1000,gid=1000,umask=022,case=lower,conv=binary,check=normal,errors=remount-ro,chkdsk=errors,eas=rw,timeshift=-3600 0 0
+/dev/sda2 /mnt/hpfs hpfs uid=1000,gid=1000,umask=022,case=asis,conv=auto,check=none,errors=continue,chkdsk=no,eas=no,timeshift=3600 0 0
+/dev/sda3 /mnt/hpfs hpfs conv=text,check=strict,errors=panic,chkdsk=always,eas=ro 0 0
 -- cache --
 proc_filesystems=hpfs
 -- input/etc/passwd --
