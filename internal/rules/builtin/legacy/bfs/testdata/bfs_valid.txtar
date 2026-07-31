@@ -1,0 +1,3 @@
+-- input --
+/dev/sda1 /mnt/bfs bfs defaults,ro,loop 0 0
+-- issues --
