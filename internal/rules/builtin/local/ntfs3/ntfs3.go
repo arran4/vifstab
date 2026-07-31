@@ -39,7 +39,7 @@ func (r *Ntfs3Rule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 }
 
 var ntfs3Options = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
-	"iocharset":        options.StringOption{},
+	"iocharset": options.IOCharsetOption{},
 	"uid":              options.UIDOption{},
 	"gid":              options.GIDOption{},
 	"umask":            options.OctalOption{},

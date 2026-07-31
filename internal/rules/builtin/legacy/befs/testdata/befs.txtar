@@ -1,0 +1,17 @@
+-- input/etc/fstab --
+/dev/sda1 /mnt befs defaults 0 0
+/dev/sda2 /mnt befs uid=1000,gid=1000,iocharset=utf8,debug 0 0
+/dev/sda3 /mnt befs invalid=1 0 0
+/dev/sda4 /mnt befs uid=9999 0 0
+
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+user:x:1000:1000:User,,,:/home/user:/bin/bash
+
+-- input/etc/group --
+root:x:0:
+user:x:1000:
+
+-- issues --
+Unknown befs mount option 'invalid' on line 3
+User with uid 9999 does not exist

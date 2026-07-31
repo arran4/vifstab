@@ -120,7 +120,7 @@ func (jfsNoValueOption) ValidateOption(ctx context.Context, api rules.API, entry
 }
 
 var jfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
-	"iocharset": options.StringOption{},
+	"iocharset": options.IOCharsetOption{},
 	"errors": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{
