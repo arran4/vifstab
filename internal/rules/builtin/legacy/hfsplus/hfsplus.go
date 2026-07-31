@@ -84,11 +84,15 @@ var hfsPlusOptions = options.MergeOptions(options.CommonOptions(), map[string]op
 	}),
 	"uid":         options.UIDOption{},
 	"gid":         options.GIDOption{},
-	"umask":       options.OctalOption{},
+	"umask":       options.UmaskOption{},
+	"dir_umask":   options.UmaskOption{},
+	"file_umask":  options.UmaskOption{},
 	"session":     options.IntOption{},
 	"part":        options.IntOption{},
 	"decompose":   options.NoValueOption{},
 	"nodecompose": options.NoValueOption{},
 	"force":       options.NoValueOption{},
 	"nls":         options.IOCharsetOption{}, // We can use IOCharsetOption to validate charset
+	"quota":       options.NoValueOption{},
+	"noquota":     options.NoValueOption{},
 })
