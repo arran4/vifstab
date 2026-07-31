@@ -312,4 +312,3 @@ var f2fsOptions = options.MergeOptions(options.CommonOptions(), map[string]optio
 	"nat_bits":              options.NoValueOption{},
 	"lookup_mode":           options.StringOption{},
 })
-
