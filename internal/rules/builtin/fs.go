@@ -17,6 +17,7 @@ var knownExternalFS = map[string]bool{
 	"beegfs":  true,
 	"gpfs":    true,
 	"vxfs":    true,
+	"9p":      true,
 }
 
 const ProcFilesystemsKey rules.CacheKey = "proc_filesystems"
