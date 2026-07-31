@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type Qnx6Rule struct{}
@@ -18,7 +19,7 @@ func (r *Qnx6Rule) Name() string {
 }
 
 func (r *Qnx6Rule) Dependencies() []string {
-	return []string{}
+	return []string{"linux_fs"}
 }
 
 func (r *Qnx6Rule) Validate(ctx context.Context, api rules.API, entry *rules.FstabEntry) ([]rules.ValidationIssue, error) {
@@ -34,5 +35,10 @@ func (r *Qnx6Rule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		return nil, nil
 	}
 
-	return nil, nil
+	return options.ValidateOptionsMap(ctx, api, entry, "qnx6", qnx6Options), nil
 }
+
+var qnx6Options = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"mmi_fs":   options.NoValueOption{},
+	"nommi_fs": options.NoValueOption{},
+})
