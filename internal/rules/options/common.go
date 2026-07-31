@@ -14,7 +14,7 @@ func CommonOptions() map[string]OptionValidator {
 		"nodiratime": NoValueOption{}, "users": NoValueOption{}, "_netdev": NoValueOption{},
 		"dev": NoValueOption{}, "atime": NoValueOption{}, "diratime": NoValueOption{},
 		"noiversion": NoValueOption{}, "nolazytime": NoValueOption{}, "owner": NoValueOption{},
-		"group": NoValueOption{},
+		"group":   NoValueOption{},
 		"beneath": NoValueOption{}, "bind": NoValueOption{}, "exclusive": NoValueOption{},
 		"fake": NoValueOption{}, "fork": NoValueOption{}, "help": NoValueOption{},
 		"internal-only": NoValueOption{}, "loud": NoValueOption{}, "make-private": NoValueOption{},

@@ -12,13 +12,13 @@ import (
 type BoolSet uint8
 
 const (
-	BoolSetNumeric  BoolSet = 1 << iota // "0", "1"
-	BoolSetYesNo                        // "yes", "no"
-	BoolSetTrueFalse                    // "true", "false"
-	BoolSetOnOff                        // "on", "off"
+	BoolSetNumeric   BoolSet = 1 << iota // "0", "1"
+	BoolSetYesNo                         // "yes", "no"
+	BoolSetTrueFalse                     // "true", "false"
+	BoolSetOnOff                         // "on", "off"
 
 	BoolSetStandard = BoolSetNumeric | BoolSetYesNo | BoolSetTrueFalse // 0, 1, yes, no, true, false
-	BoolSetAll      = BoolSetStandard | BoolSetOnOff                  // 0, 1, yes, no, true, false, on, off
+	BoolSetAll      = BoolSetStandard | BoolSetOnOff                   // 0, 1, yes, no, true, false, on, off
 )
 
 // BoolOption accepts boolean values configured via enabled BoolSet flags.

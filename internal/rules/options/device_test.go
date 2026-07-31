@@ -12,13 +12,13 @@ func TestBlockDeviceOption(t *testing.T) {
 	ctx := context.Background()
 	api := &mockAPI{
 		existingDevs: map[string]bool{
-			"/dev/sdb1":                          true,
-			"/dev/disk/by-uuid/1234-5678":        true,
-			"/dev/disk/by-uuid/a1b2c3d4-5678":    true,
-			"/dev/disk/by-label/BOOT":            true,
-			"/dev/disk/by-label/My Disk":         true,
+			"/dev/sdb1":                           true,
+			"/dev/disk/by-uuid/1234-5678":         true,
+			"/dev/disk/by-uuid/a1b2c3d4-5678":     true,
+			"/dev/disk/by-label/BOOT":             true,
+			"/dev/disk/by-label/My Disk":          true,
 			"/dev/disk/by-partuuid/00001111-2222": true,
-			"/dev/disk/by-partlabel/Home":        true,
+			"/dev/disk/by-partlabel/Home":         true,
 		},
 	}
 	entry := &rules.FstabEntry{LineNum: 14, RawLine: "UUID=1234-5678 /mnt ext4 defaults 0 0"}
