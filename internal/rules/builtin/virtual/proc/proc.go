@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
-	"github.com/arran4/vifstab/internal/rules/kernel"
 	"github.com/arran4/vifstab/internal/rules/options"
+	"github.com/arran4/vifstab/internal/rules/kernel"
 )
 
 type ProcRule struct{}

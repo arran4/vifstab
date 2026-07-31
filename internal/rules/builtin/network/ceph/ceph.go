@@ -44,13 +44,13 @@ func (r *CephRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 var cephOptions = map[string]options.OptionValidator{
 	// Basic options
 	"name":            options.StringOption{},
-	"conf":            options.FileOption{CheckExistence: true},
+	"conf":            options.StringOption{},
 	"mount_timeout":   options.IntOption{},
 	"ms_mode":         options.EnumOption{Allowed: map[string]bool{"legacy": true, "crc": true, "secure": true, "prefer-crc": true, "prefer-secure": true}},
 	"mon_addr":        options.StringOption{},
 	"fsid":            options.StringOption{},
 	"secret":          options.StringOption{},
-	"secretfile":      options.FileOption{CheckExistence: true},
+	"secretfile":      options.StringOption{},
 	"recover_session": options.EnumOption{Allowed: map[string]bool{"no": true, "clean": true}},
 	"fs":              options.StringOption{},
 	"mds_namespace":   options.StringOption{},

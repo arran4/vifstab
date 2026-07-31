@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 	"github.com/arran4/vifstab/internal/rules/builtin/legacy"
 	"github.com/arran4/vifstab/internal/rules/kernel"
-	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type JfsRule struct{}

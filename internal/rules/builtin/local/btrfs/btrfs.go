@@ -10,8 +10,8 @@ import (
 	"fmt"
 
 	"github.com/arran4/vifstab/internal/rules"
-	"github.com/arran4/vifstab/internal/rules/kernel"
 	"github.com/arran4/vifstab/internal/rules/options"
+	"github.com/arran4/vifstab/internal/rules/kernel"
 )
 
 type BTRFSRule struct{}
@@ -477,6 +477,7 @@ var btrfsOptions = options.MergeOptions(options.CommonOptions(), map[string]opti
 	"check_int_data":         options.OptionalStringOption{},
 	"check_int_print_mask":   options.OptionalStringOption{},
 })
+
 
 func isValidMaxInline(val string) bool {
 	if val == "" {

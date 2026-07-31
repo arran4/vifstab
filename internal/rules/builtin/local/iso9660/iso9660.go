@@ -58,7 +58,7 @@ var iso9660Options = options.MergeOptions(options.CommonOptions(), map[string]op
 	"nocruft":            options.NoValueOption{},
 	"session":            options.IntOption{},
 	"sbsector":           options.IntOption{},
-	"iocharset":          options.IOCharsetOption{},
+	"iocharset": options.IOCharsetOption{},
 	"utf8":               options.NoValueOption{},
 	"noutf8":             options.NoValueOption{},
 	"overriderockperm":   options.NoValueOption{},
