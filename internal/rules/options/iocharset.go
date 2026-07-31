@@ -2,16 +2,30 @@ package options
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
-	"regexp"
+	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
 )
 
+//go:embed charsets.txt
+var charsetsData string
+
+var validCharsets map[string]bool
+
+func init() {
+	validCharsets = make(map[string]bool)
+	for _, line := range strings.Split(charsetsData, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			validCharsets[strings.ToLower(line)] = true
+		}
+	}
+}
+
 // IOCharsetOption validates iocharset values (NLS translation tables).
 type IOCharsetOption struct{}
-
-var iocharsetRegex = regexp.MustCompile(`^[a-zA-Z0-9\-]+$`)
 
 func (IOCharsetOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
 	if !hasVal || val == "" {
@@ -23,7 +37,8 @@ func (IOCharsetOption) ValidateOption(ctx context.Context, api rules.API, entry 
 			},
 		}
 	}
-	if !iocharsetRegex.MatchString(val) {
+
+	if !validCharsets[strings.ToLower(val)] {
 		return []rules.ValidationIssue{
 			{
 				Message: fmt.Sprintf("Invalid value '%s' for %s mount option '%s' on line %d", val, fsName, key, entry.LineNum),
