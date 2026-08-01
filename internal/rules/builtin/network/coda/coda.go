@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type CodaRule struct{}
@@ -34,5 +35,12 @@ func (r *CodaRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		return nil, nil
 	}
 
-	return nil, nil
+	fsOptions := options.MergeOptions(
+		options.CommonOptions(),
+		map[string]options.OptionValidator{
+			"fd": options.IntOption{},
+		},
+	)
+
+	return options.ValidateOptionsMap(ctx, api, entry, "coda", fsOptions), nil
 }
