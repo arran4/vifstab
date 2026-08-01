@@ -42,7 +42,6 @@ func (r *F2fsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 
 	hasRo := false
 	hasNoRecovery := false
-	hasDisableRollForward := false
 
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
@@ -55,7 +54,7 @@ func (r *F2fsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		case "norecovery":
 			hasNoRecovery = true
 		case "disable_roll_forward":
-			hasDisableRollForward = true
+			// Ignored as disable_roll_forward validation is commented out.
 		}
 	}
 
@@ -66,13 +65,6 @@ func (r *F2fsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 			Level:   rules.IssueLevelError,
 		})
 	}
-	if hasNoRecovery && !hasDisableRollForward {
-		// "norecovery" effectively implies "disable_roll_forward". If they provide norecovery,
-		// the kernel treats it as disable_roll_forward, ro.
-		// However, the docs say: "norecovery: Disable the roll-forward recovery routine, mounted read- only (i.e., -o ro,disable_roll_forward)"
-		// So not strictly requiring it if the kernel does it, but maybe just check if it's there? Actually no need.
-	}
-
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
