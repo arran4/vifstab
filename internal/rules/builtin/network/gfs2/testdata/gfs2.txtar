@@ -1,0 +1,35 @@
+-- kernel --
+6.0.0
+-- cache --
+proc_filesystems: |
+  nodev	gfs2
+-- input/etc/fstab --
+# Valid configurations
+/dev/sdb1 /mnt gfs2 defaults 0 0
+/dev/sdb2 /mnt2 gfs2 lockproto=lock_dlm,locktable=mycluster:myfs 0 0
+/dev/sdb3 /mnt3 gfs2 localcaching,localflocks,ignore_local_fs,upgrade,spectator,meta 0 0
+/dev/sdb4 /mnt4 gfs2 acl,noacl,suiddir,nosuiddir,discard,nodiscard,barrier,nobarrier 0 0
+/dev/sdb5 /mnt5 gfs2 errors=panic,errors=withdraw 0 0
+/dev/sdb6 /mnt6 gfs2 quota,noquota,quota=off,quota=account,quota=on 0 0
+/dev/sdb7 /mnt7 gfs2 barrier=0,barrier=1,commit=60,data=ordered,data=writeback 0 0
+/dev/sdb8 /mnt8 gfs2 quota_quantum=60,statfs_quantum=30,statfs_percent=5 0 0
+
+# Invalid configurations
+/dev/sdc1 /err1 gfs2 errors=invalid 0 0
+/dev/sdc2 /err2 gfs2 quota=invalid 0 0
+/dev/sdc3 /err3 gfs2 barrier=invalid 0 0
+/dev/sdc4 /err4 gfs2 data=invalid 0 0
+/dev/sdc5 /err5 gfs2 invalidopt 0 0
+/dev/sdc6 /err6 gfs2 lockproto 0 0
+/dev/sdc7 /err7 gfs2 locktable 0 0
+/dev/sdc8 /err8 gfs2 commit=invalid 0 0
+
+-- issues --
+Invalid value 'invalid' for gfs2 mount option 'errors' on line 12
+Invalid value 'invalid' for gfs2 mount option 'quota' on line 13
+Invalid value 'invalid' for gfs2 mount option 'barrier' on line 14, must be a boolean (0, 1)
+Invalid value 'invalid' for gfs2 mount option 'data' on line 15
+Unknown gfs2 mount option 'invalidopt' on line 16
+Missing value for gfs2 mount option 'lockproto' on line 17
+Missing value for gfs2 mount option 'locktable' on line 18
+Invalid value 'invalid' for gfs2 mount option 'commit' on line 19, must be an integer
