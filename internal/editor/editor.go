@@ -84,7 +84,7 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 		}
 
 		entries, err := core.ParseFstab(f)
-		_ = f.Close()
+		f.Close()
 		if err != nil {
 			return fmt.Errorf("failed to parse: %w", err)
 		}

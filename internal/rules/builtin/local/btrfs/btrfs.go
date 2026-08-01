@@ -404,6 +404,26 @@ func (r *BTRFSRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 	return issues, nil
 }
 
+type kernelVer struct {
+	major int
+	minor int
+	patch int
+}
+
+func (v kernelVer) atLeast(major, minor, patch int) bool {
+	if v.major > major {
+		return true
+	}
+	if v.major == major {
+		if v.minor > minor {
+			return true
+		}
+		if v.minor == minor {
+			return v.patch >= patch
+		}
+	}
+	return false
+}
 
 var btrfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
 	"acl":                    options.NoValueOption{},

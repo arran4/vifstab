@@ -42,10 +42,9 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
-		switch parts[0] {
-		case "ro":
+		if parts[0] == "ro" {
 			hasRo = true
-		case "rw":
+		} else if parts[0] == "rw" {
 			hasRw = true
 		}
 	}
@@ -76,8 +75,7 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 			issues = append(issues, validator.ValidateOption(ctx, api, entry, "nilfs2", key, val, hasEquals, nil)...)
 		}
 
-		switch key {
-		case "cp":
+		if key == "cp" {
 			if !hasRo || hasRw {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("nilfs2 mount option 'cp' on line %d requires a read-only mount option ('ro')", entry.LineNum),
@@ -85,7 +83,7 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 					Level:   rules.IssueLevelError,
 				})
 			}
-		case "norecovery":
+		} else if key == "norecovery" {
 			if !hasRo {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("nilfs2 mount option 'norecovery' on line %d will fail for r/w mounts on an unclean volume. Using read-only ('ro') is recommended.", entry.LineNum),

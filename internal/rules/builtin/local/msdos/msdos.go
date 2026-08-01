@@ -39,7 +39,7 @@ func (r *MsdosRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 
 		var issues []rules.ValidationIssue
 		for _, issue := range fatIssues {
-			issue.Message = strings.ReplaceAll(issue.Message, "fat mount option", "msdos mount option")
+			issue.Message = strings.Replace(issue.Message, "fat mount option", "msdos mount option", -1)
 			issues = append(issues, issue)
 		}
 		return issues, nil

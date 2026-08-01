@@ -37,7 +37,7 @@ func CheckFSVersion(ctx context.Context, api rules.API, entry *rules.FstabEntry,
 						fsMap[fields[len(fields)-1]] = true
 					}
 				}
-				_ = f.Close()
+				f.Close()
 				c.Set(ProcFilesystemsKey, fsMap)
 				val = fsMap
 			}

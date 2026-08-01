@@ -112,7 +112,7 @@ func (r *VfatRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 
 	// Adjust messages to say 'vfat' instead of 'fat'
 	for _, issue := range fatIssues {
-		issue.Message = strings.ReplaceAll(issue.Message, "fat mount option", "vfat mount option")
+		issue.Message = strings.Replace(issue.Message, "fat mount option", "vfat mount option", -1)
 		issues = append(issues, issue)
 	}
 

@@ -34,9 +34,7 @@ func (ActualFS) CheckUserExists(uid int) bool {
 	if err != nil {
 		return false
 	}
-	defer func() {
-		_ = f.Close()
-	}()
+	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -56,9 +54,7 @@ func (ActualFS) CheckGroupExists(gid int) bool {
 	if err != nil {
 		return false
 	}
-	defer func() {
-		_ = f.Close()
-	}()
+	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -173,9 +169,7 @@ func (c *CacheFS) CheckUserExists(uid int) bool {
 		if err != nil {
 			return false
 		}
-		defer func() {
-			_ = f.Close()
-		}()
+		defer f.Close()
 
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
@@ -197,9 +191,7 @@ func (c *CacheFS) CheckGroupExists(gid int) bool {
 		if err != nil {
 			return false
 		}
-		defer func() {
-			_ = f.Close()
-		}()
+		defer f.Close()
 
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {

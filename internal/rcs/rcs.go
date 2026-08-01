@@ -52,9 +52,7 @@ func Update(filePath string, content []byte, config Config) error {
 		if err != nil {
 			return fmt.Errorf("failed to open rcs file: %w", err)
 		}
-		defer func() {
-			_ = rcsData.Close()
-		}()
+		defer rcsData.Close()
 
 		f, err = rcs.ParseFile(rcsData)
 		if err != nil {

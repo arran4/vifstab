@@ -251,10 +251,9 @@ func TestAllTxtarRules(t *testing.T) {
 				for _, s := range allIssues {
 					if fmtMode == "level_prefix" {
 						level := "Suggestion"
-						switch s.Level {
-						case rules.IssueLevelWarning:
+						if s.Level == rules.IssueLevelWarning {
 							level = "Warning"
-						case rules.IssueLevelError:
+						} else if s.Level == rules.IssueLevelError {
 							level = "Error"
 						}
 						gotOutput += fmt.Sprintf("%s: %s\n", level, s.Message)

@@ -46,12 +46,11 @@ func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 	hasRo := false
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
-		switch parts[0] {
-		case "remount":
+		if parts[0] == "remount" {
 			hasRemount = true
-		case "ro":
+		} else if parts[0] == "ro" {
 			hasRo = true
-		case "rw":
+		} else if parts[0] == "rw" {
 			hasRo = false
 		}
 	}
