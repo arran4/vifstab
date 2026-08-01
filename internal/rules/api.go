@@ -11,8 +11,16 @@ import (
 	"strings"
 )
 
+type FileExistsResult int
+
+const (
+	FileExists FileExistsResult = iota
+	FileDoesNotExist
+	FilePermissionDenied
+)
+
 type API interface {
-	CheckFileExists(path string) (exists bool, permissionDenied bool)
+	CheckFileExists(path string) FileExistsResult
 	CheckBlockDeviceExists(dev string) bool
 	GetHostKernelVersion() string
 	CheckUserExists(uid int) bool
@@ -61,15 +69,15 @@ func (ActualFS) CheckGroupExists(gid int) bool {
 	return false
 }
 
-func (ActualFS) CheckFileExists(path string) (bool, bool) {
+func (ActualFS) CheckFileExists(path string) FileExistsResult {
 	_, err := os.Stat(path)
 	if err == nil {
-		return true, false
+		return FileExists
 	}
 	if os.IsPermission(err) {
-		return false, true
+		return FilePermissionDenied
 	}
-	return false, false
+	return FileDoesNotExist
 }
 
 func (ActualFS) CheckBlockDeviceExists(dev string) bool {
@@ -125,11 +133,17 @@ func (c *CacheFS) GetHostKernelVersion() string {
 	return ActualFS{}.GetHostKernelVersion()
 }
 
-func (c *CacheFS) CheckFileExists(path string) (bool, bool) {
+func (c *CacheFS) CheckFileExists(path string) FileExistsResult {
 	if c.Cache != nil {
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + path)); ok {
 			if exists, ok := v.(bool); ok {
-				return exists, false
+				if exists {
+					return FileExists
+				}
+				return FileDoesNotExist
+			}
+			if result, ok := v.(FileExistsResult); ok {
+				return result
 			}
 		}
 	}
@@ -139,12 +153,12 @@ func (c *CacheFS) CheckFileExists(path string) (bool, bool) {
 		}
 		_, err := fs.Stat(c.FS, path)
 		if err == nil {
-			return true, false
+			return FileExists
 		}
 		if os.IsPermission(err) {
-			return false, true
+			return FilePermissionDenied
 		}
-		return false, false
+		return FileDoesNotExist
 	}
 	panic("CacheFS must be initialized with a valid fs.FS")
 }

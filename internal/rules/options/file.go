@@ -25,10 +25,10 @@ func (f FileOption) ValidateOption(ctx context.Context, api rules.API, entry *ru
 	}
 	if f.CheckExistence {
 		decodedVal := unescapeFstab(val)
-		exists, permissionDenied := api.CheckFileExists(decodedVal)
+		existsResult := api.CheckFileExists(decodedVal)
 
-		if !exists {
-			if permissionDenied && f.IgnoreFailureIfNoPermission {
+		if existsResult != rules.FileExists {
+			if existsResult == rules.FilePermissionDenied && f.IgnoreFailureIfNoPermission {
 				// We lack permission to check, but we are allowed to ignore it.
 				// However, if we're ignoring the failure entirely, we shouldn't emit an error.
 				return nil
