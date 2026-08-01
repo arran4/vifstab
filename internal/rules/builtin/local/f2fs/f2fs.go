@@ -47,13 +47,14 @@ func (r *F2fsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
-		if key == "ro" {
+		switch key {
+		case "ro":
 			hasRo = true
-		} else if key == "rw" {
+		case "rw":
 			hasRo = false
-		} else if key == "norecovery" {
+		case "norecovery":
 			hasNoRecovery = true
-		} else if key == "disable_roll_forward" {
+		case "disable_roll_forward":
 			hasDisableRollForward = true
 		}
 	}

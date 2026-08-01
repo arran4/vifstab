@@ -64,7 +64,7 @@ func (r *UmsdosRule) Validate(ctx context.Context, api rules.API, entry *rules.F
 
 	// Adjust messages to say 'umsdos' instead of 'fat'
 	for _, issue := range fatIssues {
-		issue.Message = strings.Replace(issue.Message, "fat mount option", "umsdos mount option", -1)
+		issue.Message = strings.ReplaceAll(issue.Message, "fat mount option", "umsdos mount option")
 		issues = append(issues, issue)
 	}
 
