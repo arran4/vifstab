@@ -1,0 +1,16 @@
+-- input/etc/fstab --
+//server/share /mnt/cifs cifs username=abc,password=def,uid=1000,cache=strict,vers=3.0,ro 0 0
+//server/share /mnt/cifs cifs cache=invalid 0 0
+//server/share /mnt/cifs cifs invalidopt 0 0
+
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+abc:x:1000:1000:abc:/home/abc:/bin/bash
+
+-- input/etc/group --
+root:x:0:
+abc:x:1000:
+
+-- issues --
+Invalid value 'invalid' for cifs mount option 'cache' on line 2
+Unknown cifs mount option 'invalidopt' on line 3
