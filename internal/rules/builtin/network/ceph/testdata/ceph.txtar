@@ -1,0 +1,16 @@
+-- input/etc/fstab --
+# Valid Ceph mounts
+cephuser@.cephfs=/ /mnt/ceph ceph mon_addr=192.168.0.1:6789,noatime,_netdev 0 0
+name=admin@07fe3187-00d9-42a3-814b-72a4d5e7d5be.fs_name=/ /mnt/ceph ceph mon_addr=1.2.3.4 0 0
+192.168.0.1:/ /mnt/ceph ceph name=admin,secret=AQATSKdNGBnwLhAAnNDKnH65FmVKpXZJVasUeQ== 0 0
+192.168.0.1:/ /mnt/ceph ceph name=admin,secretfile=/etc/ceph/admin.secret 0 0
+
+# Invalid Ceph mounts
+cephuser@.cephfs=/ /mnt/ceph ceph ms_mode=invalid_mode 0 0
+cephuser@.cephfs=/ /mnt/ceph ceph recover_session=invalid_session 0 0
+cephuser@.cephfs=/ /mnt/ceph ceph dirstat=yes 0 0
+-- issues --
+File '/etc/ceph/admin.secret' specified in ceph mount option 'secretfile' does not exist on line 5
+Invalid value 'invalid_mode' for ceph mount option 'ms_mode' on line 8
+Invalid value 'invalid_session' for ceph mount option 'recover_session' on line 9
+ceph mount option 'dirstat' does not take a value on line 10

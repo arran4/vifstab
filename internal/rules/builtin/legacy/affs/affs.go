@@ -40,8 +40,8 @@ func (r *AffsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 }
 
 var affsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
-	"uid":      options.OptionalUIDOption{},
-	"setuid":   options.OptionalUIDOption{},
+	"uid":                options.OptionalUIDOption{},
+	"setuid":             options.OptionalUIDOption{},
 	"gid":                options.OptionalGIDOption{},
 	"setgid":             options.OptionalGIDOption{},
 	"mode":               options.OctalOption{},

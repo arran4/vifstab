@@ -113,11 +113,11 @@ var ext4Options = options.MergeOptions(options.CommonOptions(), map[string]optio
 		}
 		return nil
 	}),
-	"stripe":          options.IntOption{},
-	"delalloc":        options.NoValueOption{},
-	"nodelalloc":      options.NoValueOption{},
-	"max_batch_time":  options.IntOption{},
-	"min_batch_time":  options.IntOption{},
+	"stripe":         options.IntOption{},
+	"delalloc":       options.NoValueOption{},
+	"nodelalloc":     options.NoValueOption{},
+	"max_batch_time": options.IntOption{},
+	"min_batch_time": options.IntOption{},
 	"journal_ioprio": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
 			return []rules.ValidationIssue{

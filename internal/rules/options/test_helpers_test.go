@@ -9,7 +9,18 @@ type mockAPI struct {
 	existingUsers  map[int]bool
 	existingGroups map[int]bool
 	existingDevs   map[string]bool
+	existingFiles  map[string]bool
 	kernelVerStr   string
+}
+
+func (m *mockAPI) CheckFileExists(path string) rules.FileExistsResult {
+	if m.existingFiles == nil {
+		return rules.FileDoesNotExist
+	}
+	if m.existingFiles[path] {
+		return rules.FileExists
+	}
+	return rules.FileDoesNotExist
 }
 
 func (m *mockAPI) CheckUserExists(uid int) bool {

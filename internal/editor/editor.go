@@ -22,8 +22,8 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer os.Remove(tempFile.Name())
-	defer tempFile.Close()
+	defer func() { _ = os.Remove(tempFile.Name()) }()
+	defer func() { _ = tempFile.Close() }()
 
 	src, err := os.Open(cfg.FilePath)
 	if err != nil {
@@ -32,12 +32,12 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 		}
 	} else {
 		_, err = io.Copy(tempFile, src)
-		src.Close()
+		_ = src.Close()
 		if err != nil {
 			return fmt.Errorf("failed to copy to temp file: %w", err)
 		}
 	}
-	tempFile.Close()
+	_ = tempFile.Close()
 
 	editor := os.Getenv("SUDO_EDITOR")
 	if editor == "" {
@@ -148,10 +148,10 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temporary destination file: %w", err)
 	}
-	defer os.Remove(tmpDest.Name())
+	defer func() { _ = os.Remove(tmpDest.Name()) }()
 
 	if _, err := tmpDest.Write(content); err != nil {
-		tmpDest.Close()
+		_ = tmpDest.Close()
 		return fmt.Errorf("failed to write to temporary destination file: %w", err)
 	}
 	if err := tmpDest.Close(); err != nil {
