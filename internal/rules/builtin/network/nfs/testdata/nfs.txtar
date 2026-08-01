@@ -1,0 +1,21 @@
+-- input/etc/fstab --
+server:/export  /mnt  nfs   defaults                      0 0
+server:/export  /mnt  nfs   nfsvers=3,retrans=5,timeo=600  0 0
+server:/export  /mnt  nfs4  minorversion=1       0 0
+server:/export  /usr  nfs   ro,nolock,nocto,actimeo=3600  0 0
+server:/export  /mnt  nfs   invalidopt                    0 0
+server:/export  /mnt  nfs   nfsvers=invalid               0 0
+server:/export  /mnt  nfs4  proto=udp                     0 0
+server:/export  /mnt  nfs   sec=invalid                   0 0
+server:/export  /mnt  nfs   rdirplus=invalid              0 0
+server:/export  /mnt  nfs   rdirplus=none                 0 0
+server:/export  /mnt  nfs   sec=krb5:krb5i:invalid        0 0
+server:/export  /mnt  nfs   nconnect=17                   0 0
+-- issues --
+Unknown nfs mount option 'invalidopt' on line 5
+Invalid value 'invalid' for nfs mount option 'nfsvers' on line 6, must be an integer
+Invalid value 'udp' for nfs4 mount option 'proto' on line 7
+Invalid value 'invalid' for nfs mount option 'sec' on line 8
+Invalid value 'invalid' for nfs mount option 'rdirplus' on line 9
+Invalid value 'krb5:krb5i:invalid' for nfs mount option 'sec' on line 11
+Value '17' for nfs mount option 'nconnect' on line 12 is greater than maximum 16
