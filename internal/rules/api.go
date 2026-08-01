@@ -12,7 +12,7 @@ import (
 )
 
 type API interface {
-	CheckFileExists(path string) bool
+	CheckFileExists(path string) (exists bool, permissionDenied bool)
 	CheckBlockDeviceExists(dev string) bool
 	GetHostKernelVersion() string
 	CheckUserExists(uid int) bool
@@ -61,9 +61,15 @@ func (ActualFS) CheckGroupExists(gid int) bool {
 	return false
 }
 
-func (ActualFS) CheckFileExists(path string) bool {
+func (ActualFS) CheckFileExists(path string) (bool, bool) {
 	_, err := os.Stat(path)
-	return err == nil
+	if err == nil {
+		return true, false
+	}
+	if os.IsPermission(err) {
+		return false, true
+	}
+	return false, false
 }
 
 func (ActualFS) CheckBlockDeviceExists(dev string) bool {
@@ -119,11 +125,11 @@ func (c *CacheFS) GetHostKernelVersion() string {
 	return ActualFS{}.GetHostKernelVersion()
 }
 
-func (c *CacheFS) CheckFileExists(path string) bool {
+func (c *CacheFS) CheckFileExists(path string) (bool, bool) {
 	if c.Cache != nil {
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + path)); ok {
 			if exists, ok := v.(bool); ok {
-				return exists
+				return exists, false
 			}
 		}
 	}
@@ -132,7 +138,13 @@ func (c *CacheFS) CheckFileExists(path string) bool {
 			path = path[1:]
 		}
 		_, err := fs.Stat(c.FS, path)
-		return err == nil
+		if err == nil {
+			return true, false
+		}
+		if os.IsPermission(err) {
+			return false, true
+		}
+		return false, false
 	}
 	panic("CacheFS must be initialized with a valid fs.FS")
 }

@@ -9,9 +9,8 @@ import (
 
 // FileOption validates a file path, ensuring it exists if CheckExistence is true.
 type FileOption struct {
-	CheckExistence bool
-	// If CheckExistence is true but we lack permissions, we can log a warning instead of error.
-	// But api.CheckFileExists currently only returns a bool. So this behaves identically for now.
+	CheckExistence              bool
+	IgnoreFailureIfNoPermission bool
 }
 
 func (f FileOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
@@ -26,7 +25,14 @@ func (f FileOption) ValidateOption(ctx context.Context, api rules.API, entry *ru
 	}
 	if f.CheckExistence {
 		decodedVal := unescapeFstab(val)
-		if !api.CheckFileExists(decodedVal) {
+		exists, permissionDenied := api.CheckFileExists(decodedVal)
+
+		if !exists {
+			if permissionDenied && f.IgnoreFailureIfNoPermission {
+				// We lack permission to check, but we are allowed to ignore it.
+				// However, if we're ignoring the failure entirely, we shouldn't emit an error.
+				return nil
+			}
 			return []rules.ValidationIssue{
 				{
 					Message: fmt.Sprintf("File '%s' specified in %s mount option '%s' does not exist on line %d", decodedVal, fsName, key, entry.LineNum),

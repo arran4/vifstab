@@ -50,7 +50,7 @@ var cephOptions = map[string]options.OptionValidator{
 	"mon_addr":        options.StringOption{},
 	"fsid":            options.StringOption{},
 	"secret":          options.StringOption{},
-	"secretfile":      options.FileOption{CheckExistence: true},
+	"secretfile":      options.FileOption{CheckExistence: true, IgnoreFailureIfNoPermission: true},
 	"recover_session": options.EnumOption{Allowed: map[string]bool{"no": true, "clean": true}},
 	"fs":              options.StringOption{},
 	"mds_namespace":   options.StringOption{},

@@ -13,11 +13,11 @@ type mockAPI struct {
 	kernelVerStr   string
 }
 
-func (m *mockAPI) CheckFileExists(path string) bool {
+func (m *mockAPI) CheckFileExists(path string) (bool, bool) {
 	if m.existingFiles == nil {
-		return false
+		return false, false
 	}
-	return m.existingFiles[path]
+	return m.existingFiles[path], false
 }
 
 func (m *mockAPI) CheckUserExists(uid int) bool {
