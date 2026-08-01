@@ -1,0 +1,17 @@
+-- kernel --
+6.5.0
+
+-- cache --
+proc_filesystems
+orangefs
+
+-- input --
+tcp://localhost:3334/orangefs /pvfsmnt orangefs defaults,acl,intr,local_lock,noacl,nointr,nolocal_lock 0 0
+tcp://localhost:3334/orangefs /pvfsmnt orangefs unknown_opt 0 0
+tcp://localhost:3334/orangefs /pvfsmnt orangefs acl=1,intr=1,local_lock=1 0 0
+
+-- issues --
+Unknown orangefs mount option 'unknown_opt' on line 2
+orangefs mount option 'acl' does not take a value on line 3
+orangefs mount option 'intr' does not take a value on line 3
+orangefs mount option 'local_lock' does not take a value on line 3
