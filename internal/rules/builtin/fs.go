@@ -110,7 +110,9 @@ func LoadProcFilesystems(path string) (map[string]bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	fsMap := make(map[string]bool)
 	scanner := bufio.NewScanner(f)
