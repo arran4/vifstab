@@ -12,7 +12,7 @@ type UmaskOption struct {
 }
 
 func (u UmaskOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
-	return (OctalOption{CustomErrFormat: u.CustomErrFormat}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
+	return OctalOption(u).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
 }
 
 // ModeOption validates octal mode permissions (e.g. 0755, 0644).
@@ -21,7 +21,7 @@ type ModeOption struct {
 }
 
 func (m ModeOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
-	return (OctalOption{CustomErrFormat: m.CustomErrFormat}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
+	return OctalOption(m).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
 }
 
 // FileModeOption validates file octal mode permissions.
@@ -30,7 +30,7 @@ type FileModeOption struct {
 }
 
 func (f FileModeOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
-	return (OctalOption{CustomErrFormat: f.CustomErrFormat}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
+	return OctalOption(f).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
 }
 
 // DirModeOption validates directory octal mode permissions.
@@ -39,5 +39,5 @@ type DirModeOption struct {
 }
 
 func (d DirModeOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
-	return (OctalOption{CustomErrFormat: d.CustomErrFormat}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
+	return OctalOption(d).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
 }

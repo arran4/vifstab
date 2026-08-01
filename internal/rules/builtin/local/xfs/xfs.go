@@ -59,11 +59,12 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 	for _, opt := range options {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
-		if key == "norecovery" {
+		switch key {
+		case "norecovery":
 			hasNoRecovery = true
-		} else if key == "ro" {
+		case "ro":
 			hasRo = true
-		} else if key == "rw" {
+		case "rw":
 			hasRo = false
 		}
 	}
@@ -193,9 +194,10 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 							Level:   rules.IssueLevelError,
 						})
 					} else {
-						if key == "sunit" {
+						switch key {
+						case "sunit":
 							sunit = num
-						} else if key == "swidth" {
+						case "swidth":
 							swidth = num
 						}
 					}

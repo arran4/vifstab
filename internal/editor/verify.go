@@ -18,7 +18,9 @@ func VerifyAndLint(cfg config.Config, api rules.API) ([]rules.ValidationIssue, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file for verification: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	entries, err := core.ParseFstab(f)
 	if err != nil {
