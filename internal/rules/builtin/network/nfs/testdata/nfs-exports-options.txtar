@@ -1,0 +1,10 @@
+-- input/etc/fstab --
+192.168.1.1:/export /mnt nfs root_squash,rw 0 0
+192.168.1.1:/export /mnt nfs rw,sync,no_subtree_check 0 0
+192.168.1.1:/export /mnt nfs4 no_root_squash 0 0
+-- cache --
+proc_filesystems: nodev\tnfs\nnodev\tnfs4
+-- issues --
+Mount option 'root_squash' is not valid for nfs: this is an exports(5) option used for NFS server configuration, not for client mounts on line 1
+Mount option 'no_subtree_check' is not valid for nfs: this is an exports(5) option used for NFS server configuration, not for client mounts on line 2
+Mount option 'no_root_squash' is not valid for nfs4: this is an exports(5) option used for NFS server configuration, not for client mounts on line 3
