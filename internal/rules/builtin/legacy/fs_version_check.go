@@ -80,22 +80,32 @@ func CheckFSVersion(ctx context.Context, api rules.API, entry *rules.FstabEntry,
 				Level:   rules.IssueLevelError,
 			})
 		} else if !maxVer.IsZero() && hostVer.AtLeast(maxVer.Major, maxVer.Minor, maxVer.Patch) {
-			msg := fmt.Sprintf("%s was removed from upstream Linux in kernel %s (host is %s) and is not configured", fsType, maxVer.String(), hostVer.String())
+			var sb strings.Builder
+			sb.WriteString(fsType)
+			sb.WriteString(" was removed from upstream Linux in kernel ")
+			sb.WriteString(maxVer.String())
+			sb.WriteString(" (host is ")
+			sb.WriteString(hostVer.String())
+			sb.WriteString(") and is not configured")
 			if replacement != "" {
-				msg += fmt.Sprintf("; %s", replacement)
+				sb.WriteString("; ")
+				sb.WriteString(replacement)
 			}
 			issues = append(issues, rules.ValidationIssue{
-				Message: msg,
+				Message: sb.String(),
 				Line:    entry.RawLine,
 				Level:   rules.IssueLevelError,
 			})
 		} else if minVer.IsZero() && maxVer.IsZero() {
-			msg := fmt.Sprintf("%s is no longer a current upstream option and is not configured", fsType)
+			var sb strings.Builder
+			sb.WriteString(fsType)
+			sb.WriteString(" is no longer a current upstream option and is not configured")
 			if replacement != "" {
-				msg += fmt.Sprintf("; %s", replacement)
+				sb.WriteString("; ")
+				sb.WriteString(replacement)
 			}
 			issues = append(issues, rules.ValidationIssue{
-				Message: msg,
+				Message: sb.String(),
 				Line:    entry.RawLine,
 				Level:   rules.IssueLevelError,
 			})
