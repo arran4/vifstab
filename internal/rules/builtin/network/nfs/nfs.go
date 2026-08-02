@@ -2,8 +2,8 @@ package nfs
 
 import (
 	"context"
-	"strings"
 	"fmt"
+	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/arran4/vifstab/internal/rules/options"
@@ -37,9 +37,9 @@ func (o NfsSecOption) ValidateOption(ctx context.Context, api rules.API, entry *
 	}
 	flavors := strings.Split(val, ":")
 	validFlavors := map[string]bool{
-		"none": true,
-		"sys":  true,
-		"krb5": true,
+		"none":  true,
+		"sys":   true,
+		"krb5":  true,
 		"krb5i": true,
 		"krb5p": true,
 	}
@@ -56,7 +56,6 @@ func (o NfsSecOption) ValidateOption(ctx context.Context, api rules.API, entry *
 	}
 	return nil
 }
-
 
 func nfsOptions(isNfs4 bool) map[string]options.OptionValidator {
 	opts := map[string]options.OptionValidator{
@@ -83,7 +82,7 @@ func nfsOptions(isNfs4 bool) map[string]options.OptionValidator {
 		"bg":           options.NoValueOption{},
 		"fg":           options.NoValueOption{},
 		"nconnect":     options.IntRangeOption{Max: func() *int64 { i := int64(16); return &i }()}, // limit of 16
-		"rdirplus":     options.NoValueOption{}, // can be boolean or force/none string
+		"rdirplus":     options.NoValueOption{},                                                    // can be boolean or force/none string
 		"nordirplus":   options.NoValueOption{},
 		"retry":        options.IntOption{},
 		"sec":          NfsSecOption{},
