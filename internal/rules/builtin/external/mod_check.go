@@ -1,6 +1,7 @@
 package external
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -141,9 +142,18 @@ func checkProcModules(c *rules.Cache, moduleName string) bool {
 		}
 	}
 
-	lines := strings.Split(string(data), "\n")
-	for _, l := range lines {
-		if strings.HasPrefix(l, moduleName+" ") {
+	prefix := []byte(moduleName + " ")
+	for len(data) > 0 {
+		nl := bytes.IndexByte(data, '\n')
+		var line []byte
+		if nl == -1 {
+			line = data
+			data = nil
+		} else {
+			line = data[:nl]
+			data = data[nl+1:]
+		}
+		if bytes.HasPrefix(line, prefix) {
 			return true
 		}
 	}
