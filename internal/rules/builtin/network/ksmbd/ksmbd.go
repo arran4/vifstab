@@ -2,6 +2,7 @@ package ksmbd
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
@@ -34,5 +35,11 @@ func (r *KsmbdRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 		return nil, nil
 	}
 
-	return nil, nil
+	return []rules.ValidationIssue{
+		{
+			Message: fmt.Sprintf("ksmbd is a kernel server, not a client filesystem; use 'cifs' or 'smb3' to mount SMB shares on line %d", entry.LineNum),
+			Line:    entry.RawLine,
+			Level:   rules.IssueLevelError,
+		},
+	}, nil
 }

@@ -1,0 +1,5 @@
+-- input/etc/fstab --
+//server/share /mnt/ksmbd ksmbd username=abc,password=def 0 0
+
+-- issues --
+ksmbd is a kernel server, not a client filesystem; use 'cifs' or 'smb3' to mount SMB shares on line 1
