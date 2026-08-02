@@ -1,0 +1,15 @@
+-- input/etc/fstab --
+/root/crypt /mnt/crypt ecryptfs ecryptfs_sig,ecryptfs_key_bytes=abc,ecryptfs_passthrough=yes,ecryptfs_enable_filename_crypto=z,verbosity=2,passphrase_passwd_file=/missing/file.txt,openssl_keyfile=/missing/key.pem,openssl_passwd_file=/missing/pass.txt 0 0
+-- cache --
+file_exists:/missing/file.txt=false
+file_exists:/missing/key.pem=false
+file_exists:/missing/pass.txt=false
+-- issues --
+Missing value for ecryptfs mount option 'ecryptfs_sig' on line 1
+Invalid value 'abc' for ecryptfs mount option 'ecryptfs_key_bytes' on line 1, must be an integer
+ecryptfs mount option 'ecryptfs_passthrough' does not take a value on line 1
+Invalid value 'z' for ecryptfs mount option 'ecryptfs_enable_filename_crypto' on line 1
+Invalid value '2' for ecryptfs mount option 'verbosity' on line 1
+File '/missing/file.txt' specified in ecryptfs mount option 'passphrase_passwd_file' does not exist on line 1
+File '/missing/key.pem' specified in ecryptfs mount option 'openssl_keyfile' does not exist on line 1
+File '/missing/pass.txt' specified in ecryptfs mount option 'openssl_passwd_file' does not exist on line 1
