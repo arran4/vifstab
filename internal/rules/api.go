@@ -169,7 +169,8 @@ func (c *CacheFS) CheckFileExists(path string) FileExistsResult {
 
 func (c *CacheFS) CheckUserExists(uid int) bool {
 	if c.Cache != nil {
-		if v, ok := c.Cache.Get(CacheKey("user_exists:" + strconv.Itoa(uid))); ok {
+		cacheKey := CacheKey("user_exists:" + strconv.Itoa(uid))
+		if v, ok := c.Cache.Get(cacheKey); ok {
 			if exists, ok := v.(bool); ok {
 				return exists
 			}
@@ -206,7 +207,8 @@ func (c *CacheFS) CheckUserExists(uid int) bool {
 
 func (c *CacheFS) CheckGroupExists(gid int) bool {
 	if c.Cache != nil {
-		if v, ok := c.Cache.Get(CacheKey("group_exists:" + strconv.Itoa(gid))); ok {
+		cacheKey := CacheKey("group_exists:" + strconv.Itoa(gid))
+		if v, ok := c.Cache.Get(cacheKey); ok {
 			if exists, ok := v.(bool); ok {
 				return exists
 			}

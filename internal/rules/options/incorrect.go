@@ -8,7 +8,7 @@ import (
 )
 
 // IncorrectOption warns the user that this option is incorrectly used here.
-type IncorrectOption struct{
+type IncorrectOption struct {
 	Reason string
 }
 
