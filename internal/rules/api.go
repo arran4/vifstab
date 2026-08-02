@@ -168,6 +168,13 @@ func (c *CacheFS) CheckFileExists(path string) FileExistsResult {
 }
 
 func (c *CacheFS) CheckUserExists(uid int) bool {
+	if c.Cache != nil {
+		if v, ok := c.Cache.Get(CacheKey("user_exists:" + strconv.Itoa(uid))); ok {
+			if exists, ok := v.(bool); ok {
+				return exists
+			}
+		}
+	}
 	if c.FS != nil {
 		f, err := c.FS.Open("etc/passwd")
 		if err != nil {
@@ -183,15 +190,28 @@ func (c *CacheFS) CheckUserExists(uid int) bool {
 			parts := strings.Split(line, ":")
 			if len(parts) >= 3 {
 				if id, err := strconv.Atoi(parts[2]); err == nil && id == uid {
+					if c.Cache != nil {
+						c.Cache.Set(CacheKey("user_exists:"+strconv.Itoa(uid)), true)
+					}
 					return true
 				}
 			}
+		}
+		if c.Cache != nil {
+			c.Cache.Set(CacheKey("user_exists:"+strconv.Itoa(uid)), false)
 		}
 	}
 	return false
 }
 
 func (c *CacheFS) CheckGroupExists(gid int) bool {
+	if c.Cache != nil {
+		if v, ok := c.Cache.Get(CacheKey("group_exists:" + strconv.Itoa(gid))); ok {
+			if exists, ok := v.(bool); ok {
+				return exists
+			}
+		}
+	}
 	if c.FS != nil {
 		f, err := c.FS.Open("etc/group")
 		if err != nil {
@@ -207,9 +227,15 @@ func (c *CacheFS) CheckGroupExists(gid int) bool {
 			parts := strings.Split(line, ":")
 			if len(parts) >= 3 {
 				if id, err := strconv.Atoi(parts[2]); err == nil && id == gid {
+					if c.Cache != nil {
+						c.Cache.Set(CacheKey("group_exists:"+strconv.Itoa(gid)), true)
+					}
 					return true
 				}
 			}
+		}
+		if c.Cache != nil {
+			c.Cache.Set(CacheKey("group_exists:"+strconv.Itoa(gid)), false)
 		}
 	}
 	return false
