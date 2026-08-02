@@ -15,7 +15,7 @@ Additionally, `vifstab` maintains a version history of the edited file using RCS
 If the validation fails (for example, if a mount point does not exist or a filesystem is unknown), `vifstab` categorizes the feedback into Suggestions, Warnings, and Errors. It requires critical Errors to be resolved before saving the modifications, thus preventing a system from becoming unbootable due to a malformed `fstab`.
 
 ## OPTIONS
-**--backup-dir**="": Directory to store RCS backups. If omitted, `vifstab` defaults to a sensible location. It checks `$XDG_CACHE_HOME/vifstab`, then `$HOME/.cache/vifstab`, and finally falls back to `/tmp/.vifstab`.
+**--backup-dir**="": Directory to store RCS backups. If omitted, `vifstab` defaults to a sensible location. It uses `os.UserCacheDir()` (which checks `$XDG_CACHE_HOME` and falls back to `$HOME/.cache/vifstab`), and finally falls back to a secure unpredictable temporary directory if no home directory is found.
 
 **--file**="": The specific file to edit. (default: "/etc/fstab")
 

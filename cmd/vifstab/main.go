@@ -51,12 +51,14 @@ func main() {
 	}
 
 	if backupDir == "" {
-		if xdgCache := os.Getenv("XDG_CACHE_HOME"); xdgCache != "" {
-			backupDir = xdgCache + "/vifstab"
-		} else if home, err := os.UserHomeDir(); err == nil {
-			backupDir = home + "/.cache/vifstab"
+		if cacheDir, err := os.UserCacheDir(); err == nil {
+			backupDir = cacheDir + "/vifstab"
 		} else {
-			backupDir = "/tmp/.vifstab"
+			var err error
+			backupDir, err = os.MkdirTemp("", "vifstab-*")
+			if err != nil {
+				handleError(fmt.Errorf("failed to create temporary backup directory: %w", err))
+			}
 		}
 	}
 
