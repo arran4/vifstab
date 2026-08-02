@@ -106,6 +106,32 @@ func nfsOptions(isNfs4 bool) map[string]options.OptionValidator {
 		"max_connect":      options.IntRangeOption{Max: func() *int64 { i := int64(16); return &i }()}, // limit of 16
 		"trunkdiscovery":   options.NoValueOption{},
 		"notrunkdiscovery": options.NoValueOption{},
+
+		// exports(5) options mapped as incorrectly used
+		"all_squash":       options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"anongid":          options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"anonuid":          options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"crossmnt":         options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"fsid":             options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"hide":             options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"insecure_locks":   options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"mountpoint":       options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"mp":               options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"no_auth_nlm":      options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"no_root_squash":   options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"no_subtree_check": options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"no_wdelay":        options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"nocrossmnt":       options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"nohide":           options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"pnfs":             options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"reexport":         options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"refer":            options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"replicas":         options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"root_squash":      options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"secure":           options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"security_label":   options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"sign_fh":          options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
+		"subtree_check":    options.IncorrectOption{Reason: "this is an exports(5) option used for NFS server configuration, not for client mounts"},
 	}
 
 	if isNfs4 {
