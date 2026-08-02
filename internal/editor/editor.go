@@ -2,7 +2,6 @@ package editor
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -90,18 +89,9 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 		}
 
 		// Run rules
-		allRules := rules.GetAllRules()
-		ctx := rules.WithCache(context.Background(), rules.NewCache())
-
-		var allIssues []rules.ValidationIssue
-		for _, entry := range entries {
-			for _, r := range allRules {
-				issues, err := r.Validate(ctx, api, entry)
-				if err != nil {
-					return fmt.Errorf("rule %s failed: %w", r.Name(), err)
-				}
-				allIssues = append(allIssues, issues...)
-			}
+		allIssues, err := lintEntries(entries, api)
+		if err != nil {
+			return err
 		}
 
 		if len(allIssues) == 0 {
