@@ -1,0 +1,8 @@
+-- input/etc/fstab --
+/root/crypt /mnt/crypt ecryptfs ecryptfs_sig=abc,ecryptfs_fnek_sig=def,ecryptfs_cipher=aes,ecryptfs_key_bytes=16,ecryptfs_passthrough,no_sig_cache,ecryptfs_encrypted_view,ecryptfs_xattr,verbose 0 0
+/secret /secret ecryptfs key=passphrase:passphrase_passwd_file=/mnt/usb/file.txt,ecryptfs_enable_filename_crypto=y,verbosity=0,passphrase_passwd=secret,passphrase_passwd_fd=3,passphrase_salt=1234,openssl_keyfile=/mnt/usb/key.pem,openssl_passwd_file=/mnt/usb/pass.txt,openssl_passwd_fd=4,openssl_passwd=secret 0 0
+-- cache --
+file_exists:/mnt/usb/file.txt=true
+file_exists:/mnt/usb/key.pem=true
+file_exists:/mnt/usb/pass.txt=true
+-- issues --
