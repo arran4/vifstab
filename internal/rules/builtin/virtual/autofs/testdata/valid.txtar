@@ -1,0 +1,8 @@
+-- input/etc/fstab --
+/etc/auto.misc /misc autofs fd=6,pgrp=123,minproto=5,maxproto=5,indirect,strictexpire 0 0
+/etc/auto.master /net autofs fd=7,pgrp=1234,minproto=5,maxproto=5,direct,uid=1000,gid=1000,ignore 0 0
+-- input/etc/passwd --
+user:x:1000:1000:User:/home/user:/bin/bash
+-- input/etc/group --
+user:x:1000:
+-- expected/validationerrors.txt --

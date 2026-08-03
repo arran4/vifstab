@@ -1,0 +1,5 @@
+-- input/etc/fstab --
+/etc/auto.misc /misc autofs invalid_option,fd=6,pgrp=abc 0 0
+-- expected/validationerrors.txt --
+Unknown autofs mount option 'invalid_option' on line 1
+Invalid value 'abc' for autofs mount option 'pgrp' on line 1, must be an integer
