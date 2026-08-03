@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type DlmfsRule struct{}
@@ -34,5 +35,7 @@ func (r *DlmfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 		return nil, nil
 	}
 
-	return nil, nil
+	return options.ValidateOptionsMap(ctx, api, entry, "dlmfs", dlmfsOptions), nil
 }
+
+var dlmfsOptions = options.CommonOptions()

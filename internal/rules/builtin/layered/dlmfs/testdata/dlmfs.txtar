@@ -1,0 +1,8 @@
+-- input/etc/fstab --
+none /sys/kernel/dlm dlmfs defaults 0 0
+none /sys/kernel/dlm dlmfs rw,nosuid,nodev,noexec,relatime 0 0
+none /sys/kernel/dlm dlmfs badoption 0 0
+-- cache --
+proc_filesystems:dlmfs
+-- issues --
+Unknown dlmfs mount option 'badoption' on line 3
