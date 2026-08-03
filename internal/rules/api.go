@@ -85,6 +85,9 @@ func (ActualFS) CheckFileExists(path string) FileExistsResult {
 }
 
 func (ActualFS) CheckBlockDeviceExists(dev string) bool {
+	if strings.HasPrefix(dev, "/dev/ubd") || strings.HasPrefix(dev, "mtd:") {
+		return true
+	}
 	resolvedPath := ResolveDevicePath(dev)
 	_, err := os.Stat(resolvedPath)
 	return err == nil
@@ -244,6 +247,9 @@ func (c *CacheFS) CheckGroupExists(gid int) bool {
 }
 
 func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
+	if strings.HasPrefix(dev, "/dev/ubd") || strings.HasPrefix(dev, "mtd:") {
+		return true
+	}
 	resolvedPath := ResolveDevicePath(dev)
 
 	if c.Cache != nil {
