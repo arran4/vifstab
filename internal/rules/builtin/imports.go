@@ -89,6 +89,7 @@ import (
 	_ "github.com/arran4/vifstab/internal/rules/builtin/network/ocfs2"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/network/orangefs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/network/v9fs"
+	_ "github.com/arran4/vifstab/internal/rules/builtin/virtual/autofs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/virtual/bpf"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/virtual/cgroup"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/virtual/cgroup2"
