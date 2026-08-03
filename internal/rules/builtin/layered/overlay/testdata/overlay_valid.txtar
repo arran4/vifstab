@@ -1,5 +1,16 @@
 -- input --
-overlay /mnt/overlay overlay lowerdir=/lower,upperdir=/upper,workdir=/work,userxattr,redirect_dir=on,index=on,uuid=on,nfs_export=on,xino=auto,metacopy=on,volatile 0 0
+-- input/lower --
+-- input/upper --
+-- input/work --
+-- input/a:lower::dir --
+-- input/l1 --
+-- input/do1 --
+-- input/do2 --
+-- input/etc/fstab --
+overlay /mnt/overlay overlay lowerdir=/lower,upperdir=/upper,workdir=/work,userxattr,redirect_dir=on,index=on,uuid=on,nfs_export=on,xino=auto,metacopy=on,volatile,fsync=auto,verity=off 0 0
+overlay /mnt/overlay2 overlay lowerdir=/lower,upperdir=/upper,workdir=/work,uuid=auto,fsync=strict,verity=require 0 0
+overlay /mnt/overlay3 overlay lowerdir=/lower,upperdir=/upper,workdir=/work,uuid=null,fsync=volatile,verity=on 0 0
+overlay /mnt/overlay4 overlay lowerdir=/a\:lower\:\:dir:/l1::/do1::/do2 0 0
 -- cache --
 proc_filesystems=overlay
 -- expected/validationerrors.txt --
