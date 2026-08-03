@@ -1,5 +1,4 @@
 -- input/etc/fstab --
 /etc/auto.misc /misc autofs invalid_option,fd=6,pgrp=abc 0 0
 -- expected/validationerrors.txt --
-Unknown autofs mount option 'invalid_option' on line 1
-Invalid value 'abc' for autofs mount option 'pgrp' on line 1, must be an integer
+autofs is managed by the automount daemon and should not be used as a client filesystem directly in fstab; use systemd.automount(5) or auto.master(5) instead on line 1

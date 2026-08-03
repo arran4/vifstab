@@ -8,7 +8,6 @@ import (
 	_ "github.com/arran4/vifstab/internal/rules/builtin/external/vxfs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/external/zfs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/layered/apfs"
-	_ "github.com/arran4/vifstab/internal/rules/builtin/layered/autofs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/layered/cuse"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/layered/dlmfs"
 	_ "github.com/arran4/vifstab/internal/rules/builtin/layered/ecryptfs"

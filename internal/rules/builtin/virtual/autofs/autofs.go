@@ -2,9 +2,9 @@ package autofs
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/arran4/vifstab/internal/rules"
-	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 func init() {
@@ -26,22 +26,11 @@ func (r *AutofsRule) Validate(ctx context.Context, api rules.API, entry *rules.F
 		return nil, nil
 	}
 
-	fsOptions := options.MergeOptions(
-		options.CommonOptions(),
-		map[string]options.OptionValidator{
-			"fd":           options.IntOption{},
-			"pgrp":         options.IntOption{},
-			"minproto":     options.IntOption{},
-			"maxproto":     options.IntOption{},
-			"indirect":     options.NoValueOption{},
-			"direct":       options.NoValueOption{},
-			"offset":       options.NoValueOption{},
-			"strictexpire": options.NoValueOption{},
-			"uid":          options.UIDOption{},
-			"gid":          options.GIDOption{},
-			"ignore":       options.NoValueOption{},
+	return []rules.ValidationIssue{
+		{
+			Message: fmt.Sprintf("autofs is managed by the automount daemon and should not be used as a client filesystem directly in fstab; use systemd.automount(5) or auto.master(5) instead on line %d", entry.LineNum),
+			Line:    entry.RawLine,
+			Level:   rules.IssueLevelError,
 		},
-	)
-
-	return options.ValidateOptionsMap(ctx, api, entry, "autofs", fsOptions), nil
+	}, nil
 }
