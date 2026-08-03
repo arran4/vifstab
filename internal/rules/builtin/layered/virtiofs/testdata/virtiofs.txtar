@@ -1,0 +1,10 @@
+-- kernel --
+5.15.0
+-- input/etc/fstab --
+myfs /mnt virtiofs defaults 0 0
+myfs /mnt virtiofs ro,noatime,strictatime,allow_other,max_read=1024,fd=5,uid=1000 0 0
+myfs /mnt virtiofs invalid_opt 0 0
+-- cache --
+user_exists:1000=true
+-- issues --
+Unknown virtiofs mount option 'invalid_opt' on line 3
