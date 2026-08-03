@@ -1,0 +1,32 @@
+-- input/etc/passwd --
+user:x:1000:1000:user:/home/user:/bin/bash
+-- input/etc/group --
+user:x:1000:
+
+-- input/etc/fstab --
+# Valid entry
+name /mnt/point1 vboxsf rw,uid=1000,gid=1000,ttl=100,cache=default,dmode=0755,umask=022,iocharset=utf8 0 0
+
+# Invalid option
+name /mnt/point2 vboxsf invalidopt 0 0
+
+# Invalid cache enum value
+name /mnt/point3 vboxsf cache=invalid 0 0
+
+# Invalid uid (non-existent user)
+name /mnt/point4 vboxsf uid=9999 0 0
+
+# Invalid iocharset
+name /mnt/point5 vboxsf iocharset=invalid 0 0
+
+-- cache --
+user_exists:1000: true
+group_exists:1000: true
+user_exists:9999: false
+group_exists:9999: false
+
+-- issues --
+Unknown vboxsf mount option 'invalidopt' on line 5
+Invalid value 'invalid' for vboxsf mount option 'cache' on line 8
+User with uid 9999 does not exist
+Invalid value 'invalid' for vboxsf mount option 'iocharset' on line 14
