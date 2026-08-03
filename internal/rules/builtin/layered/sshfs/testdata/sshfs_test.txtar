@@ -1,0 +1,26 @@
+-- kernel --
+6.1.0
+
+-- input/etc/fstab --
+sshfs#user@host:/dir /mnt/sshfs fuse defaults 0 0
+user@host:/dir /mnt/sshfs sshfs defaults 0 0
+user@host:/dir /mnt/sshfs fuse.sshfs defaults 0 0
+user@host:/dir /mnt/sshfs sshfs port=2222,reconnect,delay_connect,sshfs_sync,no_readahead,sync_readdir 0 0
+user@host:/dir /mnt/sshfs sshfs workaround=rename:truncate:fstat,idmap=user,uidfile=/etc/passwd,gidfile=/etc/group,nomap=ignore 0 0
+user@host:/dir /mnt/sshfs sshfs ssh_command=ssh,ssh_protocol=1,sftp_server=/usr/libexec/sftp-server,directport=22 0 0
+user@host:/dir /mnt/sshfs sshfs passive,disable_hardlink,transform_symlinks,contain_symlinks,no_contain_symlinks,follow_symlinks,no_check_root,password_stdin 0 0
+user@host:/dir /mnt/sshfs sshfs dir_cache=yes,dcache_max_size=1000,dcache_timeout=60,dcache_stat_timeout=60,dcache_link_timeout=60,dcache_dir_timeout=60,dcache_clean_interval=60,dcache_min_clean_interval=60 0 0
+user@host:/dir /mnt/sshfs sshfs direct_io,max_conns=10,allow_other,default_permissions 0 0
+user@host:/dir /mnt/sshfs sshfs compression=yes,ServerAliveInterval=15 0 0
+user@host:/dir /mnt/sshfs sshfs invalid_option=yes 0 0
+user@host:/dir /mnt/sshfs sshfs workaround=invalid_workaround 0 0
+user@host:/dir /mnt/sshfs sshfs idmap=invalid_idmap 0 0
+user@host:/dir /mnt/sshfs sshfs port=abc 0 0
+user@host:/dir /mnt/sshfs sshfs ServerAliveInterval=15,foo=bar 0 0
+
+-- issues --
+Unknown sshfs mount option 'invalid_option' on line 11
+Invalid value 'invalid_workaround' for sshfs mount option 'workaround' on line 12
+Invalid value 'invalid_idmap' for sshfs mount option 'idmap' on line 13
+Invalid value 'abc' for sshfs mount option 'port' on line 14, must be an integer
+Unknown sshfs mount option 'foo' on line 15
