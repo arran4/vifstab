@@ -1,0 +1,10 @@
+-- input/etc/fstab --
+/dev/ubd/0 / hostfs defaults 1 1
+none /mnt/host hostfs defaults,append 0 0
+none /mnt/home hostfs append,rw 0 0
+/home /mnt/home hostfs defaults 0 0
+/dev/sda1 /mnt/host hostfs defaults 0 0
+none /mnt/host hostfs invalidopt 0 0
+-- expected/validationerrors.txt --
+Device for hostfs usually should be 'none' or a host path on line 5
+Unknown hostfs mount option 'invalidopt' on line 6

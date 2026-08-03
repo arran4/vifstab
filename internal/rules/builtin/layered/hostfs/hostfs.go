@@ -2,9 +2,11 @@ package hostfs
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type HostfsRule struct{}
@@ -34,5 +36,20 @@ func (r *HostfsRule) Validate(ctx context.Context, api rules.API, entry *rules.F
 		return nil, nil
 	}
 
-	return nil, nil
+	issues := options.ValidateOptionsMap(ctx, api, entry, "hostfs", hostfsOptions)
+
+	dev := entry.Fields[0]
+	if strings.HasPrefix(dev, "/dev/") && !strings.HasPrefix(dev, "/dev/ubd") {
+		issues = append(issues, rules.ValidationIssue{
+			Message: fmt.Sprintf("Device for hostfs usually should be 'none' or a host path on line %d", entry.LineNum),
+			Line:    entry.RawLine,
+			Level:   rules.IssueLevelWarning,
+		})
+	}
+
+	return issues, nil
 }
+
+var hostfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"append": options.NoValueOption{},
+})
