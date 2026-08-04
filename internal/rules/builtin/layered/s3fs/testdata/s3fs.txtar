@@ -1,0 +1,31 @@
+-- input --
+# valid standard
+mybucket /mnt/s3fs s3fs rw,noatime,allow_other,uid=1000,gid=1000 0 0
+# valid specific options
+mybucket /mnt/s3fs s3fs bucket=mybucket,use_cache=/tmp/cache,check_cache_dir_exist,storage_class=standard_ia,use_rrs=1,use_sse,passwd_file=/etc/passwd-s3fs,connect_timeout=300 0 0
+# another valid specific options
+s3fs#mybucket /mnt/s3fs fuse _netdev,allow_other,nonempty,use_cache=/tmp,max_stat_cache_size=1000,stat_cache_expire=900,ssl_verify_hostname=0 0 0
+# note: wait, the fsType in our rule triggers only if fsType == "s3fs", so "s3fs#mybucket /mnt/s3fs fuse" is NOT caught by S3fsRule but by FuseRule (or an s3fs handler there). Let's use `s3fs` as type for tests.
+mybucket /mnt/s3fs s3fs nomultipart,streamupload,enable_content_md5,ecs,iam_role=auto,ibm_iam_auth,use_xattr,noxmlns,nomixupload,nocopyapi 0 0
+mybucket /mnt/s3fs s3fs curldbg=body,proxy=http://proxy:8080,ipresolve=IPv4,dbglevel=info,compat_dir,use_wtf8 0 0
+
+# invalid options
+mybucket /mnt/s3fs s3fs use_rrs=,check_cache_dir_exist=1 0 0
+mybucket /mnt/s3fs s3fs connect_timeout=abc 0 0
+mybucket /mnt/s3fs s3fs storage_class=invalid_class,ipresolve=IPv8 0 0
+mybucket /mnt/s3fs s3fs unknown_opt=1 0 0
+
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+user:x:1000:1000:user:/home/user:/bin/bash
+
+-- input/etc/group --
+root:x:0:
+user:x:1000:
+
+-- issues --
+s3fs mount option 'check_cache_dir_exist' does not take a value on line 12
+Invalid value 'abc' for s3fs mount option 'connect_timeout' on line 13, must be an integer
+Invalid value 'invalid_class' for s3fs mount option 'storage_class' on line 14
+Invalid value 'IPv8' for s3fs mount option 'ipresolve' on line 14
+Unknown s3fs mount option 'unknown_opt' on line 15
