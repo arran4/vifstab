@@ -55,7 +55,7 @@ var gocryptfsOptions = options.MergeOptions(options.CommonOptions(), map[string]
 	"noexec":             options.NoValueOption{},
 	"fg":                 options.NoValueOption{},
 	"f":                  options.NoValueOption{},
-	"force_owner":        options.StringOption{}, // typically "uid:gid"
+	"force_owner":        ForceOwnerOption{},
 	"forcedecode":        options.NoValueOption{},
 	"fsname":             options.StringOption{},
 	"fusedebug":          options.NoValueOption{},

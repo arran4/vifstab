@@ -3,6 +3,12 @@
 /tmp/cipher /tmp/plain gocryptfs allow_other,passfile=/nonexistent/password,rw 0 0
 /home/joe /home/joe.crypt gocryptfs notifypid=abc,openssl=yes,scryptn=16 0 0
 /mnt/c /mnt/p gocryptfs badname,unknownopt 0 0
+/mnt/c4 /mnt/p4 gocryptfs force_owner=abc:def 0 0
+/mnt/c5 /mnt/p5 gocryptfs force_owner=1000 0 0
+
+-- cache --
+user_exists:1000=true
+group_exists:1000=true
 
 -- issues --
 File '/nonexistent/password' specified in gocryptfs mount option 'passfile' does not exist on line 2
@@ -11,3 +17,6 @@ Invalid value 'yes' for gocryptfs mount option 'openssl' on line 3
 Mount option 'scryptn' is not valid for gocryptfs: scryptn is an init and passwd option, not for mounting on line 3
 Missing value for gocryptfs mount option 'badname' on line 4
 Unknown gocryptfs mount option 'unknownopt' on line 4
+Invalid uid value 'abc' in gocryptfs mount option 'force_owner' on line 5, must be an integer
+Invalid gid value 'def' in gocryptfs mount option 'force_owner' on line 5, must be an integer
+Invalid value '1000' for gocryptfs mount option 'force_owner' on line 6, must be 'uid:gid'
