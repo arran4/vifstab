@@ -1,0 +1,13 @@
+-- fstab --
+-- input/etc/fstab --
+# Valid gocryptfs entries
+/tmp/cipher /tmp/plain gocryptfs allow_other,passfile=/tmp/password,rw 0 0
+/home/joe /home/joe.crypt gocryptfs reverse,aessiv,ko=noexec,nosuid,nodev 0 0
+/mnt/c /mnt/p gocryptfs badname=*conflicted*,exclude-wildcard=*.mp3,config=/etc/gocryptfs.conf,extpass=ssh-askpass,fido2=/dev/hidraw1,masterkey=stdin 0 0
+/mnt/c2 /mnt/p2 gocryptfs openssl=auto,kernel_cache,fusedebug,sharedstorage 0 0
+/mnt/c3 /mnt/p3 gocryptfs force_owner=1000:1000,fido2-assert-option=pin=false 0 0
+
+-- input/tmp/password --
+-- input/etc/gocryptfs.conf --
+
+-- issues --

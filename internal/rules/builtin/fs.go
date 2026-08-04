@@ -11,14 +11,15 @@ import (
 )
 
 var knownExternalFS = map[string]bool{
-	"zfs":     true,
-	"openafs": true,
-	"lustre":  true,
-	"beegfs":  true,
-	"gpfs":    true,
-	"vxfs":    true,
-	"9p":      true,
-	"ksmbd":   true,
+	"zfs":       true,
+	"openafs":   true,
+	"lustre":    true,
+	"beegfs":    true,
+	"gpfs":      true,
+	"vxfs":      true,
+	"9p":        true,
+	"ksmbd":     true,
+	"gocryptfs": true,
 }
 
 const ProcFilesystemsKey rules.CacheKey = "proc_filesystems"

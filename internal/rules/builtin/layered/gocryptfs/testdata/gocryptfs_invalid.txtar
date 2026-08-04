@@ -1,0 +1,13 @@
+-- input/etc/fstab --
+# Invalid gocryptfs entries
+/tmp/cipher /tmp/plain gocryptfs allow_other,passfile=/nonexistent/password,rw 0 0
+/home/joe /home/joe.crypt gocryptfs notifypid=abc,openssl=yes,scryptn=16 0 0
+/mnt/c /mnt/p gocryptfs badname,unknownopt 0 0
+
+-- issues --
+File '/nonexistent/password' specified in gocryptfs mount option 'passfile' does not exist on line 2
+Invalid value 'abc' for gocryptfs mount option 'notifypid' on line 3, must be an integer
+Invalid value 'yes' for gocryptfs mount option 'openssl' on line 3
+Mount option 'scryptn' is not valid for gocryptfs: scryptn is an init and passwd option, not for mounting on line 3
+Missing value for gocryptfs mount option 'badname' on line 4
+Unknown gocryptfs mount option 'unknownopt' on line 4
