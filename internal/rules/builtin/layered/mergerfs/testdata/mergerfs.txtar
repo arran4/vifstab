@@ -1,0 +1,10 @@
+-- kernel --
+6.0.0
+-- input --
+/mnt/pool1 /mnt/merged mergerfs defaults 0 0
+/mnt/pool1 /mnt/merged mergerfs func.getattr=newest,category.action=epall,category.create=pfrd,category.search=ff,cache.statfs=10,cache.attr=1,cache.entry=1,cache.negative-entry=0,cache.files=off,cache.files.process-names=rtorrent|qbittorrent-nox,cache.writeback=false,cache.symlinks=false,cache.readdir=false 0 0
+/mnt/pool1 /mnt/merged mergerfs branches=1,mountpoint=/mnt,branches-mount-timeout=10,branches-mount-timeout-fail=true,minfreespace=100G,moveonenospc=true,inodecalc=hybrid-hash,dropcacheonclose=true,direct-io-allow-mmap=false,symlinkify=true,symlinkify-timeout=3600,nullrw=false,lazy-umount-mountpoint=false,ignorepponrename=true,export-support=true,kernel-permissions-check=true,security-capability=false,xattr=passthrough,link-cow=true,statfs=full,statfs-ignore=ro,nfsopenhack=off,follow-symlinks=never,link-exdev=passthrough,rename-exdev=rel-symlink,readahead=1024,posix-acl=true,async-read=false,fuse-msg-size=1M,read-thread-count=4,process-thread-count=2,process-thread-queue-depth=2,pin-threads=cpu0,flush-on-close=always,scheduling-priority=-10,proxy-ioprio=true,fsname=myfs 0 0
+/mnt/pool1 /mnt/merged mergerfs parallel-direct-writes=true,passthrough.io=off,passthrough.max-stack-depth=1,never-forget-nodes=false,allow-idmap=true,debug=true,log.file=stderr 0 0
+/mnt/pool1 /mnt/merged mergerfs badopt=1 0 0
+-- issues --
+Unknown mergerfs mount option 'badopt' on line 5
