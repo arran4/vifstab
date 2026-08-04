@@ -1,0 +1,25 @@
+-- input --
+# Valid standard and dynamic options
+remote:path /mnt/rclone rclone rw,async-read,vfs-cache-mode=writes,vfs-read-chunk-size=128M,config=/etc/rclone.conf,env.HTTPS_PROXY=proxy,vvv,args2env 0 0
+
+# Test umask and uid
+remote2:path /mnt/rclone2 rclone rw,dir-perms=0755,file-perms=0644,uid=1000,gid=1000 0 0
+
+# Invalid enum for vfs-cache-mode
+remote3:path /mnt/rclone3 rclone rw,vfs-cache-mode=invalid 0 0
+
+# Completely unknown option
+remote4:path /mnt/rclone4 rclone rw,made_up_option=true 0 0
+
+# Non-existent uid
+remote5:path /mnt/rclone5 rclone rw,uid=9999 0 0
+
+-- input/etc/passwd --
+user1:x:1000:1000:User1,,,:/home/user1:/bin/bash
+-- input/etc/group --
+user1:x:1000:
+
+-- issues --
+Invalid value 'invalid' for rclone mount option 'vfs-cache-mode' on line 8
+Unknown rclone mount option 'made_up_option' on line 11
+User with uid 9999 does not exist

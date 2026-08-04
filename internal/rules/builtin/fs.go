@@ -20,6 +20,7 @@ var knownExternalFS = map[string]bool{
 	"9p":        true,
 	"ksmbd":     true,
 	"gocryptfs": true,
+	"rclone":    true,
 }
 
 const ProcFilesystemsKey rules.CacheKey = "proc_filesystems"
