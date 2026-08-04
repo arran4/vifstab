@@ -1,0 +1,47 @@
+-- input --
+# Valid standard options
+tmpfs /mytmpfs tmpfs defaults 0 0
+tmpfs /mytmpfs tmpfs size=10G,nr_inodes=10k,mode=700 0 0
+tmpfs /mytmpfs tmpfs nr_blocks=1000,noswap,huge=always 0 0
+tmpfs /mytmpfs tmpfs huge=never 0 0
+tmpfs /mytmpfs tmpfs huge=within_size 0 0
+tmpfs /mytmpfs tmpfs huge=advise 0 0
+
+# New quota options
+tmpfs /mytmpfs tmpfs quota,usrquota,grpquota,usrquota_block_hardlimit=1G,usrquota_inode_hardlimit=100k,grpquota_block_hardlimit=2G,grpquota_inode_hardlimit=200k 0 0
+
+# Inode options
+tmpfs /mytmpfs tmpfs inode64,inode32 0 0
+
+# Casefold options
+tmpfs /mytmpfs tmpfs casefold,strict_encoding 0 0
+tmpfs /mytmpfs tmpfs casefold=utf8-12.1.0 0 0
+
+# Valid mpol options
+tmpfs /mytmpfs tmpfs mpol=default 0 0
+tmpfs /mytmpfs tmpfs mpol=prefer:0 0 0
+tmpfs /mytmpfs tmpfs mpol="bind:0-3,5,7,9-15" 0 0
+tmpfs /mytmpfs tmpfs mpol=interleave 0 0
+tmpfs /mytmpfs tmpfs mpol=interleave:0-3 0 0
+tmpfs /mytmpfs tmpfs mpol=local 0 0
+
+# Valid mpol options with optional flags
+tmpfs /mytmpfs tmpfs mpol=bind=static:0-3 0 0
+tmpfs /mytmpfs tmpfs mpol=prefer=relative:0 0 0
+tmpfs /mytmpfs tmpfs mpol=interleave=static:0-3 0 0
+tmpfs /mytmpfs tmpfs mpol=default=static 0 0
+tmpfs /mytmpfs tmpfs mpol=local=relative 0 0
+
+# Invalid mpol options
+tmpfs /mytmpfs tmpfs mpol=invalid 0 0
+tmpfs /mytmpfs tmpfs mpol= 0 0
+
+# Invalid huge options
+tmpfs /mytmpfs tmpfs huge=deny 0 0
+tmpfs /mytmpfs tmpfs huge=force 0 0
+
+-- issues --
+Invalid value 'invalid' for tmpfs mount option 'mpol' on line 35
+Missing value for tmpfs mount option 'mpol' on line 36
+Invalid value 'deny' for tmpfs mount option 'huge' on line 39
+Invalid value 'force' for tmpfs mount option 'huge' on line 40
