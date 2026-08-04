@@ -47,8 +47,19 @@ var tmpfsOptions = options.MergeOptions(options.CommonOptions(), map[string]opti
 	"mode":      options.OctalOption{},
 	"gid":       options.GIDOption{},
 	"uid":       options.UIDOption{},
+	"quota":                    options.NoValueOption{},
+	"usrquota":                 options.NoValueOption{},
+	"grpquota":                 options.NoValueOption{},
+	"usrquota_block_hardlimit": options.StringOption{},
+	"usrquota_inode_hardlimit": options.StringOption{},
+	"grpquota_block_hardlimit": options.StringOption{},
+	"grpquota_inode_hardlimit": options.StringOption{},
+	"inode32":                  options.NoValueOption{},
+	"inode64":                  options.NoValueOption{},
+	"casefold":                 options.OptionalStringOption{},
+	"strict_encoding":          options.NoValueOption{},
 	"huge": options.EnumOption{
-		Allowed: map[string]bool{"never": true, "always": true, "within_size": true, "advise": true, "deny": true, "force": true},
+		Allowed: map[string]bool{"never": true, "always": true, "within_size": true, "advise": true},
 	},
 	"mpol": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {
@@ -60,7 +71,42 @@ var tmpfsOptions = options.MergeOptions(options.CommonOptions(), map[string]opti
 				},
 			}
 		}
-		if !strings.HasPrefix(val, "default") && !strings.HasPrefix(val, "prefer:") && !strings.HasPrefix(val, "bind:") && !strings.HasPrefix(val, "interleave") && !strings.HasPrefix(val, "local") {
+
+
+		// Remove quotes if present
+		cleanVal := val
+		if len(cleanVal) >= 2 && cleanVal[0] == '"' && cleanVal[len(cleanVal)-1] == '"' {
+		    cleanVal = cleanVal[1:len(cleanVal)-1]
+		}
+
+		// Remove optional flag prefixes before checking prefix logic
+		isFlagMatch := false
+		flagTrimmed := cleanVal
+		for _, prefix := range []string{"default=", "prefer=", "bind=", "interleave=", "local="} {
+		    if strings.HasPrefix(cleanVal, prefix) {
+		        remainder := strings.TrimPrefix(cleanVal, prefix)
+		        if strings.HasPrefix(remainder, "static:") {
+		            flagTrimmed = prefix[:len(prefix)-1] + ":" + strings.TrimPrefix(remainder, "static:")
+		            isFlagMatch = true
+		            break
+		        } else if strings.HasPrefix(remainder, "relative:") {
+		            flagTrimmed = prefix[:len(prefix)-1] + ":" + strings.TrimPrefix(remainder, "relative:")
+		            isFlagMatch = true
+		            break
+		        } else if remainder == "static" || remainder == "relative" {
+		            flagTrimmed = prefix[:len(prefix)-1]
+		            isFlagMatch = true
+		            break
+		        }
+		    }
+		}
+
+		checkVal := cleanVal
+		if isFlagMatch {
+		    checkVal = flagTrimmed
+		}
+
+		if !strings.HasPrefix(checkVal, "default") && !strings.HasPrefix(checkVal, "prefer:") && !strings.HasPrefix(checkVal, "bind:") && !strings.HasPrefix(checkVal, "interleave") && !strings.HasPrefix(checkVal, "local") {
 			return []rules.ValidationIssue{
 				{
 					Message: fmt.Sprintf("Invalid value '%s' for tmpfs mount option 'mpol' on line %d", val, entry.LineNum),
