@@ -1,0 +1,6 @@
+test: valid zfs filesystem options
+
+Ensures that valid zfs mount options are accepted.
+-- input/etc/fstab --
+tank/home /home zfs defaults,atime=off,quota=10G,compression=lz4,aclinherit=passthrough,userquota@bob=5G,my_module:my_prop=value,projectused@test=1G 0 0
+-- expected/validationerrors.txt --
