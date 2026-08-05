@@ -1,0 +1,38 @@
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+user:x:1000:1000:user:/home/user:/bin/bash
+
+-- input/etc/group --
+root:x:0:
+user:x:1000:
+
+-- input --
+# Valid options
+none /mnt/huge1 hugetlbfs uid=1000,gid=1000,mode=0755,pagesize=2M,size=10G,min_size=10%,nr_inodes=100K 0 0
+none /mnt/huge2 hugetlbfs defaults 0 0
+
+# Unknown option
+none /mnt/huge3 hugetlbfs uid=1000,invalidopt=1 0 0
+
+# Missing values
+none /mnt/huge4 hugetlbfs uid= 0 0
+none /mnt/huge5 hugetlbfs mode= 0 0
+none /mnt/huge6 hugetlbfs size= 0 0
+
+# Invalid size values
+none /mnt/huge7 hugetlbfs size=abc 0 0
+none /mnt/huge8 hugetlbfs min_size=101% 0 0
+none /mnt/huge9 hugetlbfs nr_inodes=xyz 0 0
+
+# Invalid UID/GID
+none /mnt/huge10 hugetlbfs uid=9999 0 0
+
+-- issues --
+Unknown hugetlbfs mount option 'invalidopt' on line 6
+Missing value for hugetlbfs mount option 'uid' on line 9
+Missing value for hugetlbfs mount option 'mode' on line 10
+Missing value for hugetlbfs mount option 'size' on line 11
+Invalid value format 'abc' for size on line 14
+Invalid percentage value '101%' for hugetlbfs mount option 'min_size' on line 15
+Invalid value format 'xyz' for nr_inodes on line 16
+User with uid 9999 does not exist
