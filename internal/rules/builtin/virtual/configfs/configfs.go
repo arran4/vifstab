@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type ConfigfsRule struct{}
@@ -34,5 +35,7 @@ func (r *ConfigfsRule) Validate(ctx context.Context, api rules.API, entry *rules
 		return nil, nil
 	}
 
-	return nil, nil
+	return options.ValidateOptionsMap(ctx, api, entry, "configfs", configfsOptions), nil
 }
+
+var configfsOptions = options.CommonOptions()
