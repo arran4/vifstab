@@ -1,0 +1,7 @@
+-- kernel --
+Linux version 5.10.0
+-- input/etc/fstab --
+configfs /sys/kernel/config configfs rw,nosuid,nodev,noexec,relatime 0 0
+configfs /sys/kernel/config configfs fakeopt,defaults 0 0
+-- expected/validationerrors.txt --
+Unknown configfs mount option 'fakeopt' on line 2
