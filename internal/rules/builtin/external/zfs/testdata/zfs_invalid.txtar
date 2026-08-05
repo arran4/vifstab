@@ -1,0 +1,7 @@
+test: invalid zfs filesystem options
+
+Ensures that invalid zfs mount options are rejected.
+-- input/etc/fstab --
+tank/home /home zfs unknown_opt,atime=off 0 0
+-- expected/validationerrors.txt --
+Unknown zfs mount option 'unknown_opt' on line 1
