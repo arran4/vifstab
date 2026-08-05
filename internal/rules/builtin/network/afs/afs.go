@@ -48,6 +48,7 @@ func (r *AfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 					"write":   true,
 				},
 			},
+			"source": options.IncorrectOption{Reason: "internal kernel flag not meant for fstab"},
 		},
 	)
 
