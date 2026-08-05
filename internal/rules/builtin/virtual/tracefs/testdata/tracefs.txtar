@@ -1,0 +1,27 @@
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+testuser:x:1000:1000:testuser,,,:/home/testuser:/bin/bash
+
+-- input/etc/group --
+root:x:0:
+testgroup:x:1000:
+
+-- input/etc/fstab --
+tracefs /sys/kernel/tracing tracefs defaults 0 0
+tracefs /sys/kernel/debug/tracing tracefs uid=1000,gid=1000,mode=0755 0 0
+tracefs /sys/kernel/tracing tracefs uid=abc 0 0
+tracefs /sys/kernel/tracing tracefs gid=abc 0 0
+tracefs /sys/kernel/tracing tracefs mode=abc 0 0
+tracefs /sys/kernel/tracing tracefs mode=0888 0 0
+tracefs /sys/kernel/tracing tracefs unknown=opt 0 0
+tracefs /sys/kernel/tracing tracefs uid=2000 0 0
+tracefs /sys/kernel/tracing tracefs gid=2000 0 0
+
+-- issues --
+Invalid value 'abc' for tracefs mount option 'uid' on line 3, must be an integer
+Invalid value 'abc' for tracefs mount option 'gid' on line 4, must be an integer
+Invalid value 'abc' for tracefs mount option 'mode' on line 5, must be an octal integer
+Invalid value '0888' for tracefs mount option 'mode' on line 6, must be an octal integer
+Unknown tracefs mount option 'unknown' on line 7
+User with uid 2000 does not exist
+Group with gid 2000 does not exist
