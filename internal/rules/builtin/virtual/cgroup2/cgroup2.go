@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type Cgroup2Rule struct{}
@@ -34,5 +35,14 @@ func (r *Cgroup2Rule) Validate(ctx context.Context, api rules.API, entry *rules.
 		return nil, nil
 	}
 
-	return nil, nil
+	return options.ValidateOptionsMap(ctx, api, entry, "cgroup2", cgroup2Options), nil
 }
+
+var cgroup2Options = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"nsdelegate":                options.NoValueOption{},
+	"favordynmods":              options.NoValueOption{},
+	"memory_localevents":        options.NoValueOption{},
+	"memory_recursiveprot":      options.NoValueOption{},
+	"memory_hugetlb_accounting": options.NoValueOption{},
+	"pids_localevents":          options.NoValueOption{},
+})
