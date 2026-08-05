@@ -1,0 +1,16 @@
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+jules:x:1000:1000:jules:/home/jules:/bin/bash
+-- input/etc/group --
+root:x:0:
+jules:x:1000:
+-- input --
+efivarfs /sys/firmware/efi/efivars efivarfs uid=root,gid=0 0 0
+efivarfs /sys/firmware/efi/efivars efivarfs uid=0,gid=root 0 0
+efivarfs /sys/firmware/efi/efivars efivarfs uid=-1,gid=0 0 0
+efivarfs /sys/firmware/efi/efivars efivarfs foo 0 0
+-- issues --
+Invalid value 'root' for efivarfs mount option 'uid' on line 1, must be an integer
+Invalid value 'root' for efivarfs mount option 'gid' on line 2, must be an integer
+User with uid -1 does not exist
+Unknown efivarfs mount option 'foo' on line 4

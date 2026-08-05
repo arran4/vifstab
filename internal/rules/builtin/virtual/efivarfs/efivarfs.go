@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type EfivarfsRule struct{}
@@ -34,5 +35,10 @@ func (r *EfivarfsRule) Validate(ctx context.Context, api rules.API, entry *rules
 		return nil, nil
 	}
 
-	return nil, nil
+	return options.ValidateOptionsMap(ctx, api, entry, "efivarfs", efivarfsOptions), nil
 }
+
+var efivarfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"uid": options.UIDOption{},
+	"gid": options.GIDOption{},
+})
