@@ -1,0 +1,5 @@
+-- input --
+cgroup2 /sys/fs/cgroup cgroup2 nsdelegate 0 0
+cgroup2 /sys/fs/cgroup cgroup2 favordynmods,memory_localevents 0 0
+cgroup2 /sys/fs/cgroup cgroup2 memory_recursiveprot,memory_hugetlb_accounting,pids_localevents 0 0
+none /sys/fs/cgroup cgroup2 ro,nsdelegate 0 0
