@@ -3,4 +3,7 @@ test: gpfs filesystem
 Ensures that fstab entries with external filesystems are validated based on their loaded module status.
 -- input/etc/fstab --
 gpfs_fs /gpfs gpfs defaults 0 0
+gpfs_fs /gpfs gpfs defaults,atime,useNSDserver=always,nosyncnfs=1 0 0
+gpfs_fs /gpfs gpfs fake_option 0 0
 -- expected/validationerrors.txt --
+Unknown gpfs mount option 'fake_option' on line 3
