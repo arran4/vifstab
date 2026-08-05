@@ -1,0 +1,10 @@
+-- input/etc/passwd --
+root:x:0:0:root:/root:/bin/bash
+jules:x:1000:1000:jules:/home/jules:/bin/bash
+-- input/etc/group --
+root:x:0:
+jules:x:1000:
+-- input --
+efivarfs /sys/firmware/efi/efivars efivarfs rw,nosuid,nodev,noexec,relatime 0 0
+efivarfs /sys/firmware/efi/efivars efivarfs uid=0,gid=0 0 0
+efivarfs /sys/firmware/efi/efivars efivarfs uid=1000,gid=1000 0 0
