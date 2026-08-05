@@ -6,7 +6,7 @@ proc_filesystems:
 -- input/etc/fstab --
 none /afs afs defaults 0 0
 none /afs afs dyn 0 0
-none /afs afs autocell,dyn,flock=local,source=test 0 0
+none /afs afs autocell,dyn,flock=local 0 0
 none /afs afs flock=invalid 0 0
 none /afs afs unknown=1 0 0
 
