@@ -1,6 +1,29 @@
 test: lustre filesystem
-
-Ensures that fstab entries with external filesystems are validated based on their loaded module status.
+-- expected/validationerrors.txt --
+Unknown lustre mount option 'badopt' on line 3
+Missing value for lustre mount option 'mgssec' on line 4
+Invalid value 'invalidflavor' for lustre mount option 'mgssec' on line 5
+lustre mount option 'flock' does not take a value on line 6
+Missing value for lustre mount option 'skpath' on line 7
+Missing value for lustre mount option 'exclude' on line 8
+Missing value for lustre mount option 'retry' on line 9
+Invalid value 'bad' for lustre mount option 'retry' on line 10, must be an integer
+Invalid value 'bad' for lustre mount option 'max_sectors_kb' on line 11, must be an integer
+Invalid value 'bad' for lustre mount option 'md_stripe_cache_size' on line 12, must be an integer
+Invalid value 'bad' for lustre mount option 'recovery_time_soft' on line 13, must be an integer
+Invalid value 'bad' for lustre mount option 'recovery_time_hard' on line 14, must be an integer
 -- input/etc/fstab --
 10.0.0.1@tcp0:/lustre /mnt/lustre lustre defaults 0 0
--- expected/validationerrors.txt --
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre defaults,flock,noflock,localflock,user_xattr,nouser_xattr,user_fid2path,nouser_fid2path,retry=5,always_ping,lazystatfs,nolazystatfs,verbose,noverbose,mgssec=null,mgssec=plain,mgssec=gssnull,mgssec=krb5n,mgssec=krb5a,mgssec=krb5i,mgssec=krb5p,mgssec=skn,mgssec=ska,mgssec=ski,mgssec=skpi,skpath=/etc/lustre,exclude=ost1:ost2,nosvc,nomgs,abort_recov,max_sectors_kb=1024,md_stripe_cache_size=1024,recovery_time_soft=300,recovery_time_hard=900,noscrub,mgsname=myname,mgsnode=mynode 0 0
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre badopt 0 0
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre mgssec 0 0
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre mgssec=invalidflavor 0 0
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre flock=1 0 0
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre skpath 0 0
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre exclude 0 0
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre retry 0 0
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre retry=bad 0 0
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre max_sectors_kb=bad 0 0
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre md_stripe_cache_size=bad 0 0
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre recovery_time_soft=bad 0 0
+10.0.0.1@tcp0:/lustre /mnt/lustre lustre recovery_time_hard=bad 0 0
