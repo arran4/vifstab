@@ -121,4 +121,10 @@ var zfsOptions = options.MergeOptions(options.CommonOptions(), map[string]option
 	"mounted": options.OptionalStringOption{},
 	"snapshot_count": options.OptionalStringOption{},
 	"zfsutil": options.OptionalStringOption{},
+	"keylocation": options.OptionalStringOption{},
+	"noxattr": options.OptionalStringOption{},
+	"mand": options.OptionalStringOption{},
+	"nodevices": options.OptionalStringOption{},
+	"nosetuid": options.OptionalStringOption{},
+	"norelatime": options.OptionalStringOption{},
 })
