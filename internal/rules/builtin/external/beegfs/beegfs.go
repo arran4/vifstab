@@ -6,7 +6,30 @@ import (
 
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/arran4/vifstab/internal/rules/builtin/external"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
+
+var beegfsOptionsMap = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"cfgFile":                   options.StringOption{},
+	"logStdFile":                options.StringOption{},
+	"sysMgmtdHost":              options.StringOption{},
+	"tunePreferredMetaFile":     options.StringOption{},
+	"tunePreferredStorageFile":  options.StringOption{},
+	"connInterfacesList":        options.StringOption{},
+	"connAuthFile":              options.StringOption{},
+	"connDisableAuthentication": options.StringOption{},
+	"connDisableIPv6":           options.StringOption{},
+	"logLevel":                  options.IntOption{},
+	"connPortShift":             options.IntOption{},
+	"connMgmtdPort":             options.IntOption{},
+	"sysMountSanityCheckMS":     options.IntOption{},
+	"grpid":                     options.NoValueOption{},
+	"connMaxInternodeNum":       options.IntOption{},
+	"connRDMABufSize":           options.IntOption{},
+	"connRDMABufNum":            options.IntOption{},
+	"tuneRemoteFSync":           options.StringOption{},
+	"connCommRetrySecs":         options.IntOption{},
+})
 
 type BeeGFSRule struct{}
 
@@ -36,5 +59,9 @@ func (r *BeeGFSRule) Validate(ctx context.Context, api rules.API, entry *rules.F
 	}
 
 	issues := external.CheckModuleSupport(ctx, fsType, entry, "beegfs", "")
+
+	optIssues := options.ValidateOptionsMap(ctx, api, entry, "beegfs", beegfsOptionsMap)
+	issues = append(issues, optIssues...)
+
 	return issues, nil
 }

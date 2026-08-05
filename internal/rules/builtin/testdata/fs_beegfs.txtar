@@ -3,4 +3,14 @@ test: beegfs filesystem
 Ensures that fstab entries with external filesystems are validated based on their loaded module status.
 -- input/etc/fstab --
 beegfs_nodev /mnt/beegfs beegfs defaults 0 0
+beegfs_nodev /mnt/beegfs beegfs cfgFile=/etc/beegfs/beegfs-client.conf,logLevel=3,grpid 0 0
+beegfs_nodev /mnt/beegfs beegfs sysMgmtdHost=mgmtd,connPortShift=1,connMgmtdPort=8008 0 0
+beegfs_nodev /mnt/beegfs beegfs tunePreferredMetaFile=meta1,tunePreferredStorageFile=storage1,connInterfacesList=eth0 0 0
+beegfs_nodev /mnt/beegfs beegfs connMaxInternodeNum=4,connRDMABufSize=8192,connRDMABufNum=70,tuneRemoteFSync=true,connCommRetrySecs=600 0 0
+beegfs_nodev /mnt/beegfs beegfs unknown_opt 0 0
+beegfs_nodev /mnt/beegfs beegfs logLevel 0 0
+beegfs_nodev /mnt/beegfs beegfs grpid=1 0 0
 -- expected/validationerrors.txt --
+Unknown beegfs mount option 'unknown_opt' on line 6
+Missing value for beegfs mount option 'logLevel' on line 7
+beegfs mount option 'grpid' does not take a value on line 8
