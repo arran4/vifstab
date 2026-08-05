@@ -1,0 +1,16 @@
+-- input --
+smackfs /sys/fs/smackfs smackfs defaults 0 0
+smackfs /sys/fs/smackfs smackfs smackfsdef=label 0 0
+smackfs /sys/fs/smackfs smackfs smackfsfloor=label 0 0
+smackfs /sys/fs/smackfs smackfs smackfshat=label 0 0
+smackfs /sys/fs/smackfs smackfs smackfsroot=label 0 0
+smackfs /sys/fs/smackfs smackfs smackfstransmute=label 0 0
+smackfs /sys/fs/smackfs smackfs smackfsdef= 0 0
+smackfs /sys/fs/smackfs smackfs smackfsdef 0 0
+smackfs /sys/fs/smackfs smackfs foo 0 0
+smackfs /sys/fs/smackfs smackfs smackfsdefault=label 0 0
+-- issues --
+Missing value for smackfs mount option 'smackfsdef' on line 7
+Missing value for smackfs mount option 'smackfsdef' on line 8
+Unknown smackfs mount option 'foo' on line 9
+Unknown smackfs mount option 'smackfsdefault' on line 10
