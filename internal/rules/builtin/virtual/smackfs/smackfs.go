@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type SmackfsRule struct{}
@@ -34,5 +35,13 @@ func (r *SmackfsRule) Validate(ctx context.Context, api rules.API, entry *rules.
 		return nil, nil
 	}
 
-	return nil, nil
+	return options.ValidateOptionsMap(ctx, api, entry, "smackfs", smackfsOptions), nil
 }
+
+var smackfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"smackfsdef":       options.StringOption{},
+	"smackfsfloor":     options.StringOption{},
+	"smackfshat":       options.StringOption{},
+	"smackfsroot":      options.StringOption{},
+	"smackfstransmute": options.StringOption{},
+})
