@@ -8,6 +8,10 @@ root:x:0:
 /dev/fuse /mnt/fuse fuse setuid=root,drop_privileges,from_code=utf8,to_code=utf8,subdir=/tmp,rellinks,norellinks 0 0
 /dev/fuse /mnt/fuse fuse invalid_option=abc 0 0
 /dev/fuse /mnt/fuse fuse user_id=999 0 0
+/dev/fuse /mnt/fuse fuse3 default_permissions,allow_other,rootmode=0755,blkdev,blksize=512,max_read=1024,fd=3,user_id=0,group_id=0,fsname=myfuse,subtype=mytype 0 0
+/dev/fuse /mnt/fuse fuse.glusterfs default_permissions,allow_other 0 0
+/dev/fuse /mnt/fuse fuse3 invalid_option=abc 0 0
 -- issues --
 Unknown fuse mount option 'invalid_option' on line 4
 User with uid 999 does not exist
+Unknown fuse3 mount option 'invalid_option' on line 8

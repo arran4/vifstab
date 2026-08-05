@@ -31,7 +31,7 @@ func (r *FuseRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 	}
 
 	fsType := entry.Fields[2]
-	if fsType != "fuse" {
+	if fsType != "fuse" && fsType != "fuse3" && fsType != "fuseblk" && fsType != "glusterfs" && fsType != "ntfs-3g" && fsType != "mergerfs" && fsType != "sshfs" && fsType != "s3fs" && !strings.HasPrefix(fsType, "fuse.") {
 		return nil, nil
 	}
 
