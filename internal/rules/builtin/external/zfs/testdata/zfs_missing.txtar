@@ -1,0 +1,6 @@
+test: missing zfs options
+
+Ensures that the missing zfs mount options are handled correctly.
+-- input/etc/fstab --
+tank/home /home zfs keylocation=prompt,noxattr,mand,nodevices,nosetuid,norelatime,zfsutil 0 0
+-- issues --
