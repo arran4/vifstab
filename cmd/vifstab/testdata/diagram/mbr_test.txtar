@@ -9,6 +9,7 @@ Partition Table: mbr
 Disk Size: 104857600 bytes
 
 Partition 1: Start 1048576, Size 5242880
+  Type: 0x83
 
 Visual Diagram:
 [AAA---------------------------------------------------------]

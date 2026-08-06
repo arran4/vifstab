@@ -15,6 +15,8 @@ import (
 	"github.com/cpuguy83/go-md2man/v2/md2man"
 	"github.com/diskfs/go-diskfs"
 	"github.com/diskfs/go-diskfs/disk"
+	"github.com/diskfs/go-diskfs/partition/gpt"
+	"github.com/diskfs/go-diskfs/partition/mbr"
 )
 
 //go:embed manpage.md
@@ -173,6 +175,17 @@ func printDiagram(w io.Writer, device string, opts ...any) error {
 		}
 
 		fmt.Fprintf(w, "Partition %d: Start %d, Size %d\n", i+1, p.GetStart(), p.GetSize())
+
+		var fsType string
+		switch pt := p.(type) {
+		case *gpt.Partition:
+			fsType = string(pt.Type)
+		case *mbr.Partition:
+			fsType = fmt.Sprintf("0x%02x", pt.Type)
+		}
+		if fsType != "" {
+			fmt.Fprintf(w, "  Type: %s\n", fsType)
+		}
 
 		startRatio := float64(p.GetStart()) / float64(diskSize)
 		sizeRatio := float64(p.GetSize()) / float64(diskSize)

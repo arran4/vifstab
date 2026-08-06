@@ -10,7 +10,9 @@ Partition Table: gpt
 Disk Size: 104857600 bytes
 
 Partition 1: Start 1048576, Size 10485760
+  Type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
 Partition 2: Start 31457280, Size 31457280
+  Type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
 
 Visual Diagram:
 [AAAAAA------------BBBBBBBBBBBBBBBBBB------------------------]
