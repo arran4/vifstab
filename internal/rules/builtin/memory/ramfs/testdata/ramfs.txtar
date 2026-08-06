@@ -1,0 +1,13 @@
+-- input/etc/fstab --
+# Valid tests
+none /mnt/ramfs1 ramfs defaults 0 0
+none /mnt/ramfs2 ramfs mode=755 0 0
+none /mnt/ramfs3 ramfs mode=1777,ro 0 0
+
+# Invalid tests
+none /mnt/ramfs4 ramfs badopt 0 0
+none /mnt/ramfs5 ramfs mode=999 0 0
+
+-- expected/validationerrors.txt --
+Unknown ramfs mount option 'badopt' on line 7
+Invalid value '999' for ramfs mount option 'mode' on line 8, must be an octal integer
