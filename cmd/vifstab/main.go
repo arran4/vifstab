@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/arran4/vifstab/internal/config"
@@ -44,6 +45,7 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "format" {
 		formatCmd := flag.NewFlagSet("format", flag.ExitOnError)
 		fileFlag := formatCmd.String("file", "/etc/fstab", "File to format")
+		inPlaceFlag := formatCmd.Bool("i", false, "Write formatted output back to the file (in-place)")
 		formatCmd.Usage = func() {
 			fmt.Fprintf(os.Stderr, "Usage: %s format [options]\n", os.Args[0])
 			formatCmd.PrintDefaults()
@@ -56,16 +58,61 @@ func main() {
 			os.Exit(1)
 		}
 
-		f, err := os.Open(*fileFlag)
-		if err != nil {
-			handleError(fmt.Errorf("failed to open file %s: %w", *fileFlag, err))
-		}
-		defer f.Close()
+		var in *os.File
+		var err error
 
-		err = format.Format(f, os.Stdout)
-		if err != nil {
-			handleError(fmt.Errorf("format failed: %w", err))
+		// If formatting standard input
+		stat, _ := os.Stdin.Stat()
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			in = os.Stdin
+			if *inPlaceFlag {
+				handleError(fmt.Errorf("cannot use -i when reading from standard input"))
+			}
+		} else {
+			in, err = os.Open(*fileFlag)
+			if err != nil {
+				handleError(fmt.Errorf("failed to open file %s: %w", *fileFlag, err))
+			}
+			defer in.Close()
 		}
+
+		if *inPlaceFlag {
+			// Read the entire file content, format it, then overwrite
+			tempFile, err := os.CreateTemp("", "vifstab-format-*")
+			if err != nil {
+				handleError(fmt.Errorf("failed to create temp file: %w", err))
+			}
+			defer os.Remove(tempFile.Name())
+			defer tempFile.Close()
+
+			err = format.Format(in, tempFile)
+			if err != nil {
+				handleError(fmt.Errorf("format failed: %w", err))
+			}
+
+			// Reset the temporary file's offset so we can read from it
+			if _, err := tempFile.Seek(0, 0); err != nil {
+				handleError(fmt.Errorf("failed to seek temp file: %w", err))
+			}
+
+			// Reopen the target file for writing (truncate it)
+			in.Close() // Close the initial read handle
+			out, err := os.OpenFile(*fileFlag, os.O_WRONLY|os.O_TRUNC, 0644)
+			if err != nil {
+				handleError(fmt.Errorf("failed to open file %s for writing: %w", *fileFlag, err))
+			}
+			defer out.Close()
+
+			if _, err := io.Copy(out, tempFile); err != nil {
+				handleError(fmt.Errorf("failed to write formatted output to %s: %w", *fileFlag, err))
+			}
+		} else {
+			err = format.Format(in, os.Stdout)
+			if err != nil {
+				handleError(fmt.Errorf("format failed: %w", err))
+			}
+		}
+
 		return
 	}
 

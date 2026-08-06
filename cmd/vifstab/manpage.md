@@ -28,9 +28,9 @@ If the validation fails (for example, if a mount point does not exist or a files
 **--help**, **-h**: Show help information.
 
 ## SUBCOMMANDS
-**diagram** `<device>`: Generates a Mermaid.js diagram of the filesystem stack and dependencies for the specified block device.
+**diagram** `<device>`: Generates an ASCII art diagram of the filesystem stack and dependencies for the specified block device.
 
-**format** `[--file=<value>]`: Reads fstab entries and outputs them in a formatted, column-aligned manner. Defaults to formatting `/etc/fstab` unless `--file` is specified.
+**format** `[--file=<value>] [-i]`: Reads fstab entries and outputs them in a formatted, column-aligned manner. Defaults to formatting `/etc/fstab` unless `--file` is specified. The `-i` flag writes the formatted output back to the file in-place (cannot be used when reading from standard input).
 
 ## ENVIRONMENT
 **VISUAL**, **EDITOR**: Determines the text editor to be launched by `vifstab`. The command respects standard arguments provided in these variables. If neither is set, it may default to common editors like `vi`.
