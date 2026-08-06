@@ -12,12 +12,34 @@ import (
 	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
+	"github.com/diskfs/go-diskfs"
 )
 
 //go:embed manpage.md
 var manPageMarkdown []byte
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "diagram" {
+		diagramCmd := flag.NewFlagSet("diagram", flag.ExitOnError)
+		diagramCmd.Usage = func() {
+			fmt.Fprintf(os.Stderr, "Usage: %s diagram <device>\n", os.Args[0])
+			diagramCmd.PrintDefaults()
+		}
+		diagramCmd.Parse(os.Args[2:])
+
+		if diagramCmd.NArg() != 1 {
+			diagramCmd.Usage()
+			os.Exit(1)
+		}
+
+		device := diagramCmd.Arg(0)
+		err := printDiagram(device)
+		if err != nil {
+			handleError(err)
+		}
+		return
+	}
+
 	var (
 		backupDir       string
 		file            string
@@ -101,6 +123,56 @@ func main() {
 	if err != nil {
 		handleError(err)
 	}
+}
+
+func printDiagram(device string) error {
+	d, err := diskfs.Open(device, diskfs.WithOpenMode(diskfs.ReadOnly))
+	if err != nil {
+		return err
+	}
+
+	table, err := d.GetPartitionTable()
+	if err != nil {
+		return err
+	}
+
+	diskSize := d.Size
+
+	fmt.Printf("Partition Table: %s\n", table.Type())
+	fmt.Printf("Disk Size: %d bytes\n\n", diskSize)
+
+	partitions := table.GetPartitions()
+
+	barWidth := 60
+	chars := make([]rune, barWidth)
+	for i := range chars {
+		chars[i] = '-' // free space
+	}
+
+	for i, p := range partitions {
+		if p.GetSize() == 0 {
+			continue
+		}
+
+		fmt.Printf("Partition %d: Start %d, Size %d\n", i+1, p.GetStart(), p.GetSize())
+
+		startRatio := float64(p.GetStart()) / float64(diskSize)
+		sizeRatio := float64(p.GetSize()) / float64(diskSize)
+
+		startPos := int(startRatio * float64(barWidth))
+		sizeChars := int(sizeRatio * float64(barWidth))
+		if sizeChars < 1 && p.GetSize() > 0 {
+			sizeChars = 1
+		}
+
+		for i := startPos; i < startPos+sizeChars && i < barWidth; i++ {
+			chars[i] = '#'
+		}
+	}
+
+	fmt.Printf("\nVisual Diagram:\n[%s]\n", string(chars))
+
+	return nil
 }
 
 func handleError(err error) {
