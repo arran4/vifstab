@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/arran4/vifstab/internal/config"
+	"github.com/arran4/vifstab/internal/diagram"
 	"github.com/arran4/vifstab/internal/editor"
 	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/arran4/vifstab/internal/rules"
@@ -18,6 +19,27 @@ import (
 var manPageMarkdown []byte
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "diagram" {
+		diagramCmd := flag.NewFlagSet("diagram", flag.ExitOnError)
+		diagramCmd.Usage = func() {
+			fmt.Fprintf(os.Stderr, "Usage: %s diagram <device>\n", os.Args[0])
+			diagramCmd.PrintDefaults()
+		}
+		diagramCmd.Parse(os.Args[2:])
+
+		if diagramCmd.NArg() != 1 {
+			diagramCmd.Usage()
+			os.Exit(1)
+		}
+
+		device := diagramCmd.Arg(0)
+		err := diagram.Print(os.Stdout, device)
+		if err != nil {
+			handleError(err)
+		}
+		return
+	}
+
 	var (
 		backupDir       string
 		file            string
