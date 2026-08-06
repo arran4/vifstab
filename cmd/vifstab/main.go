@@ -10,6 +10,7 @@ import (
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/diagram"
 	"github.com/arran4/vifstab/internal/editor"
+	"github.com/arran4/vifstab/internal/format"
 	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
@@ -36,6 +37,34 @@ func main() {
 		err := diagram.Print(os.Stdout, device)
 		if err != nil {
 			handleError(err)
+		}
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "format" {
+		formatCmd := flag.NewFlagSet("format", flag.ExitOnError)
+		fileFlag := formatCmd.String("file", "/etc/fstab", "File to format")
+		formatCmd.Usage = func() {
+			fmt.Fprintf(os.Stderr, "Usage: %s format [options]\n", os.Args[0])
+			formatCmd.PrintDefaults()
+		}
+		_ = formatCmd.Parse(os.Args[2:])
+
+		if formatCmd.NArg() > 0 {
+			fmt.Fprintf(os.Stderr, "Error: unexpected arguments: %v\n", formatCmd.Args())
+			formatCmd.Usage()
+			os.Exit(1)
+		}
+
+		f, err := os.Open(*fileFlag)
+		if err != nil {
+			handleError(fmt.Errorf("failed to open file %s: %w", *fileFlag, err))
+		}
+		defer f.Close()
+
+		err = format.Format(f, os.Stdout)
+		if err != nil {
+			handleError(fmt.Errorf("format failed: %w", err))
 		}
 		return
 	}
