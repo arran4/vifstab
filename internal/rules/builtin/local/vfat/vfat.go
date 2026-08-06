@@ -2,11 +2,11 @@ package vfat
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/arran4/vifstab/internal/rules/builtin/local/fat"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type VfatRule struct{}
@@ -36,86 +36,16 @@ func (r *VfatRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		return nil, nil
 	}
 
-	var issues []rules.ValidationIssue
-	options := rules.SplitOptions(entry.Fields[3])
-
-	// Keep track of the original fields string for fatRule call
-	originalOpts := entry.Fields[3]
-	newOptsList := []string{}
-
-	for _, opt := range options {
-		parts := strings.SplitN(opt, "=", 2)
-		key := parts[0]
-		var val string
-		if len(parts) > 1 {
-			val = parts[1]
-		}
-
-		if key == "dotsOK" {
-			issues = append(issues, rules.ValidationIssue{
-				Message: fmt.Sprintf("vfat explicitly kills dotsOK mount option on line %d", entry.LineNum),
-				Line:    entry.RawLine,
-				Level:   rules.IssueLevelError,
-			})
-			continue
-		}
-
-		// vfat specific options
-		vfatSpecific := false
-		switch key {
-		case "uni_xlate", "posix", "nonumtail", "utf8":
-			vfatSpecific = true
-			if val != "" {
-				if val != "0" && val != "1" && val != "yes" && val != "no" && val != "true" && val != "false" {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("Invalid value '%s' for vfat mount option '%s' on line %d, must be a boolean (0, 1, yes, no, true, false)", val, key, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				}
-			}
-		case "shortname":
-			vfatSpecific = true
-			if val != "" {
-				if val != "lower" && val != "win95" && val != "winnt" && val != "mixed" {
-					issues = append(issues, rules.ValidationIssue{
-						Message: fmt.Sprintf("Invalid value '%s' for vfat mount option 'shortname' on line %d", val, entry.LineNum),
-						Line:    entry.RawLine,
-						Level:   rules.IssueLevelError,
-					})
-				}
-			} else {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Missing value for vfat mount option 'shortname' on line %d", entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
-		}
-
-		if !vfatSpecific {
-			newOptsList = append(newOptsList, opt)
-		}
-	}
-
-	// Delegate to fat options
-	fatRule := &fat.FatRule{}
-	mockEntry := *entry
-	mockEntry.Fields = append([]string{}, entry.Fields...)
-	mockEntry.Fields[2] = "fat"
-	mockEntry.Fields[3] = strings.Join(newOptsList, ",")
-
-	fatIssues, err := fatRule.Validate(ctx, api, &mockEntry)
-	if err != nil {
-		return issues, err
-	}
-
-	// Adjust messages to say 'vfat' instead of 'fat'
-	for _, issue := range fatIssues {
-		issue.Message = strings.ReplaceAll(issue.Message, "fat mount option", "vfat mount option")
-		issues = append(issues, issue)
-	}
-
-	entry.Fields[3] = originalOpts
-	return issues, nil
+	return options.ValidateOptionsMap(ctx, api, entry, "vfat", vfatOptions), nil
 }
+
+var vfatOptions = options.MergeOptions(fat.Options, map[string]options.OptionValidator{
+	"dotsOK":    options.IncorrectOption{Reason: "vfat explicitly kills dotsOK mount option"},
+	"uni_xlate": options.BoolOption{Sets: options.BoolSetStandard},
+	"posix":     options.BoolOption{Sets: options.BoolSetStandard},
+	"nonumtail": options.BoolOption{Sets: options.BoolSetStandard},
+	"utf8":      options.BoolOption{Sets: options.BoolSetStandard},
+	"shortname": options.EnumOption{
+		Allowed: map[string]bool{"lower": true, "win95": true, "winnt": true, "mixed": true},
+	},
+})

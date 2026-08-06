@@ -28,7 +28,20 @@ func (e EnumOption) ValidateOption(ctx context.Context, api rules.API, entry *ru
 		if msg == "" {
 			msg = fmt.Sprintf("Invalid value '%s' for %s mount option '%s' on line %d", val, fsName, key, entry.LineNum)
 		} else {
-			msg = fmt.Sprintf(msg, val, entry.LineNum)
+			// Count %s to see if it wants the fsName argument too
+			// CustomErrMsg either uses format (val, line) or (val, fsName, line)
+			countS := 0
+			for i := 0; i < len(msg)-1; i++ {
+				if msg[i] == '%' && msg[i+1] == 's' {
+					countS++
+				}
+			}
+
+			if countS >= 2 {
+				msg = fmt.Sprintf(msg, val, fsName, entry.LineNum)
+			} else {
+				msg = fmt.Sprintf(msg, val, entry.LineNum)
+			}
 		}
 		return []rules.ValidationIssue{
 			{
