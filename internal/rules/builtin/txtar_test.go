@@ -254,6 +254,8 @@ func TestAllTxtarRules(t *testing.T) {
 						switch s.Level {
 						case rules.IssueLevelWarning:
 							level = "Warning"
+						case rules.IssueLevelSecurity:
+							level = "Security"
 						case rules.IssueLevelError:
 							level = "Error"
 						}

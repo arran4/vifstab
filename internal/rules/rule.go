@@ -11,14 +11,16 @@ type Rule interface {
 type IssueLevel string
 
 const (
-	IssueLevelWarning IssueLevel = "warning"
-	IssueLevelError   IssueLevel = "error"
+	IssueLevelWarning  IssueLevel = "warning"
+	IssueLevelSecurity IssueLevel = "security"
+	IssueLevelError    IssueLevel = "error"
 )
 
 type ValidationIssue struct {
-	Message string
-	Line    string
-	Level   IssueLevel
+	Message  string
+	Line     string
+	Level    IssueLevel
+	Severity int
 }
 
 type FstabEntry struct {

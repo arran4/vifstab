@@ -74,7 +74,8 @@ vifstab --file /path/to/custom/fstab --backup-dir /var/backups/vifstab
 
 1. **Suggestions:** Suggestions can accompany a warning or stand on their own. They represent automatically determined improvements.
 2. **Warnings:** Warnings indicate issues that might cause non-critical errors, such as non-existent mount options.
-3. **Errors:** Errors indicate critical issues that might cause a complete failure, such as missing block devices or unknown filesystems.
+3. **Security:** Security issues are similar to warnings but track their own severity score for security-related issues.
+4. **Errors:** Errors indicate critical issues that might cause a complete failure, such as missing block devices or unknown filesystems.
 
 Currently built-in rules check for:
 - Format validity (e.g., minimum number of fields)
