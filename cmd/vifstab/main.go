@@ -183,8 +183,21 @@ func printDiagram(w io.Writer, device string, opts ...any) error {
 			sizeChars = 1
 		}
 
-		for i := startPos; i < startPos+sizeChars && i < barWidth; i++ {
-			chars[i] = '#'
+
+		// Use base64-style letters (A-Z, a-z, 0-9) for partitions
+		var letter rune
+		if i < 26 {
+			letter = rune('A' + i)
+		} else if i < 52 {
+			letter = rune('a' + (i - 26))
+		} else if i < 62 {
+			letter = rune('0' + (i - 52))
+		} else {
+			letter = '#' // fallback
+		}
+
+		for j := startPos; j < startPos+sizeChars && j < barWidth; j++ {
+			chars[j] = letter
 		}
 	}
 
