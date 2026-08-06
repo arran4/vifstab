@@ -75,11 +75,24 @@ vifstab --file /path/to/custom/fstab --backup-dir /var/backups/vifstab
 - `diagram <device>`: Generates a Mermaid.js diagram of the filesystem stack and dependencies for the given block device.
 - `format [options]`: Formats the `fstab` entries into a column-aligned format.
 
-Example:
+Examples:
+
+Generate a diagram for a block device:
 
 ```bash
 vifstab diagram /dev/sda1
-vifstab format --file /path/to/custom/fstab
+```
+
+Format an existing `fstab` file:
+
+```bash
+vifstab format --file /etc/fstab
+```
+
+Format `fstab` entries from standard input:
+
+```bash
+cat /etc/fstab | vifstab format
 ```
 
 ## Linting
