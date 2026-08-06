@@ -58,7 +58,7 @@ func TestDiagram(t *testing.T) {
 				t.Fatal(err)
 			}
 			tmpPath := tmpFile.Name()
-			tmpFile.Truncate(diskSize)
+			_ = tmpFile.Truncate(diskSize)
 			tmpFile.Close()
 			defer os.Remove(tmpPath)
 

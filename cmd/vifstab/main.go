@@ -25,7 +25,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Usage: %s diagram <device>\n", os.Args[0])
 			diagramCmd.PrintDefaults()
 		}
-		diagramCmd.Parse(os.Args[2:])
+		_ = diagramCmd.Parse(os.Args[2:])
 
 		if diagramCmd.NArg() != 1 {
 			diagramCmd.Usage()
