@@ -48,7 +48,7 @@ func (r *AfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 					"write":   true,
 				},
 			},
-			"source": options.StringOption{},
+			"source": options.InternalOption{},
 		},
 	)
 
