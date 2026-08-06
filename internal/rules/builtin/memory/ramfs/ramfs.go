@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type RamfsRule struct{}
@@ -34,5 +35,9 @@ func (r *RamfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 		return nil, nil
 	}
 
-	return nil, nil
+	return options.ValidateOptionsMap(ctx, api, entry, "ramfs", ramfsOptions), nil
 }
+
+var ramfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"mode": options.OctalOption{},
+})

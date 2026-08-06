@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type InitramfsRule struct{}
@@ -34,5 +35,9 @@ func (r *InitramfsRule) Validate(ctx context.Context, api rules.API, entry *rule
 		return nil, nil
 	}
 
-	return nil, nil
+	return options.ValidateOptionsMap(ctx, api, entry, "initramfs", initramfsOptions), nil
 }
+
+var initramfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
+	"mode": options.OctalOption{},
+})

@@ -1,0 +1,12 @@
+-- input/etc/fstab --
+# Valid tests
+none / initramfs defaults 0 0
+none / initramfs mode=755 0 0
+
+# Invalid tests
+none / initramfs badopt 0 0
+none / initramfs mode=abc 0 0
+
+-- expected/validationerrors.txt --
+Unknown initramfs mount option 'badopt' on line 6
+Invalid value 'abc' for initramfs mount option 'mode' on line 7, must be an octal integer
