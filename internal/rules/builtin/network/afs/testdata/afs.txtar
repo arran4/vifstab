@@ -14,4 +14,4 @@ none /afs afs source=test 0 0
 -- expected/validationerrors.txt --
 Invalid value 'invalid' for afs mount option 'flock' on line 4
 Unknown afs mount option 'unknown' on line 5
-Mount option 'source' is not valid for afs: internal kernel flag not meant for fstab on line 6
+Mount option 'source' is not valid for afs: internal option on line 6
