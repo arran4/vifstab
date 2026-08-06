@@ -1,0 +1,3 @@
+-- input/etc/fstab --
+/path/to/source /path/to/dest encfs verbose,v,config=/foo,c=/bar,syslogtag=baz,t=qux,s,f,annotate,standard,paranoia,insecure,reverse,reversewrite,extpass=/bin/true,stdinpass,S,anykey,forcedecode,require-macs,idle=5,i=10,ondemand,m,delaymount,unmount,u,public,nocache,noattrcache,nodatacache,no-default-flags,fuse-debug,d,fuse-help,H 0 0
+-- expected/validationerrors.txt --
