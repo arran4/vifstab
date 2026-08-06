@@ -6,7 +6,6 @@ require (
 	github.com/arran4/golang-rcs v0.0.17
 	github.com/cpuguy83/go-md2man/v2 v2.0.7
 	github.com/diskfs/go-diskfs v1.9.4
-	golang.org/x/tools v0.47.0
 )
 
 require (
@@ -21,4 +20,5 @@ require (
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 )

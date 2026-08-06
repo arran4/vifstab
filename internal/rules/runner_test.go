@@ -15,7 +15,7 @@ import (
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register builtins
 	"github.com/arran4/vifstab/internal/rules/core"
-	"golang.org/x/tools/txtar"
+	"github.com/arran4/vifstab/internal/txtar"
 )
 
 //go:embed testdata/*.txtar

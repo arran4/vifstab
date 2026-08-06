@@ -12,7 +12,7 @@ import (
 	"github.com/diskfs/go-diskfs/disk"
 	"github.com/diskfs/go-diskfs/partition/gpt"
 	"github.com/diskfs/go-diskfs/partition/mbr"
-	"golang.org/x/tools/txtar"
+	"github.com/arran4/vifstab/internal/txtar"
 	"github.com/arran4/vifstab/internal/diagram"
 )
 
