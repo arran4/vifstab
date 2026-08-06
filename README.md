@@ -68,6 +68,20 @@ Example:
 vifstab --file /path/to/custom/fstab --backup-dir /var/backups/vifstab
 ```
 
+### Subcommands
+
+`vifstab` provides several subcommands for specific tasks:
+
+- `diagram <device>`: Generates a Mermaid.js diagram of the filesystem stack and dependencies for the given block device.
+- `format [options]`: Formats the `fstab` entries into a column-aligned format.
+
+Example:
+
+```bash
+vifstab diagram /dev/sda1
+vifstab format --file /path/to/custom/fstab
+```
+
 ## Linting
 
 `vifstab` includes a modular linting registry that validates your entries before saving. It categorizes feedback into three levels:
