@@ -1,0 +1,16 @@
+-- input/diskSize --
+104857600
+-- input/tableType --
+gpt
+-- input/partitions --
+1048576,10485760
+31457280,31457280
+-- expected/output.txt --
+Partition Table: gpt
+Disk Size: 104857600 bytes
+
+Partition 1: Start 1048576, Size 10485760
+Partition 2: Start 31457280, Size 31457280
+
+Visual Diagram:
+[######------------##################------------------------]

@@ -1,0 +1,13 @@
+-- input/diskSize --
+104857600
+-- input/tableType --
+mbr
+-- input/partitions --
+
+-- expected/output.txt --
+Partition Table: mbr
+Disk Size: 104857600 bytes
+
+
+Visual Diagram:
+[------------------------------------------------------------]

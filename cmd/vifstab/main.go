@@ -146,9 +146,12 @@ func printDiagram(w io.Writer, device string, opts ...any) error {
 		return err
 	}
 
-	table, err := d.GetPartitionTable()
-	if err != nil {
-		return err
+	table := d.Table
+	if table == nil {
+		table, err = d.GetPartitionTable()
+		if err != nil {
+			return err
+		}
 	}
 
 	diskSize := d.Size
