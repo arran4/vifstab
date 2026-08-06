@@ -36,7 +36,10 @@ func (r *Gfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		return nil, nil
 	}
 
-	return options.ValidateOptionsMap(ctx, api, entry, "gfs2", gfs2Options), nil
+	var issues []rules.ValidationIssue
+	issues = append(issues, options.ValidateOptionsMap(ctx, api, entry, "gfs2", gfs2Options)...)
+	issues = append(issues, options.ValidateOptionsSlice(ctx, api, entry, "gfs2", gfs2SliceOptions)...)
+	return issues, nil
 }
 
 // quotaOption handles the quota option, which can be just 'quota' or 'quota=off|account|on'.
@@ -85,3 +88,11 @@ var gfs2Options = options.MergeOptions(options.CommonOptions(), map[string]optio
 	"statfs_quantum":  options.IntOption{},
 	"statfs_percent":  options.IntOption{},
 })
+
+var gfs2SliceOptions = options.AppendOptionsValidator(options.CommonOptionsValidators(), []options.OptionsValidator{
+	options.ExclusiveGroup{Keys: []string{"acl", "noacl"}},
+	options.ExclusiveGroup{Keys: []string{"suiddir", "nosuiddir"}},
+	options.ExclusiveGroup{Keys: []string{"quota", "noquota"}},
+	options.ExclusiveGroup{Keys: []string{"discard", "nodiscard"}},
+	options.ExclusiveGroup{Keys: []string{"barrier", "nobarrier"}},
+}...)
