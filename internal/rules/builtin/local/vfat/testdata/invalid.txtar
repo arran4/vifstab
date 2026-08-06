@@ -8,11 +8,11 @@ root:x:0:0:root:/root:/bin/bash
 -- input/etc/group --
 root:x:0:
 -- expected/validationerrors.txt --
-vfat explicitly kills dotsOK mount option on line 1
-Invalid value 'invalid' for vfat mount option 'uni_xlate' on line 1, must be a boolean (0, 1, yes, no, true, false)
-Invalid value 'invalid' for vfat mount option 'shortname' on line 1
 Invalid value 'notanint' for vfat mount option 'uid' on line 1, must be an integer
 Group with gid 9999 does not exist
 Invalid value 'invalid' for vfat mount option 'umask' on line 1, must be an octal integer
 Unknown vfat mount option 'unknownopt' on line 1
+Mount option 'dotsOK' is not valid for vfat: vfat explicitly kills dotsOK mount option on line 1
+Invalid value 'invalid' for vfat mount option 'uni_xlate' on line 1, must be a boolean (0, 1, yes, no, true, false)
+Invalid value 'invalid' for vfat mount option 'shortname' on line 1
 Missing value for vfat mount option 'shortname' on line 2

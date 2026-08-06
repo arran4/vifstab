@@ -2,11 +2,11 @@ package umsdos
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/arran4/vifstab/internal/rules/builtin/local/fat"
+	"github.com/arran4/vifstab/internal/rules/options"
 )
 
 type UmsdosRule struct{}
@@ -36,37 +36,9 @@ func (r *UmsdosRule) Validate(ctx context.Context, api rules.API, entry *rules.F
 		return nil, nil
 	}
 
-	var issues []rules.ValidationIssue
-	options := rules.SplitOptions(entry.Fields[3])
-
-	for _, opt := range options {
-		parts := strings.SplitN(opt, "=", 2)
-		key := parts[0]
-		if key == "dotsOK" {
-			issues = append(issues, rules.ValidationIssue{
-				Message: fmt.Sprintf("umsdos explicitly kills dotsOK mount option on line %d", entry.LineNum),
-				Line:    entry.RawLine,
-				Level:   rules.IssueLevelError,
-			})
-		}
-	}
-
-	// Delegate to fat options
-	fatRule := &fat.FatRule{}
-	mockEntry := *entry
-	mockEntry.Fields = append([]string{}, entry.Fields...)
-	mockEntry.Fields[2] = "fat"
-
-	fatIssues, err := fatRule.Validate(ctx, api, &mockEntry)
-	if err != nil {
-		return issues, err
-	}
-
-	// Adjust messages to say 'umsdos' instead of 'fat'
-	for _, issue := range fatIssues {
-		issue.Message = strings.ReplaceAll(issue.Message, "fat mount option", "umsdos mount option")
-		issues = append(issues, issue)
-	}
-
-	return issues, nil
+	return options.ValidateOptionsMap(ctx, api, entry, "umsdos", umsdosOptions), nil
 }
+
+var umsdosOptions = options.MergeOptions(fat.Options, map[string]options.OptionValidator{
+	"dotsOK": options.IncorrectOption{Reason: "umsdos explicitly kills dotsOK mount option"},
+})

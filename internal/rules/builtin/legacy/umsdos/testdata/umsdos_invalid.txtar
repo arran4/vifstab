@@ -7,8 +7,8 @@ root:x:0:0:root:/root:/bin/bash
 -- input/etc/group --
 root:x:0:
 -- expected/validationerrors.txt --
-umsdos explicitly kills dotsOK mount option on line 1
 Invalid value 'notanint' for umsdos mount option 'uid' on line 1, must be an integer
 Group with gid 9999 does not exist
 Invalid value 'invalid' for umsdos mount option 'umask' on line 1, must be an octal integer
 Unknown umsdos mount option 'unknownopt' on line 1
+Mount option 'dotsOK' is not valid for umsdos: umsdos explicitly kills dotsOK mount option on line 1
