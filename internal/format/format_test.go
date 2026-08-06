@@ -2,22 +2,18 @@ package format
 
 import (
 	"bytes"
+	_ "embed"
 	"strings"
 	"testing"
 )
 
-func TestFormat(t *testing.T) {
-	input := `/dev/sda1 / ext4 defaults 0 1
-/dev/mapper/root / ext4 rw,noatime 0 1
-# This is a very very long comment that should not stretch the columns
-tmpfs /tmp tmpfs defaults,noatime,mode=1777 0 0
-`
-	expected := `/dev/sda1         /  ext4  defaults    0  1
-/dev/mapper/root  /  ext4  rw,noatime  0  1
-# This is a very very long comment that should not stretch the columns
-tmpfs  /tmp  tmpfs  defaults,noatime,mode=1777  0  0
-`
+//go:embed testdata/input.txt
+var input string
 
+//go:embed testdata/expected.txt
+var expected string
+
+func TestFormat(t *testing.T) {
 	r := strings.NewReader(input)
 	var w bytes.Buffer
 
