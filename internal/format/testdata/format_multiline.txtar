@@ -1,0 +1,14 @@
+test: format multiline properly aligned
+
+-- input/etc/fstab --
+/dev/sda1 / ext4 defaults 0 1
+/dev/mapper/root / ext4 rw,noatime 0 1
+# This is a comment
+tmpfs /tmp tmpfs defaults,noatime,mode=1777 0 0
+/dev/sdb1 /data ext4 defaults 0 2
+-- expected/format.txt --
+/dev/sda1         /      ext4   defaults                    0  1
+/dev/mapper/root  /      ext4   rw,noatime                  0  1
+# This is a comment
+tmpfs             /tmp   tmpfs  defaults,noatime,mode=1777  0  0
+/dev/sdb1         /data  ext4   defaults                    0  2

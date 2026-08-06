@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/arran4/vifstab/internal/rules/core"
 )
@@ -16,21 +15,41 @@ func Format(r io.Reader, w io.Writer) error {
 		return fmt.Errorf("failed to parse fstab: %w", err)
 	}
 
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.DiscardEmptyColumns)
+	// Calculate max column widths
+	colWidths := make(map[int]int)
+	for _, entry := range entries {
+		line := strings.TrimSpace(entry.RawLine)
+		if len(line) == 0 || line[0] == '#' {
+			continue
+		}
+		for i, field := range entry.Fields {
+			if len(field) > colWidths[i] {
+				colWidths[i] = len(field)
+			}
+		}
+	}
+
 	for _, entry := range entries {
 		line := strings.TrimSpace(entry.RawLine)
 		if len(line) == 0 {
-			tw.Flush()
 			fmt.Fprintln(w, "")
 			continue
 		}
 		if line[0] == '#' {
-			tw.Flush()
 			fmt.Fprintln(w, line)
 			continue
 		}
 
-		fmt.Fprintln(tw, strings.Join(entry.Fields, "\t"))
+		var formattedLine []string
+		for i, field := range entry.Fields {
+			// Do not pad the last column
+			if i == len(entry.Fields)-1 {
+				formattedLine = append(formattedLine, field)
+			} else {
+				formattedLine = append(formattedLine, fmt.Sprintf("%-*s", colWidths[i], field))
+			}
+		}
+		fmt.Fprintln(w, strings.Join(formattedLine, "  "))
 	}
-	return tw.Flush()
+	return nil
 }

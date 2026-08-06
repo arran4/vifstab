@@ -2,26 +2,66 @@ package format
 
 import (
 	"bytes"
-	_ "embed"
+	"embed"
+	"io/fs"
 	"strings"
 	"testing"
+
+	"golang.org/x/tools/txtar"
 )
 
-//go:embed testdata/input.txt
-var input string
+//go:embed testdata/*.txtar
+var testdataFS embed.FS
 
-//go:embed testdata/expected.txt
-var expected string
-
-func TestFormat(t *testing.T) {
-	r := strings.NewReader(input)
-	var w bytes.Buffer
-
-	if err := Format(r, &w); err != nil {
-		t.Fatalf("Format failed: %v", err)
+func TestFormat_Txtar(t *testing.T) {
+	entries, err := fs.ReadDir(testdataFS, "testdata")
+	if err != nil {
+		t.Fatalf("failed to read testdata dir: %v", err)
 	}
 
-	if got := w.String(); got != expected {
-		t.Errorf("Format result incorrect.\nGot:\n%s\nExpected:\n%s", got, expected)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".txtar") {
+			continue
+		}
+
+		t.Run(entry.Name(), func(t *testing.T) {
+			b, err := fs.ReadFile(testdataFS, "testdata/"+entry.Name())
+			if err != nil {
+				t.Fatalf("failed to read test file: %v", err)
+			}
+
+			archive := txtar.Parse(b)
+			var input string
+			var expected string
+
+			for _, file := range archive.Files {
+				if file.Name == "input/etc/fstab" {
+					input = string(file.Data)
+				} else if file.Name == "expected/format.txt" {
+					expected = string(file.Data)
+				}
+			}
+
+			if input == "" {
+				t.Fatalf("missing input/etc/fstab in test archive")
+			}
+			if expected == "" {
+				t.Fatalf("missing expected/format.txt in test archive")
+			}
+
+			r := strings.NewReader(input)
+			var w bytes.Buffer
+
+			if err := Format(r, &w); err != nil {
+				t.Fatalf("Format failed: %v", err)
+			}
+
+			gotStr := strings.TrimSpace(w.String())
+			expectedStr := strings.TrimSpace(expected)
+
+			if gotStr != expectedStr {
+				t.Errorf("Format result incorrect.\nGot:\n%s\nExpected:\n%s", gotStr, expectedStr)
+			}
+		})
 	}
 }

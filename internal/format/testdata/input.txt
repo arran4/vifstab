@@ -1,4 +1,0 @@
-/dev/sda1 / ext4 defaults 0 1
-/dev/mapper/root / ext4 rw,noatime 0 1
-# This is a very very long comment that should not stretch the columns
-tmpfs /tmp tmpfs defaults,noatime,mode=1777 0 0

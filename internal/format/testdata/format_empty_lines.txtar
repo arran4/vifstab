@@ -1,0 +1,20 @@
+test: formatting with empty lines
+
+-- input/etc/fstab --
+/dev/sda1 / ext4 defaults 0 1
+
+/dev/mapper/root / ext4 rw,noatime 0 1
+
+# A comment
+
+
+tmpfs /tmp tmpfs defaults,noatime,mode=1777 0 0
+-- expected/format.txt --
+/dev/sda1         /     ext4   defaults                    0  1
+
+/dev/mapper/root  /     ext4   rw,noatime                  0  1
+
+# A comment
+
+
+tmpfs             /tmp  tmpfs  defaults,noatime,mode=1777  0  0
