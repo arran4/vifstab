@@ -95,7 +95,7 @@ func main() {
 
 		var issueCount int
 		for _, s := range issues {
-			if s.Level == rules.IssueLevelError || s.Level == rules.IssueLevelWarning {
+			if s.Level == rules.IssueLevelError || s.Level == rules.IssueLevelWarning || s.Level == rules.IssueLevelSecurity {
 				issueCount++
 			}
 		}
