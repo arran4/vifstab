@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/arran4/vifstab/internal/config"
@@ -13,6 +14,7 @@ import (
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
 	"github.com/diskfs/go-diskfs"
+	"github.com/diskfs/go-diskfs/disk"
 )
 
 //go:embed manpage.md
@@ -33,7 +35,7 @@ func main() {
 		}
 
 		device := diagramCmd.Arg(0)
-		err := printDiagram(device)
+		err := printDiagram(os.Stdout, device)
 		if err != nil {
 			handleError(err)
 		}
@@ -125,8 +127,21 @@ func main() {
 	}
 }
 
-func printDiagram(device string) error {
-	d, err := diskfs.Open(device, diskfs.WithOpenMode(diskfs.ReadOnly))
+// DiskFSCreator represents a function that can open a disk given a device string and options.
+// This allows us to inject a mock implementation for testing.
+type DiskFSCreator func(device string, opts ...diskfs.OpenOpt) (*disk.Disk, error)
+
+func printDiagram(w io.Writer, device string, opts ...any) error {
+	var openDisk DiskFSCreator = diskfs.Open
+
+	// Check if a mock diskfs creator was provided
+	for _, opt := range opts {
+		if creator, ok := opt.(DiskFSCreator); ok {
+			openDisk = creator
+		}
+	}
+
+	d, err := openDisk(device, diskfs.WithOpenMode(diskfs.ReadOnly))
 	if err != nil {
 		return err
 	}
@@ -138,8 +153,8 @@ func printDiagram(device string) error {
 
 	diskSize := d.Size
 
-	fmt.Printf("Partition Table: %s\n", table.Type())
-	fmt.Printf("Disk Size: %d bytes\n\n", diskSize)
+	fmt.Fprintf(w, "Partition Table: %s\n", table.Type())
+	fmt.Fprintf(w, "Disk Size: %d bytes\n\n", diskSize)
 
 	partitions := table.GetPartitions()
 
@@ -154,7 +169,7 @@ func printDiagram(device string) error {
 			continue
 		}
 
-		fmt.Printf("Partition %d: Start %d, Size %d\n", i+1, p.GetStart(), p.GetSize())
+		fmt.Fprintf(w, "Partition %d: Start %d, Size %d\n", i+1, p.GetStart(), p.GetSize())
 
 		startRatio := float64(p.GetStart()) / float64(diskSize)
 		sizeRatio := float64(p.GetSize()) / float64(diskSize)
@@ -170,7 +185,7 @@ func printDiagram(device string) error {
 		}
 	}
 
-	fmt.Printf("\nVisual Diagram:\n[%s]\n", string(chars))
+	fmt.Fprintf(w, "\nVisual Diagram:\n[%s]\n", string(chars))
 
 	return nil
 }
