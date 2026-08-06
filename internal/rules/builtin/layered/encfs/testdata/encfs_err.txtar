@@ -1,0 +1,4 @@
+-- input/etc/fstab --
+/path/to/source /path/to/dest encfs invalidopt 0 0
+-- expected/validationerrors.txt --
+Unknown encfs mount option 'invalidopt' on line 1
