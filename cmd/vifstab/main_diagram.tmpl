@@ -1,0 +1,8 @@
+Partition Table: {{.TableType}}
+Disk Size: {{.DiskSize}} bytes
+{{range .Partitions}}
+Partition {{.Index}}: Start {{.Start}}, Size {{.Size}}{{if .FSType}}
+  Type: {{.FSType}}{{end}}{{end}}
+
+Visual Diagram:
+[{{.VisualDiagram}}]

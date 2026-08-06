@@ -5,18 +5,14 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/arran4/vifstab/internal/config"
+	"github.com/arran4/vifstab/internal/diagram"
 	"github.com/arran4/vifstab/internal/editor"
 	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
-	"github.com/diskfs/go-diskfs"
-	"github.com/diskfs/go-diskfs/disk"
-	"github.com/diskfs/go-diskfs/partition/gpt"
-	"github.com/diskfs/go-diskfs/partition/mbr"
 )
 
 //go:embed manpage.md
@@ -37,7 +33,7 @@ func main() {
 		}
 
 		device := diagramCmd.Arg(0)
-		err := printDiagram(os.Stdout, device)
+		err := diagram.Print(os.Stdout, device)
 		if err != nil {
 			handleError(err)
 		}
@@ -127,96 +123,6 @@ func main() {
 	if err != nil {
 		handleError(err)
 	}
-}
-
-// DiskFSCreator represents a function that can open a disk given a device string and options.
-// This allows us to inject a mock implementation for testing.
-type DiskFSCreator func(device string, opts ...diskfs.OpenOpt) (*disk.Disk, error)
-
-func printDiagram(w io.Writer, device string, opts ...any) error {
-	var openDisk DiskFSCreator = diskfs.Open
-
-	// Check if a mock diskfs creator was provided
-	for _, opt := range opts {
-		if creator, ok := opt.(DiskFSCreator); ok {
-			openDisk = creator
-		}
-	}
-
-	d, err := openDisk(device, diskfs.WithOpenMode(diskfs.ReadOnly))
-	if err != nil {
-		return err
-	}
-
-	table := d.Table
-	if table == nil {
-		table, err = d.GetPartitionTable()
-		if err != nil {
-			return err
-		}
-	}
-
-	diskSize := d.Size
-
-	fmt.Fprintf(w, "Partition Table: %s\n", table.Type())
-	fmt.Fprintf(w, "Disk Size: %d bytes\n\n", diskSize)
-
-	partitions := table.GetPartitions()
-
-	barWidth := 60
-	chars := make([]rune, barWidth)
-	for i := range chars {
-		chars[i] = '-' // free space
-	}
-
-	for i, p := range partitions {
-		if p.GetSize() == 0 {
-			continue
-		}
-
-		fmt.Fprintf(w, "Partition %d: Start %d, Size %d\n", i+1, p.GetStart(), p.GetSize())
-
-		var fsType string
-		switch pt := p.(type) {
-		case *gpt.Partition:
-			fsType = string(pt.Type)
-		case *mbr.Partition:
-			fsType = fmt.Sprintf("0x%02x", pt.Type)
-		}
-		if fsType != "" {
-			fmt.Fprintf(w, "  Type: %s\n", fsType)
-		}
-
-		startRatio := float64(p.GetStart()) / float64(diskSize)
-		sizeRatio := float64(p.GetSize()) / float64(diskSize)
-
-		startPos := int(startRatio * float64(barWidth))
-		sizeChars := int(sizeRatio * float64(barWidth))
-		if sizeChars < 1 && p.GetSize() > 0 {
-			sizeChars = 1
-		}
-
-
-		// Use base64-style letters (A-Z, a-z, 0-9) for partitions
-		var letter rune
-		if i < 26 {
-			letter = rune('A' + i)
-		} else if i < 52 {
-			letter = rune('a' + (i - 26))
-		} else if i < 62 {
-			letter = rune('0' + (i - 52))
-		} else {
-			letter = '#' // fallback
-		}
-
-		for j := startPos; j < startPos+sizeChars && j < barWidth; j++ {
-			chars[j] = letter
-		}
-	}
-
-	fmt.Fprintf(w, "\nVisual Diagram:\n[%s]\n", string(chars))
-
-	return nil
 }
 
 func handleError(err error) {

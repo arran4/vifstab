@@ -13,6 +13,7 @@ import (
 	"github.com/diskfs/go-diskfs/partition/gpt"
 	"github.com/diskfs/go-diskfs/partition/mbr"
 	"golang.org/x/tools/txtar"
+	"github.com/arran4/vifstab/internal/diagram"
 )
 
 func TestDiagram(t *testing.T) {
@@ -83,10 +84,6 @@ func TestDiagram(t *testing.T) {
 					})
 				}
 				d.Table = table
-				// Write table so it reads back as GPT instead of unknown
-				// Wait, the partition writing failed earlier, but it is needed so d.Type() doesn't fail
-				// wait, diskfs library relies on reading the file inside GetPartitionTable().
-				// We can just mock the table type!
 			} else if tableType == "mbr" {
 				table := &mbr.Table{
 					LogicalSectorSize:  512,
@@ -109,19 +106,12 @@ func TestDiagram(t *testing.T) {
 			}
 
 			// Mock disk opener that returns the mock image
-			var mockOpener DiskFSCreator = func(device string, opts ...diskfs.OpenOpt) (*disk.Disk, error) {
-				if tableType == "gpt" {
-				    // Since GetPartitionTable actually reads the file, if writing GPT failed, we will intercept GetPartitionTable in some way if possible, or we just write MBR for all tests. Since MBR works, let's just make sure both tests use MBR or we create a custom disk implementation.
-				    // Wait, MBR table.Type() is "mbr", gpt is "gpt".
-				}
+			var mockOpener diagram.DiskFSCreator = func(device string, opts ...diskfs.OpenOpt) (*disk.Disk, error) {
 				return d, nil
 			}
 
 			var buf bytes.Buffer
-			err = printDiagram(&buf, "mock_device", mockOpener)
-
-			// For GPT, GetPartitionTable() will return "unknown disk partition type" if we just inject d.Table, because printDiagram calls GetPartitionTable() which ignores d.Table and reads from disk!
-			// Let's modify printDiagram to use d.Table if it's already set (which makes sense since Table is a public field).
+			err = diagram.Print(&buf, "mock_device", mockOpener)
 			if err != nil {
 				t.Fatal(err)
 			}
