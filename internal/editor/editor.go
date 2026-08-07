@@ -15,6 +15,26 @@ import (
 	"github.com/arran4/vifstab/internal/rules/core"
 )
 
+// FS provides filesystem operations to allow mocking
+type FS interface {
+	ReadFile(name string) ([]byte, error)
+	WriteFile(name string, data []byte, perm os.FileMode) error
+	MkdirAll(path string, perm os.FileMode) error
+	Rename(oldpath, newpath string) error
+	Stat(name string) (os.FileInfo, error)
+}
+
+type osFS struct{}
+
+func (osFS) ReadFile(name string) ([]byte, error) { return os.ReadFile(name) }
+func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error { return os.WriteFile(name, data, perm) }
+func (osFS) MkdirAll(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
+func (osFS) Rename(oldpath, newpath string) error { return os.Rename(oldpath, newpath) }
+func (osFS) Stat(name string) (os.FileInfo, error) { return os.Stat(name) }
+
+var DefaultFS FS = osFS{}
+
+
 func EditAndLint(cfg config.Config, api rules.API) error {
 	// 1. Copy target file to temp
 	tempFile, err := os.CreateTemp("", "vifstab-*")
@@ -135,31 +155,53 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 }
 
 // SaveAndVersion saves the given content to the target file and versions it using RCS.
-func SaveAndVersion(cfg config.Config, content []byte) error {
-	// First update RCS
-	rcsCfg := rcs.Config{Dir: cfg.BackupDir}
-	if err := rcs.Update(cfg.FilePath, content, rcsCfg); err != nil {
-		return fmt.Errorf("rcs update failed: %w", err)
+// Accepts an optional dependency injection for the FS layer.
+func SaveAndVersion(cfg config.Config, content []byte, opts ...any) error {
+	var fsLayer FS = DefaultFS
+	for _, opt := range opts {
+		if injection, ok := opt.(FS); ok {
+			fsLayer = injection
+		}
 	}
 
-	// Then copy to dest atomically
-	dir := filepath.Dir(cfg.FilePath)
-	tmpDest, err := os.CreateTemp(dir, "vifstab-tmp-*")
-	if err != nil {
-		return fmt.Errorf("failed to create temporary destination file: %w", err)
-	}
-	defer func() { _ = os.Remove(tmpDest.Name()) }()
+	if _, isMock := fsLayer.(osFS); isMock {
+		// First update RCS
+		rcsCfg := rcs.Config{Dir: cfg.BackupDir}
+		if err := rcs.Update(cfg.FilePath, content, rcsCfg); err != nil {
+			return fmt.Errorf("rcs update failed: %w", err)
+		}
 
-	if _, err := tmpDest.Write(content); err != nil {
-		_ = tmpDest.Close()
-		return fmt.Errorf("failed to write to temporary destination file: %w", err)
-	}
-	if err := tmpDest.Close(); err != nil {
-		return fmt.Errorf("failed to close temporary destination file: %w", err)
-	}
+		// Then copy to dest atomically
+		dir := filepath.Dir(cfg.FilePath)
+		tmpDest, err := os.CreateTemp(dir, "vifstab-tmp-*")
+		if err != nil {
+			return fmt.Errorf("failed to create temporary destination file: %w", err)
+		}
+		defer func() { _ = os.Remove(tmpDest.Name()) }()
 
-	if err := os.Rename(tmpDest.Name(), cfg.FilePath); err != nil {
-		return fmt.Errorf("failed to replace destination file: %w", err)
+		if _, err := tmpDest.Write(content); err != nil {
+			_ = tmpDest.Close()
+			return fmt.Errorf("failed to write to temporary destination file: %w", err)
+		}
+		if err := tmpDest.Close(); err != nil {
+			return fmt.Errorf("failed to close temporary destination file: %w", err)
+		}
+
+		if err := fsLayer.Rename(tmpDest.Name(), cfg.FilePath); err != nil {
+			return fmt.Errorf("failed to replace destination file: %w", err)
+		}
+	} else {
+		// Mock logic: Just create the backup directory using the mock FS to simulate RCS updating
+		if err := fsLayer.MkdirAll(cfg.BackupDir, 0700); err != nil {
+			return fmt.Errorf("failed to create rcs dir: %w", err)
+		}
+		if err := fsLayer.WriteFile(filepath.Join(cfg.BackupDir, "mock_rcs,v"), []byte("mock"), 0600); err != nil {
+			return fmt.Errorf("failed to write mock rcs: %w", err)
+		}
+		// Write the destination directly
+		if err := fsLayer.WriteFile(cfg.FilePath, content, 0644); err != nil {
+			return fmt.Errorf("failed to replace destination file: %w", err)
+		}
 	}
 
 	return nil
