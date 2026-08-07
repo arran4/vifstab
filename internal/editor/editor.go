@@ -126,6 +126,16 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 		return fmt.Errorf("failed to read temp file for saving: %w", err)
 	}
 
+	if err := SaveAndVersion(cfg, content); err != nil {
+		return err
+	}
+
+	fmt.Println("Saved successfully.")
+	return nil
+}
+
+// SaveAndVersion saves the given content to the target file and versions it using RCS.
+func SaveAndVersion(cfg config.Config, content []byte) error {
 	// First update RCS
 	rcsCfg := rcs.Config{Dir: cfg.BackupDir}
 	if err := rcs.Update(cfg.FilePath, content, rcsCfg); err != nil {
@@ -152,6 +162,5 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 		return fmt.Errorf("failed to replace destination file: %w", err)
 	}
 
-	fmt.Println("Saved successfully.")
 	return nil
 }

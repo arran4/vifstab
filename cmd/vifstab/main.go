@@ -95,16 +95,29 @@ func main() {
 				handleError(fmt.Errorf("failed to seek temp file: %w", err))
 			}
 
-			// Reopen the target file for writing (truncate it)
-			in.Close() // Close the initial read handle
-			out, err := os.OpenFile(*fileFlag, os.O_WRONLY|os.O_TRUNC, 0644)
+			content, err := io.ReadAll(tempFile)
 			if err != nil {
-				handleError(fmt.Errorf("failed to open file %s for writing: %w", *fileFlag, err))
+				handleError(fmt.Errorf("failed to read formatted content: %w", err))
 			}
-			defer out.Close()
 
-			if _, err := io.Copy(out, tempFile); err != nil {
-				handleError(fmt.Errorf("failed to write formatted output to %s: %w", *fileFlag, err))
+			// Save and Version using the same path as editor
+			// Use the same backup directory logic
+			backupDir := ""
+			if xdgCache := os.Getenv("XDG_CACHE_HOME"); xdgCache != "" {
+				backupDir = xdgCache + "/vifstab"
+			} else if home, err := os.UserHomeDir(); err == nil {
+				backupDir = home + "/.cache/vifstab"
+			} else {
+				backupDir = "/tmp/.vifstab"
+			}
+
+			cfg := config.Config{
+				BackupDir: backupDir,
+				FilePath:  *fileFlag,
+			}
+
+			if err := editor.SaveAndVersion(cfg, content); err != nil {
+				handleError(err)
 			}
 		} else {
 			err = format.Format(in, os.Stdout)
