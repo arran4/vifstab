@@ -164,13 +164,13 @@ func SaveAndVersion(cfg config.Config, content []byte, opts ...any) error {
 		}
 	}
 
-	if _, isMock := fsLayer.(osFS); isMock {
-		// First update RCS
-		rcsCfg := rcs.Config{Dir: cfg.BackupDir}
-		if err := rcs.Update(cfg.FilePath, content, rcsCfg); err != nil {
-			return fmt.Errorf("rcs update failed: %w", err)
-		}
+	// First update RCS
+	rcsCfg := rcs.Config{Dir: cfg.BackupDir}
+	if err := rcs.Update(cfg.FilePath, content, rcsCfg, fsLayer); err != nil {
+		return fmt.Errorf("rcs update failed: %w", err)
+	}
 
+	if _, isMock := fsLayer.(osFS); isMock {
 		// Then copy to dest atomically
 		dir := filepath.Dir(cfg.FilePath)
 		tmpDest, err := os.CreateTemp(dir, "vifstab-tmp-*")
@@ -191,13 +191,6 @@ func SaveAndVersion(cfg config.Config, content []byte, opts ...any) error {
 			return fmt.Errorf("failed to replace destination file: %w", err)
 		}
 	} else {
-		// Mock logic: Just create the backup directory using the mock FS to simulate RCS updating
-		if err := fsLayer.MkdirAll(cfg.BackupDir, 0700); err != nil {
-			return fmt.Errorf("failed to create rcs dir: %w", err)
-		}
-		if err := fsLayer.WriteFile(filepath.Join(cfg.BackupDir, "mock_rcs,v"), []byte("mock"), 0600); err != nil {
-			return fmt.Errorf("failed to write mock rcs: %w", err)
-		}
 		// Write the destination directly
 		if err := fsLayer.WriteFile(cfg.FilePath, content, 0644); err != nil {
 			return fmt.Errorf("failed to replace destination file: %w", err)

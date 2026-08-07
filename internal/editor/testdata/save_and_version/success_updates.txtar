@@ -6,6 +6,44 @@ new fstab content
 new fstab content
 -- expected/rcs_exists --
 true
+-- expected/rcs_content --
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	2023.01.01.00.00.00;	author testuser;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2023.01.01.00.00.00;	author testuser;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Updated revision@
+text
+@even newer fstab content
+@
+
+
+1.1
+log
+@Initial revision@
+text
+@new fstab content
+@
+
 -- input/update_fstab --
 even newer fstab content
 -- expected/fstab_updated --

@@ -86,6 +86,7 @@ func TestSaveAndVersion(t *testing.T) {
 			var expectedContent string
 			var expectedUpdatedContent string
 			var expectedRcsExists bool
+			var expectedRcsContent string
 
 			for _, file := range archive.Files {
 				if file.Name == "input/initial_fstab" {
@@ -100,6 +101,8 @@ func TestSaveAndVersion(t *testing.T) {
 					expectedUpdatedContent = string(file.Data)
 				} else if file.Name == "expected/rcs_exists" {
 					expectedRcsExists = strings.TrimSpace(string(file.Data)) == "true"
+				} else if file.Name == "expected/rcs_content" {
+					expectedRcsContent = string(file.Data)
 				}
 			}
 
@@ -117,6 +120,11 @@ func TestSaveAndVersion(t *testing.T) {
 				FilePath:  testFile,
 				BackupDir: backupDir,
 			}
+
+			// Set a dummy user for RCS output consistency
+			os.Setenv("USER", "testuser")
+			// And mock the time in RCS? the rcs package uses time.Now(). We can't easily mock time.Now in external package.
+			// Let's just check that it contains the content strings.
 
 			// Initial Save
 			if err := SaveAndVersion(cfg, newContent, mfs); err != nil {
@@ -149,6 +157,37 @@ func TestSaveAndVersion(t *testing.T) {
 				}
 				if string(gotUpdated) != expectedUpdatedContent {
 					t.Errorf("expected updated %q, got %q", expectedUpdatedContent, string(gotUpdated))
+				}
+			}
+
+			if expectedRcsContent != "" {
+				rcsFilepath := filepath.Join(backupDir, filepath.Base(testFile)+",v")
+				rcsBytes, err := mfs.ReadFile(rcsFilepath)
+				if err != nil {
+					t.Fatalf("failed to read rcs file: %v", err)
+				}
+
+				// Time and exact formatting might differ, so let's verify key parts
+				rcsStr := string(rcsBytes)
+
+				if !strings.Contains(rcsStr, "desc") {
+					t.Errorf("expected rcs file to contain 'desc', got:\n%s", rcsStr)
+				}
+
+				if len(updateContent) > 0 {
+					if !strings.Contains(rcsStr, "1.2") {
+						t.Errorf("expected rcs file to contain '1.2' revision, got:\n%s", rcsStr)
+					}
+					if !strings.Contains(rcsStr, "@even newer fstab content\n@") {
+						t.Errorf("expected rcs file to contain '@even newer fstab content\\n@', got:\n%s", rcsStr)
+					}
+				} else {
+					if !strings.Contains(rcsStr, "1.1") {
+						t.Errorf("expected rcs file to contain '1.1' revision, got:\n%s", rcsStr)
+					}
+					if !strings.Contains(rcsStr, "@new fstab content\n@") {
+						t.Errorf("expected rcs file to contain '@new fstab content\\n@', got:\n%s", rcsStr)
+					}
 				}
 			}
 		})
