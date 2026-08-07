@@ -100,22 +100,7 @@ func main() {
 				handleError(fmt.Errorf("failed to read formatted content: %w", err))
 			}
 
-			// Save and Version using the same path as editor
-			// Use the same backup directory logic
-			backupDir := ""
-			if xdgCache := os.Getenv("XDG_CACHE_HOME"); xdgCache != "" {
-				backupDir = xdgCache + "/vifstab"
-			} else if home, err := os.UserHomeDir(); err == nil {
-				backupDir = home + "/.cache/vifstab"
-			} else {
-				backupDir = "/tmp/.vifstab"
-			}
-
-			cfg := config.Config{
-				BackupDir: backupDir,
-				FilePath:  *fileFlag,
-			}
-
+			cfg := config.GetDefaultConfig(*fileFlag)
 			if err := editor.SaveAndVersion(cfg, content); err != nil {
 				handleError(err)
 			}
@@ -161,19 +146,9 @@ func main() {
 		return
 	}
 
-	if backupDir == "" {
-		if xdgCache := os.Getenv("XDG_CACHE_HOME"); xdgCache != "" {
-			backupDir = xdgCache + "/vifstab"
-		} else if home, err := os.UserHomeDir(); err == nil {
-			backupDir = home + "/.cache/vifstab"
-		} else {
-			backupDir = "/tmp/.vifstab"
-		}
-	}
-
-	cfg := config.Config{
-		BackupDir: backupDir,
-		FilePath:  file,
+	cfg := config.GetDefaultConfig(file)
+	if backupDir != "" {
+		cfg.BackupDir = backupDir
 	}
 
 	if verifyOnly {
