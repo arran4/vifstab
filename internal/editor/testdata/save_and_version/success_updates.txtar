@@ -1,16 +1,14 @@
--- config/filepath --
-/etc/fstab
--- config/backupdir --
+-- env/XDG_CACHE_HOME --
 /var/backup
--- input/initial_fstab --
+-- input/etc/fstab --
 initial fstab content
 -- input/new_fstab --
 new fstab content
--- expected/fstab --
+-- expected/etc/fstab --
 new fstab content
 -- expected/rcs_exists --
 true
--- expected/rcs_content --
+-- expected/var/backup/fstab,v --
 head	1.2;
 access;
 symbols;
