@@ -61,7 +61,6 @@ func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 	return nil, os.ErrNotExist
 }
 
-
 func TestSaveAndVersion(t *testing.T) {
 	entries, err := fs.ReadDir(testdataFS, "testdata/save_and_version")
 	if err != nil {
@@ -88,6 +87,10 @@ func TestSaveAndVersion(t *testing.T) {
 			var expectedRcsExists bool
 			var expectedRcsContent string
 
+			// Support optional configurations from outside "input" and "expected"
+			var testFile = "/etc/fstab"
+			var backupDir = "/var/backup"
+
 			for _, file := range archive.Files {
 				if file.Name == "input/initial_fstab" {
 					initialContent = file.Data
@@ -103,14 +106,15 @@ func TestSaveAndVersion(t *testing.T) {
 					expectedRcsExists = strings.TrimSpace(string(file.Data)) == "true"
 				} else if file.Name == "expected/rcs_content" {
 					expectedRcsContent = string(file.Data)
+				} else if file.Name == "config/filepath" {
+					testFile = strings.TrimSpace(string(file.Data))
+				} else if file.Name == "config/backupdir" {
+					backupDir = strings.TrimSpace(string(file.Data))
 				}
 			}
 
 			// Use memory mock FS to avoid actual file system access
 			mfs := &mockFS{mfs: make(fstest.MapFS)}
-
-			testFile := "/etc/fstab"
-			backupDir := "/var/backup"
 
 			if len(initialContent) > 0 {
 				mfs.WriteFile(testFile, initialContent, 0644)
