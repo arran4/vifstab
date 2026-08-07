@@ -82,7 +82,9 @@ func TestSaveAndVersion(t *testing.T) {
 			archive := txtar.Parse(b)
 			var initialContent []byte
 			var newContent []byte
+			var updateContent []byte
 			var expectedContent string
+			var expectedUpdatedContent string
 			var expectedRcsExists bool
 
 			for _, file := range archive.Files {
@@ -90,8 +92,12 @@ func TestSaveAndVersion(t *testing.T) {
 					initialContent = file.Data
 				} else if file.Name == "input/new_fstab" {
 					newContent = file.Data
+				} else if file.Name == "input/update_fstab" {
+					updateContent = file.Data
 				} else if file.Name == "expected/fstab" {
 					expectedContent = string(file.Data)
+				} else if file.Name == "expected/fstab_updated" {
+					expectedUpdatedContent = string(file.Data)
 				} else if file.Name == "expected/rcs_exists" {
 					expectedRcsExists = strings.TrimSpace(string(file.Data)) == "true"
 				}
@@ -112,6 +118,7 @@ func TestSaveAndVersion(t *testing.T) {
 				BackupDir: backupDir,
 			}
 
+			// Initial Save
 			if err := SaveAndVersion(cfg, newContent, mfs); err != nil {
 				t.Fatalf("SaveAndVersion failed: %v", err)
 			}
@@ -128,6 +135,21 @@ func TestSaveAndVersion(t *testing.T) {
 			gotRcsExists := err == nil
 			if gotRcsExists != expectedRcsExists {
 				t.Errorf("expected RCS dir exists=%v, got %v", expectedRcsExists, gotRcsExists)
+			}
+
+			// Subsequent update if requested by test file
+			if len(updateContent) > 0 {
+				if err := SaveAndVersion(cfg, updateContent, mfs); err != nil {
+					t.Fatalf("SaveAndVersion update failed: %v", err)
+				}
+
+				gotUpdated, err := mfs.ReadFile(testFile)
+				if err != nil {
+					t.Fatalf("failed to read updated file after update: %v", err)
+				}
+				if string(gotUpdated) != expectedUpdatedContent {
+					t.Errorf("expected updated %q, got %q", expectedUpdatedContent, string(gotUpdated))
+				}
 			}
 		})
 	}

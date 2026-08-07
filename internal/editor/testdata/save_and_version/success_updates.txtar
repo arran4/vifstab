@@ -1,0 +1,12 @@
+-- input/initial_fstab --
+initial fstab content
+-- input/new_fstab --
+new fstab content
+-- expected/fstab --
+new fstab content
+-- expected/rcs_exists --
+true
+-- input/update_fstab --
+even newer fstab content
+-- expected/fstab_updated --
+even newer fstab content
