@@ -5,6 +5,8 @@ vifstab - Edit fstab files with linting and versioning
 
 ## SYNOPSIS
 vifstab [--backup-dir=<value>] [--file=<value>] [--generate-manpage] [--verify] [--help|-h]
+vifstab diagram <device>
+vifstab format [--file=<value>]
 
 ## DESCRIPTION
 
@@ -24,6 +26,11 @@ If the validation fails (for example, if a mount point does not exist or a files
 **--verify**: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
 
 **--help**, **-h**: Show help information.
+
+## SUBCOMMANDS
+**diagram** `<device>`: Generates an ASCII art diagram of the filesystem stack and dependencies for the specified block device.
+
+**format** `[--file=<value>] [-i]`: Reads fstab entries and outputs them in a formatted, column-aligned manner. Defaults to formatting `/etc/fstab` unless `--file` is specified. The `-i` flag writes the formatted output back to the file in-place (cannot be used when reading from standard input).
 
 ## ENVIRONMENT
 **VISUAL**, **EDITOR**: Determines the text editor to be launched by `vifstab`. The command respects standard arguments provided in these variables. If neither is set, it may default to common editors like `vi`.

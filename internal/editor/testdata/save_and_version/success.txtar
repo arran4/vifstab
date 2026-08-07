@@ -1,0 +1,34 @@
+-- env/XDG_CACHE_HOME --
+/var/backup
+-- input/etc/fstab --
+initial fstab content
+-- input/new_fstab --
+new fstab content
+-- expected/etc/fstab --
+new fstab content
+-- expected/rcs_exists --
+true
+-- expected/var/backup/fstab,v --
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	2023.01.01.00.00.00;	author testuser;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Initial revision@
+text
+@new fstab content
+@
