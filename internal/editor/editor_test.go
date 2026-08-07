@@ -1,51 +1,92 @@
 package editor
 
 import (
+	"embed"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/arran4/vifstab/internal/config"
+	"golang.org/x/tools/txtar"
 )
 
+//go:embed testdata/save_and_version/*.txtar
+var testdataFS embed.FS
+
 func TestSaveAndVersion(t *testing.T) {
-	// Create a temporary directory for the test
-	tmpDir, err := os.MkdirTemp("", "vifstab-test-*")
+	entries, err := fs.ReadDir(testdataFS, "testdata/save_and_version")
 	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	testFile := filepath.Join(tmpDir, "fstab")
-	backupDir := filepath.Join(tmpDir, "backup")
-
-	// Initial content
-	initialContent := []byte("initial fstab content")
-	if err := os.WriteFile(testFile, initialContent, 0644); err != nil {
-		t.Fatalf("failed to write initial file: %v", err)
+		t.Fatalf("failed to read testdata dir: %v", err)
 	}
 
-	cfg := config.Config{
-		FilePath:  testFile,
-		BackupDir: backupDir,
-	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".txtar") {
+			continue
+		}
 
-	newContent := []byte("new fstab content")
-	if err := SaveAndVersion(cfg, newContent); err != nil {
-		t.Fatalf("SaveAndVersion failed: %v", err)
-	}
+		t.Run(entry.Name(), func(t *testing.T) {
+			b, err := fs.ReadFile(testdataFS, "testdata/save_and_version/"+entry.Name())
+			if err != nil {
+				t.Fatalf("failed to read test file: %v", err)
+			}
 
-	// Verify the file was updated
-	got, err := os.ReadFile(testFile)
-	if err != nil {
-		t.Fatalf("failed to read updated file: %v", err)
-	}
-	if string(got) != string(newContent) {
-		t.Errorf("expected %q, got %q", string(newContent), string(got))
-	}
+			archive := txtar.Parse(b)
+			var initialContent []byte
+			var newContent []byte
+			var expectedContent string
+			var expectedRcsExists bool
 
-	// Verify the backup directory exists (RCS was updated)
-	if _, err := os.Stat(backupDir); os.IsNotExist(err) {
-		t.Errorf("expected backup directory to exist: %s", backupDir)
+			for _, file := range archive.Files {
+				if file.Name == "input/initial_fstab" {
+					initialContent = file.Data
+				} else if file.Name == "input/new_fstab" {
+					newContent = file.Data
+				} else if file.Name == "expected/fstab" {
+					expectedContent = string(file.Data)
+				} else if file.Name == "expected/rcs_exists" {
+					expectedRcsExists = strings.TrimSpace(string(file.Data)) == "true"
+				}
+			}
+
+			tmpDir, err := os.MkdirTemp("", "vifstab-test-rcs-*")
+			if err != nil {
+				t.Fatalf("failed to create temp dir: %v", err)
+			}
+			defer os.RemoveAll(tmpDir)
+
+			testFile := filepath.Join(tmpDir, "fstab")
+			backupDir := filepath.Join(tmpDir, "backup")
+
+			if len(initialContent) > 0 {
+				if err := os.WriteFile(testFile, initialContent, 0644); err != nil {
+					t.Fatalf("failed to write initial file: %v", err)
+				}
+			}
+
+			cfg := config.Config{
+				FilePath:  testFile,
+				BackupDir: backupDir,
+			}
+
+			if err := SaveAndVersion(cfg, newContent); err != nil {
+				t.Fatalf("SaveAndVersion failed: %v", err)
+			}
+
+			got, err := os.ReadFile(testFile)
+			if err != nil {
+				t.Fatalf("failed to read updated file: %v", err)
+			}
+			if string(got) != expectedContent {
+				t.Errorf("expected %q, got %q", expectedContent, string(got))
+			}
+
+			_, err = os.Stat(backupDir)
+			gotRcsExists := !os.IsNotExist(err)
+			if gotRcsExists != expectedRcsExists {
+				t.Errorf("expected RCS dir exists=%v, got %v", expectedRcsExists, gotRcsExists)
+			}
+		})
 	}
 }
