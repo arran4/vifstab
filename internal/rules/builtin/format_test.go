@@ -2,6 +2,7 @@ package builtin
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/arran4/vifstab/internal/rules"
@@ -12,10 +13,9 @@ func TestFormatRule_Validate(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name     string
-		entry    *rules.FstabEntry
-		wantErrs int
-		wantErr  bool
+		name       string
+		entry      *rules.FstabEntry
+		wantIssues []rules.ValidationIssue
 	}{
 		{
 			name: "valid entry with 6 fields",
@@ -24,8 +24,7 @@ func TestFormatRule_Validate(t *testing.T) {
 				RawLine: "/dev/sda1 / ext4 defaults 0 0",
 				Fields:  []string{"/dev/sda1", "/", "ext4", "defaults", "0", "0"},
 			},
-			wantErrs: 0,
-			wantErr:  false,
+			wantIssues: nil,
 		},
 		{
 			name: "empty entry",
@@ -34,18 +33,16 @@ func TestFormatRule_Validate(t *testing.T) {
 				RawLine: "",
 				Fields:  []string{},
 			},
-			wantErrs: 0,
-			wantErr:  false,
+			wantIssues: nil,
 		},
 		{
-			name: "comment entry",
+			name: "comment entry with leading space",
 			entry: &rules.FstabEntry{
 				LineNum: 3,
-				RawLine: "# this is a comment",
+				RawLine: "   # this is a comment",
 				Fields:  []string{"#", "this", "is", "a", "comment"},
 			},
-			wantErrs: 0,
-			wantErr:  false,
+			wantIssues: nil,
 		},
 		{
 			name: "less than 6 fields",
@@ -54,29 +51,27 @@ func TestFormatRule_Validate(t *testing.T) {
 				RawLine: "/dev/sda1 / ext4 defaults 0",
 				Fields:  []string{"/dev/sda1", "/", "ext4", "defaults", "0"},
 			},
-			wantErrs: 1,
-			wantErr:  false,
+			wantIssues: []rules.ValidationIssue{
+				{
+					Message: "Line 4 has less than 6 fields",
+					Line:    "/dev/sda1 / ext4 defaults 0",
+					Level:   rules.IssueLevelError,
+				},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			issues, err := r.Validate(ctx, nil, tt.entry)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("FormatRule.Validate() error = %v, wantErr %v", err, tt.wantErr)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(issues) == 0 && len(tt.wantIssues) == 0 {
 				return
 			}
-			if len(issues) != tt.wantErrs {
-				t.Errorf("FormatRule.Validate() got %d issues, want %d", len(issues), tt.wantErrs)
-			}
-			if tt.wantErrs > 0 && len(issues) > 0 {
-				if issues[0].Level != rules.IssueLevelError {
-					t.Errorf("FormatRule.Validate() issue level = %v, want %v", issues[0].Level, rules.IssueLevelError)
-				}
-				expectedMsg := "Line 4 has less than 6 fields"
-				if tt.name == "less than 6 fields" && issues[0].Message != expectedMsg {
-					t.Errorf("FormatRule.Validate() issue message = %q, want %q", issues[0].Message, expectedMsg)
-				}
+			if !reflect.DeepEqual(issues, tt.wantIssues) {
+				t.Errorf("FormatRule.Validate() issues = %v, want %v", issues, tt.wantIssues)
 			}
 		})
 	}
