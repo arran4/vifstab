@@ -27,11 +27,9 @@ type FS interface {
 type osFS struct{}
 
 func (osFS) MkdirAll(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
-func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name) }
-func (osFS) ReadFile(name string) ([]byte, error)         { return os.ReadFile(name) }
-func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
-	return os.WriteFile(name, data, perm)
-}
+func (osFS) Stat(name string) (os.FileInfo, error) { return os.Stat(name) }
+func (osFS) ReadFile(name string) ([]byte, error) { return os.ReadFile(name) }
+func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error { return os.WriteFile(name, data, perm) }
 
 var DefaultFS FS = osFS{}
 

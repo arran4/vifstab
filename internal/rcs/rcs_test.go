@@ -99,6 +99,39 @@ func TestUpdate_Errors(t *testing.T) {
 			expectedStr: "failed to parse rcs file",
 		},
 		{
+			name:   "Unsupported revision format",
+			config: Config{Dir: "testdir"},
+			fsMock: &mockFS{
+				statErr: nil,
+				readFileData: []byte(`head	1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1
+date	2023.01.01.00.00.00;	author user;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1
+log
+@Initial revision
+@
+text
+@content
+@
+`),
+			},
+			expectedStr: "unsupported revision format: 1",
+		},
+		{
 			name:   "Malformed head parsing",
 			config: Config{Dir: "testdir"},
 			fsMock: &mockFS{
