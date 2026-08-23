@@ -2,7 +2,7 @@
 
 **⚠️ Work in Progress**
 
-`vifstab` is a work-in-progress utility designed to emulate `visudo` for `/etc/fstab` files. It safely edits `fstab` files with built-in linting and versioning, respecting the `$EDITOR` environment variable and saving backups using RCS.
+`vifstab` is a work-in-progress utility providing a visudo-like safe editing workflow for `/etc/fstab` files. It safely edits `fstab` files with built-in linting and versioning, respects the `$VISUAL` or `$EDITOR` environment variables, and saves backups using RCS.
 
 ## Features
 
@@ -41,19 +41,32 @@ sudo chmod 755 /usr/local/sbin/vifstab
 
 ## Usage
 
-Run `vifstab` to edit the default `/etc/fstab` file. Note that because this edits a system file, you typically need to run it as root or via `sudo`:
+Run `vifstab` to edit the default `/etc/fstab` file:
 
 ```bash
-sudo vifstab
+vifstab
 ```
+*Note: Modifying system files like `/etc/fstab` requires elevated privileges. It is the caller's responsibility to arrange sufficient permissions (e.g., using `sudo`, `doas`, or `su`) when invoking `vifstab`.*
 
-### Editor Selection and Privilege Escalation
+### Security Model and Privileges
 
-Because `vifstab` is meant to be run as root (or via `sudo`/`su`), it must handle editor selection securely.
+`vifstab` is designed to validate and version files, not to manage process privileges. It provides a visudo-like safe editing workflow, but unlike `visudo`, `vifstab` does not acquire or manage privileges itself; it relies entirely on the invocation context.
 
-1. **`$EDITOR` / `$VISUAL` Variables:** `vifstab` respects the `$EDITOR` and `$VISUAL` environment variables. If neither is set, it typically falls back to a default system editor like `vi` or `nano`.
-2. **`sudo` Considerations:** When running via `sudo`, your personal `$EDITOR` variable might not be preserved in the root environment unless configured to do so. You may need to use `sudo -E` (to preserve environment variables) or configure the `Defaults env_keep += "EDITOR VISUAL"` setting in your `sudoers` file.
-3. **Security:** Running an editor as root can be a security risk (e.g., shell escapes from within `vi`). Always ensure you are using a trusted editor and environment when running `vifstab`.
+*   `vifstab` does **not** acquire or manage privileges.
+*   `vifstab` does **not** switch users or identities.
+*   `vifstab` does **not** implement sudo/su/setuid/runas-specific behavior.
+*   All filesystem access, editor execution, backups, and final writes occur using the process credentials supplied by the caller.
+*   Users are responsible for arranging whatever permissions or invocation context they require.
+*   Editor commands are executed directly rather than through a shell.
+*   Normal editor arguments are supported.
+
+### Setting the Editor
+
+`vifstab` respects the following environment variables (in order):
+1. `VISUAL`
+2. `EDITOR`
+
+Note: `SUDO_EDITOR` is intentionally ignored because `vifstab` does not infer or manage sudo-specific environments.
 
 ### Flags
 
@@ -116,4 +129,4 @@ Currently built-in rules check for:
 
 ## Environment Variables
 
-- `EDITOR` or `VISUAL`: Defines the text editor to use when opening the fstab file.
+- `VISUAL` or `EDITOR`: Defines the text editor to use when opening the fstab file. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is not interpreted. Normal editor arguments are supported. Editor commands are executed directly rather than through a shell.

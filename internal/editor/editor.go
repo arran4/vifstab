@@ -27,13 +27,14 @@ type FS interface {
 type osFS struct{}
 
 func (osFS) ReadFile(name string) ([]byte, error) { return os.ReadFile(name) }
-func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error { return os.WriteFile(name, data, perm) }
+func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(name, data, perm)
+}
 func (osFS) MkdirAll(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
-func (osFS) Rename(oldpath, newpath string) error { return os.Rename(oldpath, newpath) }
-func (osFS) Stat(name string) (os.FileInfo, error) { return os.Stat(name) }
+func (osFS) Rename(oldpath, newpath string) error         { return os.Rename(oldpath, newpath) }
+func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name) }
 
 var DefaultFS FS = osFS{}
-
 
 func EditAndLint(cfg config.Config, api rules.API) error {
 	// 1. Copy target file to temp
@@ -58,31 +59,9 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 	}
 	_ = tempFile.Close()
 
-	editor := os.Getenv("SUDO_EDITOR")
-	if editor == "" {
-		editor = os.Getenv("VISUAL")
-	}
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-
-	var editorParts []string
-	if editor != "" {
-		var err error
-		editorParts, err = SplitEditorCommand(editor)
-		if err != nil {
-			return fmt.Errorf("failed to parse editor command: %w", err)
-		}
-	}
-
-	if len(editorParts) == 0 {
-		editorParts = []string{"vi"}
-	}
-
-	for _, part := range editorParts {
-		if part == "--" {
-			return fmt.Errorf("editor arguments may not contain \"--\"")
-		}
+	editorParts, err := editorCommandFromEnvironment()
+	if err != nil {
+		return err
 	}
 
 	for {
@@ -152,6 +131,34 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 
 	fmt.Println("Saved successfully.")
 	return nil
+}
+
+func editorCommandFromEnvironment() ([]string, error) {
+	editor := os.Getenv("VISUAL")
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+
+	var editorParts []string
+	if editor != "" {
+		var err error
+		editorParts, err = SplitEditorCommand(editor)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse editor command: %w", err)
+		}
+	}
+
+	if len(editorParts) == 0 {
+		editorParts = []string{"vi"}
+	}
+
+	for _, part := range editorParts {
+		if part == "--" {
+			return nil, fmt.Errorf("editor arguments may not contain \"--\"")
+		}
+	}
+
+	return editorParts, nil
 }
 
 // SaveAndVersion saves the given content to the target file and versions it using RCS.
