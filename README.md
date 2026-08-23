@@ -2,7 +2,7 @@
 
 **⚠️ Work in Progress**
 
-`vifstab` is a work-in-progress utility designed to emulate `visudo` for `/etc/fstab` files. It safely edits `fstab` files with built-in linting and versioning, respecting the `$EDITOR` environment variable and saving backups using RCS.
+`vifstab` is a work-in-progress utility providing a visudo-like safe editing workflow for `/etc/fstab` files. It safely edits `fstab` files with built-in linting and versioning, respects the `$VISUAL` or `$EDITOR` environment variables, and saves backups using RCS.
 
 ## Features
 
@@ -129,4 +129,4 @@ Currently built-in rules check for:
 
 ## Environment Variables
 
-- `EDITOR` or `VISUAL`: Defines the text editor to use when opening the fstab file.
+- `VISUAL` or `EDITOR`: Defines the text editor to use when opening the fstab file. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is not interpreted. Normal editor arguments are supported. Editor commands are executed directly rather than through a shell.
