@@ -1,11 +1,33 @@
 package editor
 
+
 import (
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
 )
+
+func lintEntriesBaseline(entries []*rules.FstabEntry, api rules.API) ([]rules.ValidationIssue, error) {
+	allRules := rules.GetAllRules()
+	ctx := rules.WithCache(context.Background(), rules.NewCache())
+
+	var allIssues []rules.ValidationIssue
+	for _, entry := range entries {
+		for _, r := range allRules {
+			issues, err := r.Validate(ctx, api, entry)
+			if err != nil {
+				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)
+			}
+			allIssues = append(allIssues, issues...)
+		}
+	}
+
+	return allIssues, nil
+}
+
 
 type mockAPI struct{}
 
@@ -109,5 +131,65 @@ func BenchmarkLintEntries_MultipleIssuesPerEntry(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = lintEntries(entries, api)
+	}
+}
+
+func BenchmarkLintEntries_ZeroIssues_Baseline(b *testing.B) {
+	var entries []*rules.FstabEntry
+	for i := 0; i < 10000; i++ {
+		entries = append(entries, &rules.FstabEntry{
+			Fields: []string{"/dev/sda1", "/", "ext4", "defaults", "0", "1"},
+		})
+	}
+	api := &mockAPI{}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = lintEntriesBaseline(entries, api)
+	}
+}
+
+func BenchmarkLintEntries_OneTotalIssue_Baseline(b *testing.B) {
+	var entries []*rules.FstabEntry
+	for i := 0; i < 10000; i++ {
+		entry := &rules.FstabEntry{
+			Fields: []string{"/dev/sda1", "/", "ext4", "defaults", "0", "1"},
+		}
+		if i == 5000 {
+			entry.Fields[3] = "defaults,badopt"
+		}
+		entries = append(entries, entry)
+	}
+	api := &mockAPI{}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = lintEntriesBaseline(entries, api)
+	}
+}
+
+func BenchmarkLintEntries_OneIssuePerEntry_Baseline(b *testing.B) {
+	var entries []*rules.FstabEntry
+	for i := 0; i < 10000; i++ {
+		entries = append(entries, &rules.FstabEntry{
+			Fields: []string{"/dev/sda1", "/", "ext4", "defaults,badopt", "0", "1"},
+		})
+	}
+	api := &mockAPI{}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = lintEntriesBaseline(entries, api)
+	}
+}
+
+func BenchmarkLintEntries_MultipleIssuesPerEntry_Baseline(b *testing.B) {
+	var entries []*rules.FstabEntry
+	for i := 0; i < 10000; i++ {
+		entries = append(entries, &rules.FstabEntry{
+			Fields: []string{"none", "/invalid", "unknownfs", "badopt1,badopt2,badopt3", "9", "9"},
+		})
+	}
+	api := &mockAPI{}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = lintEntriesBaseline(entries, api)
 	}
 }
