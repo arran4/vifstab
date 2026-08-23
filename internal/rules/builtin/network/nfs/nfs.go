@@ -20,30 +20,30 @@ func init() {
 	rules.Register(&NfsRule{})
 
 	baseOpts := map[string]options.OptionValidator{
-		"nfsvers":      options.IntOption{},
-		"vers":         options.IntOption{},
-		"soft":         options.NoValueOption{},
-		"softerr":      options.NoValueOption{},
-		"hard":         options.NoValueOption{},
-		"softreval":    options.NoValueOption{},
-		"nosoftreval":  options.NoValueOption{},
-		"intr":         options.NoValueOption{}, // ignored after 2.6.25
-		"nointr":       options.NoValueOption{},
-		"timeo":        options.IntOption{},
-		"retrans":      options.IntOption{},
-		"rsize":        options.IntOption{},
-		"wsize":        options.IntOption{},
-		"ac":           options.NoValueOption{},
-		"noac":         options.NoValueOption{},
-		"acregmin":     options.IntOption{},
-		"acregmax":     options.IntOption{},
-		"acdirmin":     options.IntOption{},
-		"acdirmax":     options.IntOption{},
-		"actimeo":      options.IntOption{},
-		"bg":           options.NoValueOption{},
-		"fg":           options.NoValueOption{},
-		"nconnect":     options.IntRangeOption{Max: func() *int64 { i := int64(16); return &i }()}, // limit of 16
-		"rdirplus":     options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
+		"nfsvers":     options.IntOption{},
+		"vers":        options.IntOption{},
+		"soft":        options.NoValueOption{},
+		"softerr":     options.NoValueOption{},
+		"hard":        options.NoValueOption{},
+		"softreval":   options.NoValueOption{},
+		"nosoftreval": options.NoValueOption{},
+		"intr":        options.NoValueOption{}, // ignored after 2.6.25
+		"nointr":      options.NoValueOption{},
+		"timeo":       options.IntOption{},
+		"retrans":     options.IntOption{},
+		"rsize":       options.IntOption{},
+		"wsize":       options.IntOption{},
+		"ac":          options.NoValueOption{},
+		"noac":        options.NoValueOption{},
+		"acregmin":    options.IntOption{},
+		"acregmax":    options.IntOption{},
+		"acdirmin":    options.IntOption{},
+		"acdirmax":    options.IntOption{},
+		"actimeo":     options.IntOption{},
+		"bg":          options.NoValueOption{},
+		"fg":          options.NoValueOption{},
+		"nconnect":    options.IntRangeOption{Max: func() *int64 { i := int64(16); return &i }()}, // limit of 16
+		"rdirplus": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 			if !hasVal {
 				return nil
 			}
@@ -72,7 +72,7 @@ func init() {
 		"xprtsec":      options.EnumOption{Allowed: map[string]bool{"none": true, "tls": true, "mtls": true}},
 		"noalignwrite": options.NoValueOption{},
 
-		// NFS version 4 specific options (will be included in nfs4 only but base logic is same as original)
+		// NFS version 4 specific options (accepted by both nfs and nfs4 for compatibility)
 		"minorversion":     options.IntOption{},
 		"clientaddr":       options.StringOption{},
 		"migration":        options.NoValueOption{},
@@ -109,29 +109,29 @@ func init() {
 	}
 
 	nfs3Specific := map[string]options.OptionValidator{
-		"proto": options.EnumOption{Allowed: map[string]bool{"udp": true, "udp6": true, "tcp": true, "tcp6": true, "rdma": true, "rdma6": true}},
-		"udp": options.NoValueOption{},
-		"tcp": options.NoValueOption{},
-		"rdma": options.NoValueOption{},
-		"port": options.IntOption{},
-		"mountport": options.IntOption{},
+		"proto":      options.EnumOption{Allowed: map[string]bool{"udp": true, "udp6": true, "tcp": true, "tcp6": true, "rdma": true, "rdma6": true}},
+		"udp":        options.NoValueOption{},
+		"tcp":        options.NoValueOption{},
+		"rdma":       options.NoValueOption{},
+		"port":       options.IntOption{},
+		"mountport":  options.IntOption{},
 		"mountproto": options.EnumOption{Allowed: map[string]bool{"udp": true, "udp6": true, "tcp": true, "tcp6": true}},
-		"mounthost": options.StringOption{},
-		"mountvers": options.IntOption{},
-		"namlen": options.IntOption{},
-		"lock": options.NoValueOption{},
-		"nolock": options.NoValueOption{},
-		"cto": options.NoValueOption{},
-		"nocto": options.NoValueOption{},
-		"acl": options.NoValueOption{},
-		"noacl": options.NoValueOption{},
+		"mounthost":  options.StringOption{},
+		"mountvers":  options.IntOption{},
+		"namlen":     options.IntOption{},
+		"lock":       options.NoValueOption{},
+		"nolock":     options.NoValueOption{},
+		"cto":        options.NoValueOption{},
+		"nocto":      options.NoValueOption{},
+		"acl":        options.NoValueOption{},
+		"noacl":      options.NoValueOption{},
 		"local_lock": options.EnumOption{Allowed: map[string]bool{"all": true, "flock": true, "posix": true, "none": true}},
 	}
 
 	nfs4Specific := map[string]options.OptionValidator{
 		"proto": options.EnumOption{Allowed: map[string]bool{"tcp": true, "tcp6": true, "rdma": true, "rdma6": true}},
-		"port": options.IntOption{},
-		"cto": options.NoValueOption{},
+		"port":  options.IntOption{},
+		"cto":   options.NoValueOption{},
 		"nocto": options.NoValueOption{},
 	}
 
