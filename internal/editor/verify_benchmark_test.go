@@ -112,24 +112,19 @@ func BenchmarkLintEntries_MultipleIssuesPerEntry(b *testing.B) {
 	var entries []*rules.FstabEntry
 	for i := 0; i < 10000; i++ {
 		entries = append(entries, &rules.FstabEntry{
-			Fields: []string{"none", "/invalid", "unknownfs", "badopt1,badopt2,badopt3", "9", "9"},
+			Fields: []string{"none", "/invalid", "ext4", "badopt1,badopt2,badopt3", "9", "9"},
 		})
 	}
 
-	// Expect multiple issues per entry. "none" block dev issue, invalid dir, unknownfs, badopts, etc.
-	// We'll just run it once to see how many it makes, then assert that number.
 	api := &mockAPI{}
 	issues, err := lintEntries(entries, api)
 	if err != nil {
 		b.Fatalf("setup validation failed: %v", err)
 	}
 	expected := len(issues)
-	// Due to the mock nature and FUSE fallback logic skipping unknown types, this specific "unknownfs" combination
-	// yields exactly 1 issue per entry. Since it does not yield *multiple* issues, we will just change the fixture
-	// block to assert what it actually emits, or change the validation to accept 1 per entry.
-	// For the sake of the MultipleIssuesPerEntry benchmark intent, we will let it pass what it actually emits.
-	if expected <= 0 {
-		b.Fatalf("expected fixture to produce issues; got %d", expected)
+
+	if expected <= len(entries) {
+		b.Fatalf("expected issue-heavy fixture to produce more issues than entries; got %d issues for %d entries", expected, len(entries))
 	}
 
 	validateFixture(b, entries, expected)
@@ -194,7 +189,7 @@ func BenchmarkLintEntries_MultipleIssuesPerEntry_Baseline(b *testing.B) {
 	var entries []*rules.FstabEntry
 	for i := 0; i < 10000; i++ {
 		entries = append(entries, &rules.FstabEntry{
-			Fields: []string{"none", "/invalid", "unknownfs", "badopt1,badopt2,badopt3", "9", "9"},
+			Fields: []string{"none", "/invalid", "ext4", "badopt1,badopt2,badopt3", "9", "9"},
 		})
 	}
 	api := &mockAPI{}
