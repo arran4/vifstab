@@ -157,7 +157,7 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 // SaveAndVersion saves the given content to the target file and versions it using RCS.
 // Accepts an optional dependency injection for the FS layer.
 func SaveAndVersion(cfg config.Config, content []byte, opts ...any) error {
-	var fsLayer = DefaultFS
+	var fsLayer FS = DefaultFS
 	for _, opt := range opts {
 		if injection, ok := opt.(FS); ok {
 			fsLayer = injection

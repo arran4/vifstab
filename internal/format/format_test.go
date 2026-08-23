@@ -35,7 +35,6 @@ func TestFormat_Txtar(t *testing.T) {
 			var expected string
 
 			for _, file := range archive.Files {
-				//nolint:staticcheck // Ignore QF1003
 				if file.Name == "input/etc/fstab" {
 					input = string(file.Data)
 				} else if file.Name == "expected/format.txt" {

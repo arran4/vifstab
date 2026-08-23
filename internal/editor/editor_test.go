@@ -127,7 +127,7 @@ func TestSaveAndVersion(t *testing.T) {
 			mfs := &mockFS{mfs: make(fstest.MapFS)}
 
 			if len(initialContent) > 0 {
-				_ = mfs.WriteFile(testFile, initialContent, 0644)
+				mfs.WriteFile(testFile, initialContent, 0644)
 			}
 
 			cfg := config.Config{
@@ -142,7 +142,7 @@ func TestSaveAndVersion(t *testing.T) {
 			cfg.BackupDir = backupDir
 
 			// Set a dummy user for RCS output consistency
-			t.Setenv("USER", "testuser")
+			os.Setenv("USER", "testuser")
 			// And mock the time in RCS? the rcs package uses time.Now(). We can't easily mock time.Now in external package.
 			// Let's just check that it contains the content strings.
 
