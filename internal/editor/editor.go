@@ -170,7 +170,15 @@ func SaveAndVersion(cfg config.Config, content []byte, opts ...any) error {
 		return fmt.Errorf("rcs update failed: %w", err)
 	}
 
-	if _, isMock := fsLayer.(osFS); isMock {
+	var targetMode *os.FileMode
+	if info, err := fsLayer.Stat(cfg.FilePath); err == nil {
+		m := info.Mode().Perm()
+		targetMode = &m
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to stat destination file: %w", err)
+	}
+
+	if _, isOSFS := fsLayer.(osFS); isOSFS {
 		// Then copy to dest atomically
 		dir := filepath.Dir(cfg.FilePath)
 		tmpDest, err := os.CreateTemp(dir, "vifstab-tmp-*")
@@ -183,6 +191,12 @@ func SaveAndVersion(cfg config.Config, content []byte, opts ...any) error {
 			_ = tmpDest.Close()
 			return fmt.Errorf("failed to write to temporary destination file: %w", err)
 		}
+		if targetMode != nil {
+			if err := tmpDest.Chmod(*targetMode); err != nil {
+				_ = tmpDest.Close()
+				return fmt.Errorf("failed to chmod temporary destination file: %w", err)
+			}
+		}
 		if err := tmpDest.Close(); err != nil {
 			return fmt.Errorf("failed to close temporary destination file: %w", err)
 		}
@@ -192,7 +206,11 @@ func SaveAndVersion(cfg config.Config, content []byte, opts ...any) error {
 		}
 	} else {
 		// Write the destination directly
-		if err := fsLayer.WriteFile(cfg.FilePath, content, 0644); err != nil {
+		perm := os.FileMode(0600)
+		if targetMode != nil {
+			perm = *targetMode
+		}
+		if err := fsLayer.WriteFile(cfg.FilePath, content, perm); err != nil {
 			return fmt.Errorf("failed to replace destination file: %w", err)
 		}
 	}

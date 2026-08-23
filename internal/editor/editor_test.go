@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/arran4/vifstab/internal/config"
 	"golang.org/x/tools/txtar"
@@ -52,13 +53,104 @@ func (m *mockFS) Rename(oldpath, newpath string) error {
 	return os.ErrNotExist
 }
 
+type dummyFileInfo struct {
+	mode os.FileMode
+}
+
+func (d dummyFileInfo) Name() string       { return "dummy" }
+func (d dummyFileInfo) Size() int64        { return 0 }
+func (d dummyFileInfo) Mode() os.FileMode  { return d.mode }
+func (d dummyFileInfo) ModTime() time.Time { return time.Time{} }
+func (d dummyFileInfo) IsDir() bool        { return false }
+func (d dummyFileInfo) Sys() interface{}   { return nil }
+
 func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 	name = strings.TrimPrefix(filepath.ToSlash(name), "/")
-	if _, ok := m.mfs[name]; ok {
-		// Just return a dummy non-error stat
-		return nil, nil
+	if f, ok := m.mfs[name]; ok {
+		// Return a dummy stat with the file mode
+		return dummyFileInfo{mode: f.Mode}, nil
 	}
 	return nil, os.ErrNotExist
+}
+
+func TestSaveAndVersionRealFS(t *testing.T) {
+	// Create a temporary directory
+	dir := t.TempDir()
+	fstabPath := filepath.Join(dir, "fstab")
+	backupDir := filepath.Join(dir, "backup")
+
+	cfg := config.Config{
+		FilePath:  fstabPath,
+		BackupDir: backupDir,
+	}
+
+	content := []byte("fstab content")
+
+	tests := []struct {
+		name         string
+		initialMode  os.FileMode
+		setupFile    bool
+		expectedMode os.FileMode
+	}{
+		{
+			name:         "existing 0600 remains 0600",
+			initialMode:  0600,
+			setupFile:    true,
+			expectedMode: 0600,
+		},
+		{
+			name:         "existing 0644 remains 0644",
+			initialMode:  0644,
+			setupFile:    true,
+			expectedMode: 0644,
+		},
+		{
+			name:         "existing 0640 remains 0640",
+			initialMode:  0640,
+			setupFile:    true,
+			expectedMode: 0640,
+		},
+		{
+			name:         "nonexistent becomes 0600",
+			setupFile:    false,
+			expectedMode: 0600,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setupFile {
+				if err := os.WriteFile(fstabPath, []byte("old content"), tt.initialMode); err != nil {
+					t.Fatalf("setup write failed: %v", err)
+				}
+				if err := os.Chmod(fstabPath, tt.initialMode); err != nil {
+					t.Fatalf("setup chmod failed: %v", err)
+				}
+			} else {
+				os.Remove(fstabPath) // Ensure it doesn't exist
+			}
+
+			if err := SaveAndVersion(cfg, content); err != nil {
+				t.Fatalf("SaveAndVersion failed: %v", err)
+			}
+
+			info, err := os.Stat(fstabPath)
+			if err != nil {
+				t.Fatalf("stat failed: %v", err)
+			}
+			if info.Mode().Perm() != tt.expectedMode {
+				t.Errorf("expected mode %v, got %v", tt.expectedMode, info.Mode().Perm())
+			}
+
+			got, err := os.ReadFile(fstabPath)
+			if err != nil {
+				t.Fatalf("read failed: %v", err)
+			}
+			if string(got) != string(content) {
+				t.Errorf("expected content %q, got %q", string(content), string(got))
+			}
+		})
+	}
 }
 
 func TestSaveAndVersion(t *testing.T) {
