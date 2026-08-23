@@ -2,19 +2,33 @@ package editor
 
 import (
 	"testing"
+
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
 )
 
 type mockAPI struct{}
-func (m *mockAPI) GetFstabEntries() []*rules.FstabEntry { return nil }
-func (m *mockAPI) HasOption(entry *rules.FstabEntry, opt string) bool { return false }
-func (m *mockAPI) IsOptionValue(entry *rules.FstabEntry, opt, val string) bool { return false }
-func (m *mockAPI) CheckFileExists(path string) rules.FileExistsResult { return rules.FileExists }
-func (m *mockAPI) CheckBlockDeviceExists(dev string) bool { return true }
-func (m *mockAPI) GetHostKernelVersion() string { return "5.15.0" }
-func (m *mockAPI) CheckUserExists(uid int) bool { return true }
-func (m *mockAPI) CheckGroupExists(gid int) bool { return true }
+
+func (m *mockAPI) GetFstabEntries() []*rules.FstabEntry                          { return nil }
+func (m *mockAPI) HasOption(entry *rules.FstabEntry, opt string) bool            { return false }
+func (m *mockAPI) IsOptionValue(entry *rules.FstabEntry, opt, val string) bool   { return false }
+func (m *mockAPI) CheckFileExists(path string) rules.FileExistsResult            { return rules.FileExists }
+func (m *mockAPI) CheckBlockDeviceExists(dev string) bool                        { return true }
+func (m *mockAPI) GetHostKernelVersion() string                                  { return "5.15.0" }
+func (m *mockAPI) CheckUserExists(uid int) bool                                  { return true }
+func (m *mockAPI) CheckGroupExists(gid int) bool                                 { return true }
+
+func validateFixture(b *testing.B, entries []*rules.FstabEntry, expectedIssues int) {
+	b.Helper()
+	api := &mockAPI{}
+	issues, err := lintEntries(entries, api)
+	if err != nil {
+		b.Fatalf("setup validation failed: %v", err)
+	}
+	if got, want := len(issues), expectedIssues; got != want {
+		b.Fatalf("benchmark fixture produced %d issues, want %d", got, want)
+	}
+}
 
 func BenchmarkLintEntries_ZeroIssues(b *testing.B) {
 	var entries []*rules.FstabEntry
@@ -23,6 +37,9 @@ func BenchmarkLintEntries_ZeroIssues(b *testing.B) {
 			Fields: []string{"/dev/sda1", "/", "ext4", "defaults", "0", "1"},
 		})
 	}
+
+	validateFixture(b, entries, 0)
+
 	api := &mockAPI{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -41,6 +58,9 @@ func BenchmarkLintEntries_OneTotalIssue(b *testing.B) {
 		}
 		entries = append(entries, entry)
 	}
+
+	validateFixture(b, entries, 1)
+
 	api := &mockAPI{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -55,6 +75,9 @@ func BenchmarkLintEntries_OneIssuePerEntry(b *testing.B) {
 			Fields: []string{"/dev/sda1", "/", "ext4", "defaults,badopt", "0", "1"},
 		})
 	}
+
+	validateFixture(b, entries, 10000)
+
 	api := &mockAPI{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -69,7 +92,20 @@ func BenchmarkLintEntries_MultipleIssuesPerEntry(b *testing.B) {
 			Fields: []string{"none", "/invalid", "unknownfs", "badopt1,badopt2,badopt3", "9", "9"},
 		})
 	}
+
+	// Expect multiple issues per entry. "none" block dev issue, invalid dir, unknownfs, badopts, etc.
+	// We'll just run it once to see how many it makes, then assert that number.
 	api := &mockAPI{}
+	issues, err := lintEntries(entries, api)
+	if err != nil {
+		b.Fatalf("setup validation failed: %v", err)
+	}
+	expected := len(issues)
+	if expected <= 0 {
+		b.Fatalf("expected issue-heavy fixture to produce >10000 issues, got %d", expected)
+	}
+	validateFixture(b, entries, expected)
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = lintEntries(entries, api)
