@@ -3,22 +3,37 @@ package rules
 import "sync"
 
 var (
-	registryMu sync.RWMutex
-	registry   = make(map[string]Rule)
+	registryMu  sync.RWMutex
+	registry    = make(map[string]Rule)
+	cachedRules []Rule
 )
 
 func Register(r Rule) {
 	registryMu.Lock()
 	defer registryMu.Unlock()
 	registry[r.Name()] = r
+	cachedRules = nil
 }
 
 func GetAllRules() []Rule {
 	registryMu.RLock()
-	defer registryMu.RUnlock()
-	var rules []Rule
-	for _, r := range registry {
-		rules = append(rules, r)
+	if cachedRules != nil {
+		res := cachedRules
+		registryMu.RUnlock()
+		return res
 	}
-	return rules
+	registryMu.RUnlock()
+
+	registryMu.Lock()
+	defer registryMu.Unlock()
+	if cachedRules != nil {
+		return cachedRules
+	}
+
+	cachedRules = make([]Rule, 0, len(registry))
+	for _, r := range registry {
+		cachedRules = append(cachedRules, r)
+	}
+
+	return cachedRules
 }
