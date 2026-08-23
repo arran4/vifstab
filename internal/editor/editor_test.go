@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/arran4/vifstab/internal/config"
 	"golang.org/x/tools/txtar"
@@ -52,11 +53,22 @@ func (m *mockFS) Rename(oldpath, newpath string) error {
 	return os.ErrNotExist
 }
 
+type dummyFileInfo struct {
+	mode os.FileMode
+}
+
+func (d dummyFileInfo) Name() string       { return "dummy" }
+func (d dummyFileInfo) Size() int64        { return 0 }
+func (d dummyFileInfo) Mode() os.FileMode  { return d.mode }
+func (d dummyFileInfo) ModTime() time.Time { return time.Time{} }
+func (d dummyFileInfo) IsDir() bool        { return false }
+func (d dummyFileInfo) Sys() interface{}   { return nil }
+
 func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 	name = strings.TrimPrefix(filepath.ToSlash(name), "/")
-	if _, ok := m.mfs[name]; ok {
-		// Just return a dummy non-error stat
-		return nil, nil
+	if f, ok := m.mfs[name]; ok {
+		// Return a dummy stat with the file mode
+		return dummyFileInfo{mode: f.Mode}, nil
 	}
 	return nil, os.ErrNotExist
 }
