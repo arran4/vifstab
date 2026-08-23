@@ -3,7 +3,6 @@ package rcs
 import (
 	"bytes"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -28,9 +27,11 @@ type FS interface {
 type osFS struct{}
 
 func (osFS) MkdirAll(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
-func (osFS) Stat(name string) (os.FileInfo, error) { return os.Stat(name) }
-func (osFS) ReadFile(name string) ([]byte, error) { return os.ReadFile(name) }
-func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error { return os.WriteFile(name, data, perm) }
+func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name) }
+func (osFS) ReadFile(name string) ([]byte, error)         { return os.ReadFile(name) }
+func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(name, data, perm)
+}
 
 var DefaultFS FS = osFS{}
 
@@ -55,30 +56,30 @@ func Update(filePath string, content []byte, config Config, opts ...any) error {
 
 	var f *rcs.File
 
-	if _, err := fsLayer.Stat(rcsFilepath); os.IsNotExist(err) || err != nil {
-		if err != nil && !os.IsNotExist(err) {
-			// In case the mock fs doesn't strictly return os.ErrNotExist, assume it doesn't exist
-			if _, ok := err.(*fs.PathError); !ok && err != os.ErrNotExist {
-			    // fallback assumption
-			}
+	_, err := fsLayer.Stat(rcsFilepath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Treat as new file
+			f = rcs.NewFile()
+			f.Head = "1.1"
+			f.Access = true
+			f.Strict = true
+
+			f.RevisionHeads = append(f.RevisionHeads, &rcs.RevisionHead{
+				Revision: "1.1",
+				Date:     rcs.DateTime(time.Now().UTC().Format(rcs.DateFormat)),
+				Author:   rcs.ID(os.Getenv("USER")),
+				State:    "Exp",
+			})
+
+			f.RevisionContents = append(f.RevisionContents, &rcs.RevisionContent{
+				Revision: "1.1",
+				Log:      "Initial revision",
+				Text:     string(content),
+			})
+		} else {
+			return fmt.Errorf("failed to stat rcs file: %w", err)
 		}
-		f = rcs.NewFile()
-		f.Head = "1.1"
-		f.Access = true
-		f.Strict = true
-
-		f.RevisionHeads = append(f.RevisionHeads, &rcs.RevisionHead{
-			Revision: "1.1",
-			Date:     rcs.DateTime(time.Now().UTC().Format(rcs.DateFormat)),
-			Author:   rcs.ID(os.Getenv("USER")),
-			State:    "Exp",
-		})
-
-		f.RevisionContents = append(f.RevisionContents, &rcs.RevisionContent{
-			Revision: "1.1",
-			Log:      "Initial revision",
-			Text:     string(content),
-		})
 	} else {
 		rcsData, err := fsLayer.ReadFile(rcsFilepath)
 		if err != nil {
@@ -112,12 +113,14 @@ func Update(filePath string, content []byte, config Config, opts ...any) error {
 				Log:      "Updated revision",
 				Text:     string(content),
 			}}, f.RevisionContents...)
+		} else {
+			return fmt.Errorf("unsupported revision format: %s", f.Head)
 		}
 	}
 
-	err := fsLayer.WriteFile(rcsFilepath, []byte(f.String()), 0600)
-	if err != nil {
-		return fmt.Errorf("failed to write rcs file: %w", err)
+	writeErr := fsLayer.WriteFile(rcsFilepath, []byte(f.String()), 0600)
+	if writeErr != nil {
+		return fmt.Errorf("failed to write rcs file: %w", writeErr)
 	}
 
 	return nil
