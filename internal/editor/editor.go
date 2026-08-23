@@ -58,35 +58,9 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 	}
 	_ = tempFile.Close()
 
-	editor := os.Getenv("SUDO_EDITOR")
-	if editor == "" {
-		editor = os.Getenv("VISUAL")
-	}
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-
-	var editorParts []string
-	if editor != "" {
-		var err error
-		editorParts, err = SplitEditorCommand(editor)
-		if err != nil {
-			return fmt.Errorf("failed to parse editor command: %w", err)
-		}
-	}
-
-	if len(editorParts) == 0 {
-		editorParts = []string{"vi"}
-	}
-
-	if err := validateEditor(editorParts); err != nil {
-		return fmt.Errorf("invalid editor configuration: %w", err)
-	}
-
-	for _, part := range editorParts {
-		if part == "--" {
-			return fmt.Errorf("editor arguments may not contain \"--\"")
-		}
+	editorParts, err := editorCommandFromEnvironment()
+	if err != nil {
+		return err
 	}
 
 	for {
@@ -158,32 +132,32 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 	return nil
 }
 
-func validateEditor(editorParts []string) error {
+func editorCommandFromEnvironment() ([]string, error) {
+	editor := os.Getenv("VISUAL")
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+
+	var editorParts []string
+	if editor != "" {
+		var err error
+		editorParts, err = SplitEditorCommand(editor)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse editor command: %w", err)
+		}
+	}
+
 	if len(editorParts) == 0 {
-		return nil
+		editorParts = []string{"vi"}
 	}
 
-	base := filepath.Base(editorParts[0])
-	allowedEditors := map[string]bool{
-		"vi":     true,
-		"vim":    true,
-		"nvim":   true,
-		"nano":   true,
-		"pico":   true,
-		"emacs":  true,
-		"mcedit": true,
-		"ed":     true,
+	for _, part := range editorParts {
+		if part == "--" {
+			return nil, fmt.Errorf("editor arguments may not contain \"--\"")
+		}
 	}
 
-	if !allowedEditors[base] {
-		return fmt.Errorf("editor %q is not in the allowed list of safe editors", base)
-	}
-
-	if len(editorParts) > 1 {
-		return fmt.Errorf("editor configuration may not contain arguments for security reasons (got %d parts)", len(editorParts))
-	}
-
-	return nil
+	return editorParts, nil
 }
 
 // SaveAndVersion saves the given content to the target file and versions it using RCS.
