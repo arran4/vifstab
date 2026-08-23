@@ -55,6 +55,49 @@ func TestIntRangeOption(t *testing.T) {
 	})
 }
 
+func TestOptionalOctalOption(t *testing.T) {
+	ctx := context.Background()
+	api := &mockAPI{}
+	entry := &rules.FstabEntry{LineNum: 11}
+	opt := options.OptionalOctalOption{}
+
+	t.Run("no value", func(t *testing.T) {
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "mkdir", "", false, nil)
+		if len(issues) != 0 {
+			t.Errorf("expected 0 issues, got %d", len(issues))
+		}
+	})
+
+	t.Run("valid octal", func(t *testing.T) {
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "mkdir", "0755", true, nil)
+		if len(issues) != 0 {
+			t.Errorf("expected 0 issues, got %d", len(issues))
+		}
+	})
+
+	t.Run("invalid octal", func(t *testing.T) {
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "mkdir", "888", true, nil)
+		if len(issues) != 1 {
+			t.Fatalf("expected 1 issue, got %d", len(issues))
+		}
+		expectedMsg := "Invalid value '888' for ext4 mount option 'mkdir' on line 11, must be an octal integer"
+		if issues[0].Message != expectedMsg {
+			t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
+		}
+	})
+
+	t.Run("missing value with equals", func(t *testing.T) {
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "mkdir", "", true, nil)
+		if len(issues) != 1 {
+			t.Fatalf("expected 1 issue, got %d", len(issues))
+		}
+		expectedMsg := "Missing value for ext4 mount option 'mkdir' on line 11"
+		if issues[0].Message != expectedMsg {
+			t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
+		}
+	})
+}
+
 func TestOctalOption(t *testing.T) {
 	ctx := context.Background()
 	api := &mockAPI{}

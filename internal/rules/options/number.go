@@ -80,6 +80,18 @@ func (i IntRangeOption) ValidateOption(ctx context.Context, api rules.API, entry
 	return nil
 }
 
+// OptionalOctalOption validates an optional octal permissions value.
+type OptionalOctalOption struct {
+	CustomErrFormat string
+}
+
+func (o OptionalOctalOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
+	if !hasVal {
+		return nil
+	}
+	return (OctalOption{CustomErrFormat: o.CustomErrFormat}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
+}
+
 // OctalOption validates octal permissions value.
 type OctalOption struct {
 	CustomErrFormat string
