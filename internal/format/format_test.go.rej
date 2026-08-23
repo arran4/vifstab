@@ -1,0 +1,18 @@
+--- internal/format/format_test.go
++++ internal/format/format_test.go
+@@ -35,11 +35,12 @@
+			var expectedContent string
+
+			for _, file := range archive.Files {
+-				if file.Name == "input/etc/fstab" {
++				switch file.Name {
++				case "input/etc/fstab":
+					initialContent = file.Data
+-				} else if file.Name == "expected/etc/fstab" {
++				case "expected/etc/fstab":
+					expectedContent = string(file.Data)
+-				} else if file.Name == "expected/format.txt" {
++				case "expected/format.txt":
+					expectedContent = string(file.Data)
+				}
+			}

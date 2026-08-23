@@ -1,0 +1,11 @@
+--- internal/editor/editor.go
++++ internal/editor/editor.go
+@@ -157,7 +157,7 @@
+
+ // SaveAndVersion saves the updated content back to the file, while backing up the original.
+ func SaveAndVersion(cfg config.Config, newContent []byte, injectedFS ...FS) error {
+-	var fsLayer FS = DefaultFS
++	var fsLayer = DefaultFS
+	if len(injectedFS) > 0 && injectedFS[0] != nil {
+		fsLayer = injectedFS[0]
+	}

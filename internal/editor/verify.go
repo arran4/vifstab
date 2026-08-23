@@ -36,12 +36,15 @@ func lintEntries(entries []*rules.FstabEntry, api rules.API) ([]rules.Validation
 	allRules := rules.GetAllRules()
 	ctx := rules.WithCache(context.Background(), rules.NewCache())
 
-	allIssues := make([]rules.ValidationIssue, 0, len(entries))
+	var allIssues []rules.ValidationIssue
 	for _, entry := range entries {
 		for _, r := range allRules {
 			issues, err := r.Validate(ctx, api, entry)
 			if err != nil {
 				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)
+			}
+			if len(issues) > 0 && allIssues == nil {
+				allIssues = make([]rules.ValidationIssue, 0, len(entries))
 			}
 			allIssues = append(allIssues, issues...)
 		}

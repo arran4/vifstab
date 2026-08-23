@@ -1,0 +1,16 @@
+--- internal/format/format.go
++++ internal/format/format.go
+@@ -32,11 +32,11 @@
+	for _, line := range fstabLines {
+		if line == "" {
+			w.Flush() // Flush table output before writing blank lines
+-			fmt.Fprintln(w, "")
++			_, _ = fmt.Fprintln(w, "")
+			continue
+		}
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			w.Flush() // Flush table output before writing comment lines
+-			fmt.Fprintln(w, line)
++			_, _ = fmt.Fprintln(w, line)
+			continue
+		}

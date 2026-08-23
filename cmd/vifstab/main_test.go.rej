@@ -1,0 +1,20 @@
+--- cmd/vifstab/main_test.go
++++ cmd/vifstab/main_test.go
+@@ -59,15 +59,15 @@
+		if err != nil {
+			t.Fatalf("failed to create temp test file: %v", err)
+		}
+-		tmpFile.Close()
+-		defer os.Remove(tmpPath)
++		_ = tmpFile.Close()
++		defer func() { _ = os.Remove(tmpPath) }()
+
+		args := []string{"vifstab", "format"}
+
+		var tableType string
+		if strings.Contains(entry.Name(), "msdos") {
+			tableType = "msdos"
+-		} else if tableType == "gpt" {
++		} else if strings.Contains(entry.Name(), "gpt") {
+			tableType = "gpt"
+		}

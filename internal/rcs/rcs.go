@@ -3,7 +3,6 @@ package rcs
 import (
 	"bytes"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -39,7 +38,7 @@ func Update(filePath string, content []byte, config Config, opts ...any) error {
 		return nil
 	}
 
-	var fsLayer FS = DefaultFS
+	var fsLayer = DefaultFS
 	for _, opt := range opts {
 		if injection, ok := opt.(FS); ok {
 			fsLayer = injection
@@ -58,7 +57,8 @@ func Update(filePath string, content []byte, config Config, opts ...any) error {
 	if _, err := fsLayer.Stat(rcsFilepath); os.IsNotExist(err) || err != nil {
 		if err != nil && !os.IsNotExist(err) {
 			// In case the mock fs doesn't strictly return os.ErrNotExist, assume it doesn't exist
-			if _, ok := err.(*fs.PathError); !ok && err != os.ErrNotExist {
+			if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to check RCS file stat: %w", err)
 			    // fallback assumption
 			}
 		}

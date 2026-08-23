@@ -32,11 +32,11 @@ func Format(r io.Reader, w io.Writer) error {
 	for _, entry := range entries {
 		line := strings.TrimSpace(entry.RawLine)
 		if len(line) == 0 {
-			fmt.Fprintln(w, "")
+			_, _ = fmt.Fprintln(w, "")
 			continue
 		}
 		if line[0] == '#' {
-			fmt.Fprintln(w, line)
+			_, _ = fmt.Fprintln(w, line)
 			continue
 		}
 
@@ -49,7 +49,7 @@ func Format(r io.Reader, w io.Writer) error {
 				formattedLine = append(formattedLine, fmt.Sprintf("%-*s", colWidths[i], field))
 			}
 		}
-		fmt.Fprintln(w, strings.Join(formattedLine, "  "))
+		_, _ = fmt.Fprintln(w, strings.Join(formattedLine, "  "))
 	}
 	return nil
 }
