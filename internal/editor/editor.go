@@ -34,6 +34,33 @@ func (osFS) Stat(name string) (os.FileInfo, error) { return os.Stat(name) }
 
 var DefaultFS FS = osFS{}
 
+func editorCommandFromEnvironment() ([]string, error) {
+	editor := os.Getenv("VISUAL")
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+
+	var editorParts []string
+	if editor != "" {
+		var err error
+		editorParts, err = SplitEditorCommand(editor)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse editor command: %w", err)
+		}
+	}
+
+	if len(editorParts) == 0 {
+		editorParts = []string{"vi"}
+	}
+
+	for _, part := range editorParts {
+		if part == "--" {
+			return nil, fmt.Errorf("editor arguments may not contain \"--\"")
+		}
+	}
+
+	return editorParts, nil
+}
 
 func EditAndLint(cfg config.Config, api rules.API) error {
 	// 1. Copy target file to temp
@@ -58,35 +85,9 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 	}
 	_ = tempFile.Close()
 
-	editor := os.Getenv("SUDO_EDITOR")
-	if editor == "" {
-		editor = os.Getenv("VISUAL")
-	}
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-
-	var editorParts []string
-	if editor != "" {
-		var err error
-		editorParts, err = SplitEditorCommand(editor)
-		if err != nil {
-			return fmt.Errorf("failed to parse editor command: %w", err)
-		}
-	}
-
-	if len(editorParts) == 0 {
-		editorParts = []string{"vi"}
-	}
-
-	if err := validateEditor(editorParts); err != nil {
-		return fmt.Errorf("invalid editor configuration: %w", err)
-	}
-
-	for _, part := range editorParts {
-		if part == "--" {
-			return fmt.Errorf("editor arguments may not contain \"--\"")
-		}
+	editorParts, err := editorCommandFromEnvironment()
+	if err != nil {
+		return err
 	}
 
 	for {
@@ -155,34 +156,6 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 	}
 
 	fmt.Println("Saved successfully.")
-	return nil
-}
-
-func validateEditor(editorParts []string) error {
-	if len(editorParts) == 0 {
-		return nil
-	}
-
-	base := filepath.Base(editorParts[0])
-	allowedEditors := map[string]bool{
-		"vi":     true,
-		"vim":    true,
-		"nvim":   true,
-		"nano":   true,
-		"pico":   true,
-		"emacs":  true,
-		"mcedit": true,
-		"ed":     true,
-	}
-
-	if !allowedEditors[base] {
-		return fmt.Errorf("editor %q is not in the allowed list of safe editors", base)
-	}
-
-	if len(editorParts) > 1 {
-		return fmt.Errorf("editor configuration may not contain arguments for security reasons (got %d parts)", len(editorParts))
-	}
-
 	return nil
 }
 
