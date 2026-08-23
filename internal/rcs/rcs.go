@@ -58,8 +58,7 @@ func Update(filePath string, content []byte, config Config, opts ...any) error {
 		if err != nil && !os.IsNotExist(err) {
 			// In case the mock fs doesn't strictly return os.ErrNotExist, assume it doesn't exist
 			if !os.IsNotExist(err) {
-			return fmt.Errorf("failed to check RCS file stat: %w", err)
-			    // fallback assumption
+			    return fmt.Errorf("failed to stat rcs: %w", err)
 			}
 		}
 		f = rcs.NewFile()

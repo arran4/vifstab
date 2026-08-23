@@ -18,7 +18,7 @@ func (m *mockAPI) CheckGroupExists(gid int) bool { return true }
 
 func BenchmarkLintEntries_ZeroIssues(b *testing.B) {
 	var entries []*rules.FstabEntry
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10000; i++ {
 		entries = append(entries, &rules.FstabEntry{
 			Fields: []string{"/dev/sda1", "/", "ext4", "defaults", "0", "1"},
 		})
@@ -30,9 +30,27 @@ func BenchmarkLintEntries_ZeroIssues(b *testing.B) {
 	}
 }
 
+func BenchmarkLintEntries_OneTotalIssue(b *testing.B) {
+	var entries []*rules.FstabEntry
+	for i := 0; i < 10000; i++ {
+		entry := &rules.FstabEntry{
+			Fields: []string{"/dev/sda1", "/", "ext4", "defaults", "0", "1"},
+		}
+		if i == 5000 {
+			entry.Fields[3] = "defaults,badopt"
+		}
+		entries = append(entries, entry)
+	}
+	api := &mockAPI{}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = lintEntries(entries, api)
+	}
+}
+
 func BenchmarkLintEntries_OneIssuePerEntry(b *testing.B) {
 	var entries []*rules.FstabEntry
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10000; i++ {
 		entries = append(entries, &rules.FstabEntry{
 			Fields: []string{"/dev/sda1", "/", "ext4", "defaults,badopt", "0", "1"},
 		})
@@ -46,7 +64,7 @@ func BenchmarkLintEntries_OneIssuePerEntry(b *testing.B) {
 
 func BenchmarkLintEntries_MultipleIssuesPerEntry(b *testing.B) {
 	var entries []*rules.FstabEntry
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10000; i++ {
 		entries = append(entries, &rules.FstabEntry{
 			Fields: []string{"none", "/invalid", "unknownfs", "badopt1,badopt2,badopt3", "9", "9"},
 		})
