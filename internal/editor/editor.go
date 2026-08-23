@@ -79,6 +79,10 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 		editorParts = []string{"vi"}
 	}
 
+	if err := validateEditor(editorParts); err != nil {
+		return fmt.Errorf("invalid editor configuration: %w", err)
+	}
+
 	for _, part := range editorParts {
 		if part == "--" {
 			return fmt.Errorf("editor arguments may not contain \"--\"")
@@ -151,6 +155,34 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 	}
 
 	fmt.Println("Saved successfully.")
+	return nil
+}
+
+func validateEditor(editorParts []string) error {
+	if len(editorParts) == 0 {
+		return nil
+	}
+
+	base := filepath.Base(editorParts[0])
+	allowedEditors := map[string]bool{
+		"vi":     true,
+		"vim":    true,
+		"nvim":   true,
+		"nano":   true,
+		"pico":   true,
+		"emacs":  true,
+		"mcedit": true,
+		"ed":     true,
+	}
+
+	if !allowedEditors[base] {
+		return fmt.Errorf("editor %q is not in the allowed list of safe editors", base)
+	}
+
+	if len(editorParts) > 1 {
+		return fmt.Errorf("editor configuration may not contain arguments for security reasons (got %d parts)", len(editorParts))
+	}
+
 	return nil
 }
 
