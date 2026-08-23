@@ -36,7 +36,7 @@ func lintEntries(entries []*rules.FstabEntry, api rules.API) ([]rules.Validation
 	allRules := rules.GetAllRules()
 	ctx := rules.WithCache(context.Background(), rules.NewCache())
 
-	var allIssues []rules.ValidationIssue
+	allIssues := make([]rules.ValidationIssue, 0, len(entries))
 	for _, entry := range entries {
 		for _, r := range allRules {
 			issues, err := r.Validate(ctx, api, entry)
