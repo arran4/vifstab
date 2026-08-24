@@ -44,12 +44,28 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 	var issues []rules.ValidationIssue
 
 	isESPType := strings.EqualFold(matched.PartType, "c12a7328-f81f-11d2-ba4b-00a0c93ec93b")
-	isFAT := fstype == "vfat" || fstype == "fat" || matched.FSType == "vfat" || matched.FSType == "fat"
+
+	declaredFSType := fstype
+	detectedFSType := matched.FSType
+
+	// Determine if the actual filesystem is FAT (prefer live metadata)
+	actualIsFAT := false
+	if detectedFSType != "" {
+		actualIsFAT = (detectedFSType == "vfat" || detectedFSType == "fat")
+	} else if declaredFSType != "" && declaredFSType != "auto" {
+		actualIsFAT = (declaredFSType == "vfat" || declaredFSType == "fat")
+	}
 
 	// GPT ESP type on a non-FAT filesystem
-	if isESPType && !isFAT {
-		// Do not invent a mismatch if we have an fstab type but metadata couldn't confirm
-		if matched.FSType != "" || (fstype != "auto" && fstype != "") {
+	if isESPType {
+		if detectedFSType != "" && !actualIsFAT {
+			issues = append(issues, rules.ValidationIssue{
+				Message:  "GPT partition type is EFI System Partition (ESP) but filesystem is not FAT",
+				Line:     entry.RawLine,
+				Level:    rules.IssueLevelError,
+				Severity: 0,
+			})
+		} else if detectedFSType == "" && declaredFSType != "auto" && declaredFSType != "" && !actualIsFAT {
 			issues = append(issues, rules.ValidationIssue{
 				Message:  "GPT partition type is EFI System Partition (ESP) but filesystem is not FAT",
 				Line:     entry.RawLine,
@@ -59,13 +75,27 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 		}
 	}
 
+	// Warn if concrete declared FS disagrees with concrete detected FS
+	if declaredFSType != "" && declaredFSType != "auto" && detectedFSType != "" {
+		if declaredFSType != detectedFSType {
+			issues = append(issues, rules.ValidationIssue{
+				Message: "Declared filesystem type does not match detected live filesystem type",
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelWarning,
+			})
+		}
+	}
+
 	// FAT mounted at `/efi` or `/boot/efi` but not typed as an ESP
-	if isFAT && !isESPType && (mountpoint == "/efi" || mountpoint == "/boot/efi") {
-		issues = append(issues, rules.ValidationIssue{
-			Message:  "FAT filesystem mounted at EFI mountpoint but GPT partition type is not ESP",
-			Line:     entry.RawLine,
-			Level:    rules.IssueLevelWarning,
-		})
+	if actualIsFAT && !isESPType && (mountpoint == "/efi" || mountpoint == "/boot/efi") {
+		// Only warn if we actually resolved the PartType
+		if matched.PartType != "" {
+			issues = append(issues, rules.ValidationIssue{
+				Message: "FAT filesystem mounted at EFI mountpoint but GPT partition type is not ESP",
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelWarning,
+			})
+		}
 	}
 
 	// `/boot` typed as ESP while a distinct `/efi` FAT partition exists and is the apparent EFI partition

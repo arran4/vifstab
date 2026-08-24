@@ -12,6 +12,10 @@ LABEL=gentooboot /boot ext4 defaults 1 2
 # Invalid case 2: /efi with non-ESP type and vfat
 UUID=8F53-C3B9 /efi vfat defaults 1 2
 
+# Invalid case 3: declared vs detected mismatch
+/dev/sda1 /mnt ext4 defaults 1 2
+/dev/sda2 /mnt auto defaults 1 2
+
 -- input/proc/filesystems --
 nodev	sysfs
 nodev	tmpfs
@@ -20,12 +24,12 @@ nodev	proc
 	vfat
 -- cache --
 proc_filesystems=sysfs,tmpfs,proc,ext4,vfat
-block_devices=[{"path":"/dev/sda1","fstype":"ext4","parttype":"c12a7328-f81f-11d2-ba4b-00a0c93ec93b","label":"gentooboot"},{"path":"/dev/sda2","fstype":"vfat","parttype":"ebd0a0a2-b9e5-4433-87c0-68b6b72699c7","uuid":"8F53-C3B9","mountpoints":["/efi"]}]
+block_devices=[{"path":"/dev/sda1","fstype":"vfat","parttype":"c12a7328-f81f-11d2-ba4b-00a0c93ec93b","label":"gentooboot"},{"path":"/dev/sda2","fstype":"vfat","parttype":"ebd0a0a2-b9e5-4433-87c0-68b6b72699c7","uuid":"8F53-C3B9","mountpoints":["/efi"]}]
 -- options.json --
 {
   "rules": ["PartitionRole"]
 }
 -- expected/validationerrors.txt --
-GPT partition type is EFI System Partition (ESP) but filesystem is not FAT
-/boot is typed as ESP but a distinct FAT EFI partition is present
+Declared filesystem type does not match detected live filesystem type
 FAT filesystem mounted at EFI mountpoint but GPT partition type is not ESP
+/boot is typed as ESP but a distinct FAT EFI partition is present
