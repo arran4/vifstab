@@ -14,6 +14,7 @@ const (
 	IssueLevelWarning  IssueLevel = "warning"
 	IssueLevelSecurity IssueLevel = "security"
 	IssueLevelError    IssueLevel = "error"
+	IssueLevelInfo     IssueLevel = "info"
 )
 
 type ValidationIssue struct {

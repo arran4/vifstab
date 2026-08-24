@@ -55,13 +55,13 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 				issues = append(issues, rules.ValidationIssue{
 					Message: "Live metadata check unavailable for this block device",
 					Line:    entry.RawLine,
-					Level:   rules.IssueLevelWarning,
+					Level:   rules.IssueLevelInfo,
 				})
 			} else {
 				issues = append(issues, rules.ValidationIssue{
 					Message: "Source could not be resolved against current live block metadata and partition-role check was skipped",
 					Line:    entry.RawLine,
-					Level:   rules.IssueLevelWarning,
+					Level:   rules.IssueLevelInfo,
 				})
 			}
 		}
