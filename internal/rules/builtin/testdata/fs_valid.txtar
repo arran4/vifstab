@@ -12,4 +12,8 @@ Ensures that valid, common fstab entries matching /proc/filesystems correctly pa
 /dev/mapper/vg0-root /               ext4    errors=remount-ro 0       1
 /dev/mapper/vg0-home /home           ext4    defaults        0       2
 UUID=1234-5678  /boot/efi       vfat    umask=0077      0       1
+
+-- cache --
+proc_filesystems=ext4,vfat,swap
+block_devices=[{"path":"/dev/sda1","fstype":"vfat","parttype":"c12a7328-f81f-11d2-ba4b-00a0c93ec93b","uuid":"1234-5678"}]
 /dev/mapper/vg0-swap none            swap    sw              0       0

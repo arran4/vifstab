@@ -588,12 +588,7 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
 }
 
 func (c *CacheFS) ResolveDevicePath(dev string) string {
-	inv, err := c.GetBlockDevices()
-	if err == nil {
-		if matched := findDeviceByPathOrAttr(inv.Devices, dev); matched != nil {
-			return matched.Path
-		}
-	}
+	// keep cheap fallback semantics
 	return ResolveDevicePath(dev)
 }
 
@@ -651,15 +646,6 @@ func findDeviceByPathOrAttr(devs []BlockDevice, dev string) *BlockDevice {
 	for i, d := range devs {
 		if d.Path == dev {
 			return &devs[i]
-		}
-	}
-
-	evaled, err := filepath.EvalSymlinks(dev)
-	if err == nil {
-		for i, d := range devs {
-			if d.Path == evaled {
-				return &devs[i]
-			}
 		}
 	}
 

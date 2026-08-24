@@ -260,7 +260,9 @@ func TestPartitionRoleRule(t *testing.T) {
 			api: mockAPIPartition{
 				devs: []rules.BlockDevice{},
 			},
-			wantIssues: []string{}, // graceful ignore
+			wantIssues: []string{
+				"Live metadata check unavailable for this block device",
+			}, // graceful ignore with warning
 		},
 	}
 

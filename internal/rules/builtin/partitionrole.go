@@ -35,20 +35,38 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 		return nil, nil
 	}
 
-	resolvedPath := api.ResolveDevicePath(dev)
-	var matched *rules.BlockDevice
-	for i, d := range inv.Devices {
-		if d.Path == resolvedPath {
-			matched = &inv.Devices[i]
-			break
-		}
-	}
-
-	if matched == nil {
-		return nil, nil
-	}
+	matched := inv.Resolve(dev)
 
 	var issues []rules.ValidationIssue
+
+	// We want to avoid warning for loopbacks or LVM/mapper unless we explicitly trace them.
+	// For now, to keep offline verification non-fatal and avoid spurious warnings on lvm,
+	// only warn on /dev/sd, /dev/vd, /dev/nvme, etc or UUID/LABEL.
+	// (And only for actual file systems like fat/ext4, not swap or auto).
+	isLikelyPhysical := strings.HasPrefix(dev, "UUID=") || strings.HasPrefix(dev, "LABEL=") || strings.HasPrefix(dev, "PARTUUID=") || strings.HasPrefix(dev, "/dev/sd") || strings.HasPrefix(dev, "/dev/vd") || strings.HasPrefix(dev, "/dev/nvme") || strings.HasPrefix(dev, "/dev/disk/")
+	isSpecial := fstype == "swap" || fstype == "none" || fstype == "bind" || fstype == "ignore"
+
+	if matched == nil {
+		// Provide warning if it's the exact module we care about here (vfat/fat) or boot mounts.
+		// For generic FS matching issues #111 offline we only care to warn if it could be an ESP.
+		isRelevantToPartitionRole := mountpoint == "/boot" || mountpoint == "/efi" || mountpoint == "/boot/efi" || fstype == "vfat" || fstype == "fat"
+		if isLikelyPhysical && !isSpecial && isRelevantToPartitionRole {
+			if !inv.Available {
+				issues = append(issues, rules.ValidationIssue{
+					Message: "Live metadata check unavailable for this block device",
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				})
+			} else {
+				issues = append(issues, rules.ValidationIssue{
+					Message: "Source could not be resolved against current live block metadata and partition-role check was skipped",
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				})
+			}
+		}
+		return issues, nil
+	}
 
 	isESPType := strings.EqualFold(matched.PartType, "c12a7328-f81f-11d2-ba4b-00a0c93ec93b")
 
