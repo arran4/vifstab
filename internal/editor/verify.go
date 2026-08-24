@@ -43,6 +43,9 @@ func lintEntries(entries []*rules.FstabEntry, api rules.API) ([]rules.Validation
 			if err != nil {
 				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)
 			}
+			if len(issues) > 0 && allIssues == nil {
+				allIssues = make([]rules.ValidationIssue, 0, len(entries))
+			}
 			allIssues = append(allIssues, issues...)
 		}
 	}
