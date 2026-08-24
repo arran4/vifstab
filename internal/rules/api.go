@@ -7,6 +7,7 @@ import (
 
 import (
 	"bufio"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -19,12 +20,23 @@ const (
 	FilePermissionDenied
 )
 
+type BlockDevice struct {
+	Path        string   `json:"path"`
+	FSType      string   `json:"fstype"`
+	UUID        string   `json:"uuid"`
+	Label       string   `json:"label"`
+	PartType    string   `json:"parttype"`
+	PartUUID    string   `json:"partuuid"`
+	MountPoints []string `json:"mountpoints"`
+}
+
 type API interface {
 	CheckFileExists(path string) FileExistsResult
 	CheckBlockDeviceExists(dev string) bool
 	GetHostKernelVersion() string
 	CheckUserExists(uid int) bool
 	CheckGroupExists(gid int) bool
+	GetBlockDevices() ([]BlockDevice, error)
 }
 
 type ActualFS struct{}
@@ -91,6 +103,130 @@ func (ActualFS) CheckBlockDeviceExists(dev string) bool {
 	resolvedPath := ResolveDevicePath(dev)
 	_, err := os.Stat(resolvedPath)
 	return err == nil
+}
+
+func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
+	devices := make(map[string]*BlockDevice)
+
+	// 1. Discover devices and their properties from udev
+	files, _ := os.ReadDir("/run/udev/data")
+	for _, file := range files {
+		if strings.HasPrefix(file.Name(), "b") {
+			f, err := os.Open(filepath.Join("/run/udev/data", file.Name()))
+			if err != nil {
+				continue
+			}
+			scanner := bufio.NewScanner(f)
+			parttype := ""
+			fstype := ""
+			for scanner.Scan() {
+				line := scanner.Text()
+				if strings.HasPrefix(line, "E:ID_PART_ENTRY_TYPE=") {
+					parttype = strings.TrimPrefix(line, "E:ID_PART_ENTRY_TYPE=")
+				}
+				if strings.HasPrefix(line, "E:ID_FS_TYPE=") {
+					fstype = strings.TrimPrefix(line, "E:ID_FS_TYPE=")
+				}
+			}
+			_ = f.Close()
+
+			majmin := strings.TrimPrefix(file.Name(), "b")
+			target, _ := os.Readlink(filepath.Join("/sys/dev/block", majmin))
+			if target != "" {
+				devname := filepath.Base(target)
+				if strings.HasPrefix(devname, "loop") || strings.HasPrefix(devname, "ram") || strings.HasPrefix(devname, "sr") {
+					continue
+				}
+				path := "/dev/" + devname
+				if devices[path] == nil {
+					devices[path] = &BlockDevice{Path: path}
+				}
+				devices[path].PartType = parttype
+				devices[path].FSType = fstype
+			}
+		}
+	}
+
+	// 2. Discover UUIDs
+	uuids, _ := os.ReadDir("/dev/disk/by-uuid")
+	for _, entry := range uuids {
+		target, err := os.Readlink(filepath.Join("/dev/disk/by-uuid", entry.Name()))
+		if err == nil {
+			absTarget, err := filepath.Abs(filepath.Join("/dev/disk/by-uuid", target))
+			if err == nil {
+				if dev, ok := devices[absTarget]; ok {
+					dev.UUID = entry.Name()
+				}
+			}
+		}
+	}
+
+	// 3. Discover Labels
+	labels, _ := os.ReadDir("/dev/disk/by-label")
+	for _, entry := range labels {
+		target, err := os.Readlink(filepath.Join("/dev/disk/by-label", entry.Name()))
+		if err == nil {
+			absTarget, err := filepath.Abs(filepath.Join("/dev/disk/by-label", target))
+			if err == nil {
+				if dev, ok := devices[absTarget]; ok {
+					dev.Label = entry.Name()
+				}
+			}
+		}
+	}
+
+	// 4. Discover PARTUUID
+	partuuids, _ := os.ReadDir("/dev/disk/by-partuuid")
+	for _, entry := range partuuids {
+		target, err := os.Readlink(filepath.Join("/dev/disk/by-partuuid", entry.Name()))
+		if err == nil {
+			absTarget, err := filepath.Abs(filepath.Join("/dev/disk/by-partuuid", target))
+			if err == nil {
+				if dev, ok := devices[absTarget]; ok {
+					dev.PartUUID = entry.Name()
+				}
+			}
+		}
+	}
+
+	// 5. Discover Mountpoints
+	if mountsData, err := os.ReadFile("/proc/mounts"); err == nil {
+		lines := strings.Split(string(mountsData), "\n")
+		for _, line := range lines {
+			fields := strings.Fields(line)
+			if len(fields) >= 3 {
+				devicePath := fields[0]
+				mountPoint := fields[1]
+				fsType := fields[2]
+				if dev, ok := devices[devicePath]; ok {
+					dev.MountPoints = append(dev.MountPoints, mountPoint)
+					if dev.FSType == "" {
+						dev.FSType = fsType // best effort based on mounts
+					}
+				} else {
+					// Try to resolve if it's /dev/root
+					if devicePath == "/dev/root" {
+						for _, v := range devices {
+							if len(v.MountPoints) == 0 {
+								v.MountPoints = append(v.MountPoints, mountPoint)
+								if v.FSType == "" {
+									v.FSType = fsType
+								}
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	var result []BlockDevice
+	for _, dev := range devices {
+		result = append(result, *dev)
+	}
+
+	return result, nil
 }
 
 func (ActualFS) GetHostKernelVersion() string {
@@ -244,6 +380,17 @@ func (c *CacheFS) CheckGroupExists(gid int) bool {
 		}
 	}
 	return false
+}
+
+func (c *CacheFS) GetBlockDevices() ([]BlockDevice, error) {
+	if c.Cache != nil {
+		if v, ok := c.Cache.Get(CacheKey("block_devices")); ok {
+			if devs, ok := v.([]BlockDevice); ok {
+				return devs, nil
+			}
+		}
+	}
+	return nil, nil
 }
 
 func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
