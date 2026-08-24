@@ -15,6 +15,7 @@ func (m mockAPI) CheckFileExists(path string) rules.FileExistsResult { return ru
 func (m mockAPI) CheckUserExists(username int) bool                  { return true }
 func (m mockAPI) CheckGroupExists(groupname int) bool                { return true }
 func (mockAPI) GetBlockDevices() ([]rules.BlockDevice, error)  { return nil, nil }
+func (mockAPI) ResolveDevicePath(dev string) string            { return dev }
 func (m mockAPI) GetHostKernelVersion() string                       { return "5.10.0" }
 func (m mockAPI) IsVirtualMachine() bool                             { return false }
 func (m mockAPI) IsContainer() bool                                  { return false }

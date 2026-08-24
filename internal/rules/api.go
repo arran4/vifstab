@@ -1,13 +1,11 @@
 package rules
 
 import (
+	"bufio"
 	"io/fs"
 	"os"
-)
-
-import (
-	"bufio"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -28,6 +26,7 @@ type BlockDevice struct {
 	PartType    string   `json:"parttype"`
 	PartUUID    string   `json:"partuuid"`
 	MountPoints []string `json:"mountpoints"`
+	SysfsName   string   `json:"sysfs_name"`
 }
 
 type API interface {
@@ -37,6 +36,7 @@ type API interface {
 	CheckUserExists(uid int) bool
 	CheckGroupExists(gid int) bool
 	GetBlockDevices() ([]BlockDevice, error)
+	ResolveDevicePath(dev string) string
 }
 
 type ActualFS struct{}
@@ -100,94 +100,122 @@ func (ActualFS) CheckBlockDeviceExists(dev string) bool {
 	if strings.HasPrefix(dev, "/dev/ubd") || strings.HasPrefix(dev, "mtd:") {
 		return true
 	}
-	resolvedPath := ResolveDevicePath(dev)
+	resolvedPath := ActualFS{}.ResolveDevicePath(dev)
 	_, err := os.Stat(resolvedPath)
 	return err == nil
 }
 
+func (ActualFS) ResolveDevicePath(dev string) string {
+	return ResolveDevicePath(dev) // fallback to util.go behavior
+}
+
 func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
 	devices := make(map[string]*BlockDevice)
+	var anyErr error
+
+	// Helper to get or create device
+	getOrCreate := func(path string) *BlockDevice {
+		if dev, ok := devices[path]; ok {
+			return dev
+		}
+		dev := &BlockDevice{Path: path}
+		devices[path] = dev
+		return dev
+	}
 
 	// 1. Discover devices and their properties from udev
-	files, _ := os.ReadDir("/run/udev/data")
-	for _, file := range files {
-		if strings.HasPrefix(file.Name(), "b") {
-			f, err := os.Open(filepath.Join("/run/udev/data", file.Name()))
-			if err != nil {
-				continue
-			}
-			scanner := bufio.NewScanner(f)
-			parttype := ""
-			fstype := ""
-			for scanner.Scan() {
-				line := scanner.Text()
-				if strings.HasPrefix(line, "E:ID_PART_ENTRY_TYPE=") {
-					parttype = strings.TrimPrefix(line, "E:ID_PART_ENTRY_TYPE=")
-				}
-				if strings.HasPrefix(line, "E:ID_FS_TYPE=") {
-					fstype = strings.TrimPrefix(line, "E:ID_FS_TYPE=")
-				}
-			}
-			_ = f.Close()
-
-			majmin := strings.TrimPrefix(file.Name(), "b")
-			target, _ := os.Readlink(filepath.Join("/sys/dev/block", majmin))
-			if target != "" {
-				devname := filepath.Base(target)
-				if strings.HasPrefix(devname, "loop") || strings.HasPrefix(devname, "ram") || strings.HasPrefix(devname, "sr") {
+	files, err := os.ReadDir("/run/udev/data")
+	if err == nil {
+		for _, file := range files {
+			if strings.HasPrefix(file.Name(), "b") {
+				f, err := os.Open(filepath.Join("/run/udev/data", file.Name()))
+				if err != nil {
 					continue
 				}
-				path := "/dev/" + devname
-				if devices[path] == nil {
-					devices[path] = &BlockDevice{Path: path}
+				scanner := bufio.NewScanner(f)
+				parttype := ""
+				fstype := ""
+				for scanner.Scan() {
+					line := scanner.Text()
+					if strings.HasPrefix(line, "E:ID_PART_ENTRY_TYPE=") {
+						parttype = strings.TrimPrefix(line, "E:ID_PART_ENTRY_TYPE=")
+					}
+					if strings.HasPrefix(line, "E:ID_FS_TYPE=") {
+						fstype = strings.TrimPrefix(line, "E:ID_FS_TYPE=")
+					}
 				}
-				devices[path].PartType = parttype
-				devices[path].FSType = fstype
+				_ = f.Close()
+
+				majmin := strings.TrimPrefix(file.Name(), "b")
+				target, err := os.Readlink(filepath.Join("/sys/dev/block", majmin))
+				if err == nil && target != "" {
+					devname := filepath.Base(target)
+					if strings.HasPrefix(devname, "loop") || strings.HasPrefix(devname, "ram") || strings.HasPrefix(devname, "sr") {
+						continue
+					}
+					path := "/dev/" + devname
+					dev := getOrCreate(path)
+					dev.SysfsName = devname
+					if parttype != "" {
+						dev.PartType = parttype
+					}
+					if fstype != "" {
+						dev.FSType = fstype
+					}
+				}
+			}
+		}
+	} else {
+		anyErr = err
+	}
+
+	// Fallback to purely sysfs block enumeration if udev failed
+	if len(devices) == 0 {
+		entries, err := os.ReadDir("/sys/class/block")
+		if err == nil {
+			for _, entry := range entries {
+				name := entry.Name()
+				if strings.HasPrefix(name, "loop") || strings.HasPrefix(name, "ram") || strings.HasPrefix(name, "sr") {
+					continue
+				}
+				path := "/dev/" + name
+				dev := getOrCreate(path)
+				dev.SysfsName = name
+			}
+		}
+	}
+
+	// Helpers for symlink resolution
+	resolveAliasDir := func(dir string, setFunc func(dev *BlockDevice, name string)) {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				anyErr = err
+			}
+			return
+		}
+		for _, entry := range entries {
+			target, err := os.Readlink(filepath.Join(dir, entry.Name()))
+			if err == nil {
+				absTarget, err := filepath.Abs(filepath.Join(dir, target))
+				if err == nil {
+					// We only enrich devices we already know about
+					if dev, ok := devices[absTarget]; ok {
+						setFunc(dev, entry.Name())
+					}
+				}
 			}
 		}
 	}
 
 	// 2. Discover UUIDs
-	uuids, _ := os.ReadDir("/dev/disk/by-uuid")
-	for _, entry := range uuids {
-		target, err := os.Readlink(filepath.Join("/dev/disk/by-uuid", entry.Name()))
-		if err == nil {
-			absTarget, err := filepath.Abs(filepath.Join("/dev/disk/by-uuid", target))
-			if err == nil {
-				if dev, ok := devices[absTarget]; ok {
-					dev.UUID = entry.Name()
-				}
-			}
-		}
-	}
+	resolveAliasDir("/dev/disk/by-uuid", func(dev *BlockDevice, name string) { dev.UUID = name })
 
 	// 3. Discover Labels
-	labels, _ := os.ReadDir("/dev/disk/by-label")
-	for _, entry := range labels {
-		target, err := os.Readlink(filepath.Join("/dev/disk/by-label", entry.Name()))
-		if err == nil {
-			absTarget, err := filepath.Abs(filepath.Join("/dev/disk/by-label", target))
-			if err == nil {
-				if dev, ok := devices[absTarget]; ok {
-					dev.Label = entry.Name()
-				}
-			}
-		}
-	}
+	resolveAliasDir("/dev/disk/by-label", func(dev *BlockDevice, name string) { dev.Label = name })
 
 	// 4. Discover PARTUUID
-	partuuids, _ := os.ReadDir("/dev/disk/by-partuuid")
-	for _, entry := range partuuids {
-		target, err := os.Readlink(filepath.Join("/dev/disk/by-partuuid", entry.Name()))
-		if err == nil {
-			absTarget, err := filepath.Abs(filepath.Join("/dev/disk/by-partuuid", target))
-			if err == nil {
-				if dev, ok := devices[absTarget]; ok {
-					dev.PartUUID = entry.Name()
-				}
-			}
-		}
-	}
+	resolveAliasDir("/dev/disk/by-partuuid", func(dev *BlockDevice, name string) { dev.PartUUID = name })
 
 	// 5. Discover Mountpoints
 	if mountsData, err := os.ReadFile("/proc/mounts"); err == nil {
@@ -201,17 +229,15 @@ func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
 				if dev, ok := devices[devicePath]; ok {
 					dev.MountPoints = append(dev.MountPoints, mountPoint)
 					if dev.FSType == "" {
-						dev.FSType = fsType // best effort based on mounts
+						dev.FSType = fsType // fallback best effort
 					}
 				} else {
-					// Try to resolve if it's /dev/root
+					// Deterministic /dev/root fallback
 					if devicePath == "/dev/root" {
 						for _, v := range devices {
-							if len(v.MountPoints) == 0 {
-								v.MountPoints = append(v.MountPoints, mountPoint)
-								if v.FSType == "" {
-									v.FSType = fsType
-								}
+							// If we found a block device with the same fstype and no mountpoints
+							if len(v.MountPoints) == 0 && (v.FSType == fsType || v.FSType == "") {
+								// We cannot reliably guess without more info, so do not arbitrarily assign.
 								break
 							}
 						}
@@ -223,10 +249,27 @@ func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
 
 	var result []BlockDevice
 	for _, dev := range devices {
+		// Unique and sort mountpoints
+		mpMap := make(map[string]bool)
+		var mps []string
+		for _, m := range dev.MountPoints {
+			if !mpMap[m] {
+				mpMap[m] = true
+				mps = append(mps, m)
+			}
+		}
+		sort.Strings(mps)
+		dev.MountPoints = mps
+
 		result = append(result, *dev)
 	}
 
-	return result, nil
+	// Deterministic ordering
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Path < result[j].Path
+	})
+
+	return result, anyErr
 }
 
 func (ActualFS) GetHostKernelVersion() string {
@@ -397,7 +440,7 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
 	if strings.HasPrefix(dev, "/dev/ubd") || strings.HasPrefix(dev, "mtd:") {
 		return true
 	}
-	resolvedPath := ResolveDevicePath(dev)
+	resolvedPath := c.ResolveDevicePath(dev)
 
 	if c.Cache != nil {
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + resolvedPath)); ok {
@@ -421,4 +464,83 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
 		return err == nil
 	}
 	panic("CacheFS must be initialized with a valid fs.FS")
+}
+
+func (c *CacheFS) ResolveDevicePath(dev string) string {
+	devs, err := c.GetBlockDevices()
+	if err == nil {
+		if matched := findDeviceByPathOrAttr(devs, dev); matched != nil {
+			return matched.Path
+		}
+	}
+	return ResolveDevicePath(dev)
+}
+
+func findDeviceByPathOrAttr(devs []BlockDevice, dev string) *BlockDevice {
+	if strings.HasPrefix(dev, "UUID=") {
+		uuid := strings.Trim(strings.TrimPrefix(dev, "UUID="), `"'`)
+		for i, d := range devs {
+			if strings.EqualFold(d.UUID, uuid) {
+				return &devs[i]
+			}
+		}
+	}
+	if strings.HasPrefix(dev, "LABEL=") {
+		label := strings.Trim(strings.TrimPrefix(dev, "LABEL="), `"'`)
+		for i, d := range devs {
+			if d.Label == label {
+				return &devs[i]
+			}
+		}
+	}
+	if strings.HasPrefix(dev, "PARTUUID=") {
+		partuuid := strings.Trim(strings.TrimPrefix(dev, "PARTUUID="), `"'`)
+		for i, d := range devs {
+			if strings.EqualFold(d.PartUUID, partuuid) {
+				return &devs[i]
+			}
+		}
+	}
+
+	if strings.HasPrefix(dev, "/dev/disk/by-uuid/") {
+		uuid := strings.TrimPrefix(dev, "/dev/disk/by-uuid/")
+		for i, d := range devs {
+			if strings.EqualFold(d.UUID, uuid) {
+				return &devs[i]
+			}
+		}
+	}
+	if strings.HasPrefix(dev, "/dev/disk/by-label/") {
+		label := strings.TrimPrefix(dev, "/dev/disk/by-label/")
+		for i, d := range devs {
+			if d.Label == label {
+				return &devs[i]
+			}
+		}
+	}
+	if strings.HasPrefix(dev, "/dev/disk/by-partuuid/") {
+		partuuid := strings.TrimPrefix(dev, "/dev/disk/by-partuuid/")
+		for i, d := range devs {
+			if strings.EqualFold(d.PartUUID, partuuid) {
+				return &devs[i]
+			}
+		}
+	}
+
+	for i, d := range devs {
+		if d.Path == dev {
+			return &devs[i]
+		}
+	}
+
+	evaled, err := filepath.EvalSymlinks(dev)
+	if err == nil {
+		for i, d := range devs {
+			if d.Path == evaled {
+				return &devs[i]
+			}
+		}
+	}
+
+	return nil
 }

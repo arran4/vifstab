@@ -2,6 +2,7 @@ package builtin_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/arran4/vifstab/internal/rules"
@@ -21,6 +22,30 @@ func (m mockAPIPartition) GetHostKernelVersion() string           { return "5.10
 func (m mockAPIPartition) CheckBlockDeviceExists(dev string) bool { return true }
 func (m mockAPIPartition) GetBlockDevices() ([]rules.BlockDevice, error) {
 	return m.devs, nil
+}
+func (m mockAPIPartition) ResolveDevicePath(dev string) string {
+	if strings.HasPrefix(dev, "LABEL=") {
+		for _, d := range m.devs {
+			if d.Label == strings.TrimPrefix(dev, "LABEL=") {
+				return d.Path
+			}
+		}
+	}
+	if strings.HasPrefix(dev, "UUID=") {
+		for _, d := range m.devs {
+			if d.UUID == strings.TrimPrefix(dev, "UUID=") {
+				return d.Path
+			}
+		}
+	}
+	if strings.HasPrefix(dev, "PARTUUID=") {
+		for _, d := range m.devs {
+			if d.PartUUID == strings.TrimPrefix(dev, "PARTUUID=") {
+				return d.Path
+			}
+		}
+	}
+	return dev
 }
 
 func TestPartitionRoleRule(t *testing.T) {

@@ -2,7 +2,6 @@ package builtin
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
@@ -36,7 +35,15 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 		return nil, nil
 	}
 
-	matched := findDeviceByPathOrAttr(devs, dev)
+	resolvedPath := api.ResolveDevicePath(dev)
+	var matched *rules.BlockDevice
+	for i, d := range devs {
+		if d.Path == resolvedPath {
+			matched = &devs[i]
+			break
+		}
+	}
+
 	if matched == nil {
 		return nil, nil
 	}
@@ -125,73 +132,4 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 	}
 
 	return issues, nil
-}
-
-func findDeviceByPathOrAttr(devs []rules.BlockDevice, dev string) *rules.BlockDevice {
-	if strings.HasPrefix(dev, "UUID=") {
-		uuid := strings.Trim(strings.TrimPrefix(dev, "UUID="), `"'`)
-		for i, d := range devs {
-			if strings.EqualFold(d.UUID, uuid) {
-				return &devs[i]
-			}
-		}
-	}
-	if strings.HasPrefix(dev, "LABEL=") {
-		label := strings.Trim(strings.TrimPrefix(dev, "LABEL="), `"'`)
-		for i, d := range devs {
-			if d.Label == label {
-				return &devs[i]
-			}
-		}
-	}
-	if strings.HasPrefix(dev, "PARTUUID=") {
-		partuuid := strings.Trim(strings.TrimPrefix(dev, "PARTUUID="), `"'`)
-		for i, d := range devs {
-			if strings.EqualFold(d.PartUUID, partuuid) {
-				return &devs[i]
-			}
-		}
-	}
-
-	if strings.HasPrefix(dev, "/dev/disk/by-uuid/") {
-		uuid := strings.TrimPrefix(dev, "/dev/disk/by-uuid/")
-		for i, d := range devs {
-			if strings.EqualFold(d.UUID, uuid) {
-				return &devs[i]
-			}
-		}
-	}
-	if strings.HasPrefix(dev, "/dev/disk/by-label/") {
-		label := strings.TrimPrefix(dev, "/dev/disk/by-label/")
-		for i, d := range devs {
-			if d.Label == label {
-				return &devs[i]
-			}
-		}
-	}
-	if strings.HasPrefix(dev, "/dev/disk/by-partuuid/") {
-		partuuid := strings.TrimPrefix(dev, "/dev/disk/by-partuuid/")
-		for i, d := range devs {
-			if strings.EqualFold(d.PartUUID, partuuid) {
-				return &devs[i]
-			}
-		}
-	}
-
-	for i, d := range devs {
-		if d.Path == dev {
-			return &devs[i]
-		}
-	}
-
-	evaled, err := filepath.EvalSymlinks(dev)
-	if err == nil {
-		for i, d := range devs {
-			if d.Path == evaled {
-				return &devs[i]
-			}
-		}
-	}
-
-	return nil
 }
