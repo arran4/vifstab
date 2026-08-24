@@ -2,16 +2,11 @@ package builtin_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/arran4/vifstab/internal/rules/builtin"
 )
-
-type mockAPIPartition struct {
-	devs []rules.BlockDevice
-}
 
 func (m mockAPIPartition) CheckFileExists(path string) rules.FileExistsResult {
 	return rules.FileExists
@@ -21,38 +16,16 @@ func (m mockAPIPartition) CheckGroupExists(gid int) bool          { return true 
 func (m mockAPIPartition) GetHostKernelVersion() string           { return "5.10.0" }
 func (m mockAPIPartition) CheckBlockDeviceExists(dev string) bool { return true }
 func (m mockAPIPartition) GetBlockDevices() (rules.BlockDeviceInventory, error) {
-	return rules.BlockDeviceInventory{Devices: m.devs, Available: true}, nil
+	return rules.BlockDeviceInventory{Devices: m.devs, Available: len(m.devs) > 0 || m.available}, nil
 }
 func (m mockAPIPartition) ResolveDevicePath(dev string) string {
-	if strings.HasPrefix(dev, "LABEL=") {
-		for _, d := range m.devs {
-			if d.Label == strings.TrimPrefix(dev, "LABEL=") {
-				return d.Path
-			}
-		}
-	}
-	if strings.HasPrefix(dev, "UUID=") {
-		for _, d := range m.devs {
-			if d.UUID == strings.TrimPrefix(dev, "UUID=") {
-				return d.Path
-			}
-		}
-	}
-	if strings.HasPrefix(dev, "PARTUUID=") {
-		for _, d := range m.devs {
-			if d.PartUUID == strings.TrimPrefix(dev, "PARTUUID=") {
-				return d.Path
-			}
-		}
-	}
-	if strings.HasPrefix(dev, "/dev/disk/by-uuid/") {
-		for _, d := range m.devs {
-			if d.UUID == strings.TrimPrefix(dev, "/dev/disk/by-uuid/") {
-				return d.Path
-			}
-		}
-	}
-	return dev
+	return rules.ResolveDevicePath(dev)
+}
+
+// Add an available field so we can mock "metadata unavailable" without length hacks
+type mockAPIPartition struct {
+	devs []rules.BlockDevice
+	available bool
 }
 
 func TestPartitionRoleRule(t *testing.T) {
@@ -251,7 +224,7 @@ func TestPartitionRoleRule(t *testing.T) {
 			wantIssues: []string{},
 		},
 		{
-			name: "missing device",
+			name: "missing device (available=true)",
 			fstabEntry: &rules.FstabEntry{
 				RawLine: "UUID=8F53-C3B9 /boot/efi vfat defaults 1 2",
 				LineNum: 1,
@@ -259,9 +232,25 @@ func TestPartitionRoleRule(t *testing.T) {
 			},
 			api: mockAPIPartition{
 				devs: []rules.BlockDevice{},
+				available: true,
 			},
 			wantIssues: []string{
 				"Source could not be resolved against current live block metadata and partition-role check was skipped",
+			}, // graceful ignore with info message
+		},
+		{
+			name: "missing device (available=false)",
+			fstabEntry: &rules.FstabEntry{
+				RawLine: "UUID=8F53-C3B9 /boot/efi vfat defaults 1 2",
+				LineNum: 1,
+				Fields:  []string{"UUID=8F53-C3B9", "/boot/efi", "vfat", "defaults", "1", "2"},
+			},
+			api: mockAPIPartition{
+				devs: []rules.BlockDevice{},
+				available: false,
+			},
+			wantIssues: []string{
+				"Live metadata check unavailable for this block device",
 			}, // graceful ignore with info message
 		},
 	}

@@ -547,6 +547,9 @@ func (c *CacheFS) GetBlockDevices() (BlockDeviceInventory, error) {
 			if devs, ok := v.([]BlockDevice); ok {
 				return BlockDeviceInventory{Devices: devs, Available: true}, nil
 			}
+			if inv, ok := v.(BlockDeviceInventory); ok {
+				return inv, nil
+			}
 		}
 	}
 	return BlockDeviceInventory{Available: false}, nil

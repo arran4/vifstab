@@ -17,6 +17,10 @@ const (
 	IssueLevelInfo     IssueLevel = "info"
 )
 
+func IsBlockingIssue(issue ValidationIssue) bool {
+	return issue.Level == IssueLevelWarning || issue.Level == IssueLevelError || issue.Level == IssueLevelSecurity
+}
+
 type ValidationIssue struct {
 	Message  string
 	Line     string

@@ -34,12 +34,21 @@ func VerifyAndLint(cfg config.Config, api rules.API) ([]rules.ValidationIssue, e
 // lintEntries validates a list of fstab entries against all registered rules.
 func lintEntries(entries []*rules.FstabEntry, api rules.API) ([]rules.ValidationIssue, error) {
 	allRules := rules.GetAllRules()
-	ctx := rules.WithCache(context.Background(), rules.NewCache())
+
+	// Create one shared cache/context and wrap the API so we can memoize heavy operations
+	cache := rules.NewCache()
+	ctx := rules.WithCache(context.Background(), cache)
+
+	// Since we are running the linting run, we can collect the block inventory once
+	// and inject it into the context/cache so that cache-aware rule APIs (like CacheFS)
+	// don't recalculate it for every fstab entry.
+	// We'll wrap the API so it uses the cache
+	cachedApi := rules.NewCacheFS(cache, os.DirFS("/"))
 
 	var allIssues []rules.ValidationIssue
 	for _, entry := range entries {
 		for _, r := range allRules {
-			issues, err := r.Validate(ctx, api, entry)
+			issues, err := r.Validate(ctx, cachedApi, entry)
 			if err != nil {
 				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)
 			}

@@ -264,6 +264,8 @@ func TestAllTxtarRules(t *testing.T) {
 							level = "Security"
 						case rules.IssueLevelError:
 							level = "Error"
+						case rules.IssueLevelInfo:
+							level = "Info"
 						}
 						gotOutput += fmt.Sprintf("%s: %s\n", level, s.Message)
 					} else {
