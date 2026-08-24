@@ -28,6 +28,7 @@ type BlockDevice struct {
 	MountPoints []string `json:"mountpoints"`
 	SysfsName   string   `json:"sysfs_name"`
 	DeviceID    string   `json:"device_id"`
+	Aliases     []string `json:"aliases"`
 }
 
 type BlockDeviceDiagnostic struct {
@@ -311,6 +312,11 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 
 	// 5. Discover PARTUUID
 	resolveAliasDir("/dev/disk/by-partuuid", func(dev *BlockDevice, name string) { dev.PartUUID = name })
+
+	// Discover generic aliases
+	for _, dir := range []string{"/dev/disk/by-partlabel", "/dev/disk/by-id", "/dev/disk/by-path"} {
+		resolveAliasDir(dir, func(dev *BlockDevice, name string) { dev.Aliases = append(dev.Aliases, dir+"/"+name) })
+	}
 
 	// 6. Discover Mountpoints
 	if mountsData, err := osProv.ReadFile("/proc/mounts"); err == nil {
@@ -637,6 +643,36 @@ func findDeviceByPathOrAttr(devs []BlockDevice, dev string) *BlockDevice {
 		for i, d := range devs {
 			if strings.EqualFold(d.PartUUID, partuuid) {
 				return &devs[i]
+			}
+		}
+	}
+
+	for i, d := range devs {
+		for _, alias := range d.Aliases {
+			if alias == dev {
+				return &devs[i]
+			}
+		}
+	}
+
+	if strings.HasPrefix(dev, "PARTLABEL=") {
+		partlabel := strings.Trim(strings.TrimPrefix(dev, "PARTLABEL="), `"'`)
+		for i, d := range devs {
+			for _, alias := range d.Aliases {
+				if strings.HasPrefix(alias, "/dev/disk/by-partlabel/") && strings.HasSuffix(alias, partlabel) {
+					return &devs[i]
+				}
+			}
+		}
+	}
+
+	if strings.HasPrefix(dev, "ID=") {
+		id := strings.Trim(strings.TrimPrefix(dev, "ID="), `"'`)
+		for i, d := range devs {
+			for _, alias := range d.Aliases {
+				if strings.HasPrefix(alias, "/dev/disk/by-id/") && strings.HasSuffix(alias, id) {
+					return &devs[i]
+				}
 			}
 		}
 	}

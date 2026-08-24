@@ -53,9 +53,9 @@ func (m *mockAPI) GetHostKernelVersion() string {
 }
 
 func (m *mockAPI) ResolveDevicePath(dev string) string {
-    return rules.ResolveDevicePath(dev)
+	return rules.ResolveDevicePath(dev)
 }
 
 func (m *mockAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
-    return rules.BlockDeviceInventory{}, nil
+	return rules.BlockDeviceInventory{}, nil
 }

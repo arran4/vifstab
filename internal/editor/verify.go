@@ -9,7 +9,22 @@ import (
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
 	"github.com/arran4/vifstab/internal/rules/core"
+	"sync"
 )
+
+type memoizedAPI struct {
+	rules.API
+	once sync.Once
+	inv  rules.BlockDeviceInventory
+	err  error
+}
+
+func (m *memoizedAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
+	m.once.Do(func() {
+		m.inv, m.err = m.API.GetBlockDevices()
+	})
+	return m.inv, m.err
+}
 
 // VerifyAndLint reads the given file and lints it against all registered rules.
 // It returns a slice of all suggestions (warnings, errors, etc.) and an error if a technical failure occurred.
@@ -35,20 +50,14 @@ func VerifyAndLint(cfg config.Config, api rules.API) ([]rules.ValidationIssue, e
 func lintEntries(entries []*rules.FstabEntry, api rules.API) ([]rules.ValidationIssue, error) {
 	allRules := rules.GetAllRules()
 
-	// Create one shared cache/context and wrap the API so we can memoize heavy operations
 	cache := rules.NewCache()
 	ctx := rules.WithCache(context.Background(), cache)
-
-	// Since we are running the linting run, we can collect the block inventory once
-	// and inject it into the context/cache so that cache-aware rule APIs (like CacheFS)
-	// don't recalculate it for every fstab entry.
-	// We'll wrap the API so it uses the cache
-	cachedApi := rules.NewCacheFS(cache, os.DirFS("/"))
+	memoized := &memoizedAPI{API: api}
 
 	var allIssues []rules.ValidationIssue
 	for _, entry := range entries {
 		for _, r := range allRules {
-			issues, err := r.Validate(ctx, cachedApi, entry)
+			issues, err := r.Validate(ctx, memoized, entry)
 			if err != nil {
 				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)
 			}
