@@ -48,12 +48,15 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 
 	// GPT ESP type on a non-FAT filesystem
 	if isESPType && !isFAT {
-		issues = append(issues, rules.ValidationIssue{
-			Message:  "GPT partition type is EFI System Partition (ESP) but filesystem is not FAT",
-			Line:     entry.RawLine,
-			Level:    rules.IssueLevelError,
-			Severity: 0,
-		})
+		// Do not invent a mismatch if we have an fstab type but metadata couldn't confirm
+		if matched.FSType != "" || (fstype != "auto" && fstype != "") {
+			issues = append(issues, rules.ValidationIssue{
+				Message:  "GPT partition type is EFI System Partition (ESP) but filesystem is not FAT",
+				Line:     entry.RawLine,
+				Level:    rules.IssueLevelError,
+				Severity: 0,
+			})
+		}
 	}
 
 	// FAT mounted at `/efi` or `/boot/efi` but not typed as an ESP
@@ -69,6 +72,10 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 	if isESPType && mountpoint == "/boot" {
 		hasEfiFat := false
 		for _, d := range devs {
+			// Skip the same device seen through another mountpoint or alias
+			if d.Path == matched.Path {
+				continue
+			}
 			for _, mp := range d.MountPoints {
 				if mp == "/efi" || mp == "/boot/efi" {
 					if d.FSType == "vfat" || d.FSType == "fat" {
