@@ -50,10 +50,36 @@ type API interface {
 	ResolveDevicePath(dev string) string
 }
 
-type ActualFS struct{}
+// OSProvider abstracts operating system operations to allow mocking
+type OSProvider interface {
+	ReadDir(name string) ([]fs.DirEntry, error)
+	Open(name string) (fs.File, error)
+	ReadFile(name string) ([]byte, error)
+	Readlink(name string) (string, error)
+	Stat(name string) (fs.FileInfo, error)
+}
 
-func (ActualFS) CheckUserExists(uid int) bool {
-	f, err := os.Open("/etc/passwd")
+type defaultOSProvider struct{}
+
+func (defaultOSProvider) ReadDir(name string) ([]fs.DirEntry, error) { return os.ReadDir(name) }
+func (defaultOSProvider) Open(name string) (fs.File, error)          { return os.Open(name) }
+func (defaultOSProvider) ReadFile(name string) ([]byte, error)       { return os.ReadFile(name) }
+func (defaultOSProvider) Readlink(name string) (string, error)       { return os.Readlink(name) }
+func (defaultOSProvider) Stat(name string) (fs.FileInfo, error)      { return os.Stat(name) }
+
+type ActualFS struct{
+	OS OSProvider
+}
+
+func (a ActualFS) getOS() OSProvider {
+	if a.OS == nil {
+		return defaultOSProvider{}
+	}
+	return a.OS
+}
+
+func (a ActualFS) CheckUserExists(uid int) bool {
+	f, err := a.getOS().Open("/etc/passwd")
 	if err != nil {
 		return false
 	}
@@ -74,8 +100,8 @@ func (ActualFS) CheckUserExists(uid int) bool {
 	return false
 }
 
-func (ActualFS) CheckGroupExists(gid int) bool {
-	f, err := os.Open("/etc/group")
+func (a ActualFS) CheckGroupExists(gid int) bool {
+	f, err := a.getOS().Open("/etc/group")
 	if err != nil {
 		return false
 	}
@@ -96,8 +122,8 @@ func (ActualFS) CheckGroupExists(gid int) bool {
 	return false
 }
 
-func (ActualFS) CheckFileExists(path string) FileExistsResult {
-	_, err := os.Stat(path)
+func (a ActualFS) CheckFileExists(path string) FileExistsResult {
+	_, err := a.getOS().Stat(path)
 	if err == nil {
 		return FileExists
 	}
@@ -107,20 +133,27 @@ func (ActualFS) CheckFileExists(path string) FileExistsResult {
 	return FileDoesNotExist
 }
 
-func (ActualFS) CheckBlockDeviceExists(dev string) bool {
+func (a ActualFS) CheckBlockDeviceExists(dev string) bool {
 	if strings.HasPrefix(dev, "/dev/ubd") || strings.HasPrefix(dev, "mtd:") {
 		return true
 	}
-	resolvedPath := ActualFS{}.ResolveDevicePath(dev)
-	_, err := os.Stat(resolvedPath)
+	resolvedPath := a.ResolveDevicePath(dev)
+	_, err := a.getOS().Stat(resolvedPath)
 	return err == nil
 }
 
-func (ActualFS) ResolveDevicePath(dev string) string {
+func (a ActualFS) ResolveDevicePath(dev string) string {
+	inv, err := a.GetBlockDevices()
+	if err == nil {
+		if matched := findDeviceByPathOrAttr(inv.Devices, dev); matched != nil {
+			return matched.Path
+		}
+	}
 	return ResolveDevicePath(dev) // fallback to util.go behavior
 }
 
-func (ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
+func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
+	osProv := a.getOS()
 	devices := make(map[string]*BlockDevice)
 	var diagnostics []BlockDeviceDiagnostic
 
@@ -135,11 +168,11 @@ func (ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 	}
 
 	// 1. Discover devices and their properties from udev
-	files, err := os.ReadDir("/run/udev/data")
+	files, err := osProv.ReadDir("/run/udev/data")
 	if err == nil {
 		for _, file := range files {
 			if strings.HasPrefix(file.Name(), "b") {
-				f, err := os.Open(filepath.Join("/run/udev/data", file.Name()))
+				f, err := osProv.Open(filepath.Join("/run/udev/data", file.Name()))
 				if err != nil {
 					diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: "/run/udev/data/" + file.Name(), Error: err.Error()})
 					continue
@@ -162,7 +195,7 @@ func (ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 				_ = f.Close()
 
 				majmin := strings.TrimPrefix(file.Name(), "b")
-				target, err := os.Readlink(filepath.Join("/sys/dev/block", majmin))
+				target, err := osProv.Readlink(filepath.Join("/sys/dev/block", majmin))
 				if err == nil && target != "" {
 					devname := filepath.Base(target)
 					if strings.HasPrefix(devname, "loop") || strings.HasPrefix(devname, "ram") || strings.HasPrefix(devname, "sr") {
@@ -189,7 +222,7 @@ func (ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 
 	// Fallback to purely sysfs block enumeration if udev failed
 	if len(devices) == 0 {
-		entries, err := os.ReadDir("/sys/class/block")
+		entries, err := osProv.ReadDir("/sys/class/block")
 		if err == nil {
 			for _, entry := range entries {
 				name := entry.Name()
@@ -201,7 +234,7 @@ func (ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 				dev.SysfsName = name
 
 				// Try to get dev id
-				if b, err := os.ReadFile(filepath.Join("/sys/class/block", name, "dev")); err == nil {
+				if b, err := osProv.ReadFile(filepath.Join("/sys/class/block", name, "dev")); err == nil {
 					dev.DeviceID = strings.TrimSpace(string(b))
 				}
 			}
@@ -212,7 +245,7 @@ func (ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 
 	// Helpers for symlink resolution
 	resolveAliasDir := func(dir string, setFunc func(dev *BlockDevice, name string)) {
-		entries, err := os.ReadDir(dir)
+		entries, err := osProv.ReadDir(dir)
 		if err != nil {
 			if !os.IsNotExist(err) {
 				diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: dir, Error: err.Error()})
@@ -220,9 +253,10 @@ func (ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 			return
 		}
 		for _, entry := range entries {
-			target, err := os.Readlink(filepath.Join(dir, entry.Name()))
+			target, err := osProv.Readlink(filepath.Join(dir, entry.Name()))
 			if err == nil {
-				absTarget, err := filepath.Abs(filepath.Join(dir, target))
+				// Avoid filepath.Abs which touches real host fs. We know the symlink structure.
+				absTarget := filepath.Clean(filepath.Join(dir, target))
 				if err == nil {
 					// We only enrich devices we already know about
 					if dev, ok := devices[absTarget]; ok {
@@ -247,7 +281,7 @@ func (ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 	resolveAliasDir("/dev/disk/by-partuuid", func(dev *BlockDevice, name string) { dev.PartUUID = name })
 
 	// 5. Discover Mountpoints
-	if mountsData, err := os.ReadFile("/proc/mounts"); err == nil {
+	if mountsData, err := osProv.ReadFile("/proc/mounts"); err == nil {
 		lines := strings.Split(string(mountsData), "\n")
 		// Need to resolve aliases first
 		var deviceList []BlockDevice
@@ -304,12 +338,12 @@ func (ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 	}, nil
 }
 
-func (ActualFS) GetHostKernelVersion() string {
-	b, err := os.ReadFile("/proc/version")
+func (a ActualFS) GetHostKernelVersion() string {
+	b, err := a.getOS().ReadFile("/proc/version")
 	if err == nil {
 		return string(b)
 	}
-	b, err = os.ReadFile("/proc/sys/kernel/osrelease")
+	b, err = a.getOS().ReadFile("/proc/sys/kernel/osrelease")
 	if err == nil {
 		return string(b)
 	}

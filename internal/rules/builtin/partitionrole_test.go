@@ -45,6 +45,13 @@ func (m mockAPIPartition) ResolveDevicePath(dev string) string {
 			}
 		}
 	}
+	if strings.HasPrefix(dev, "/dev/disk/by-uuid/") {
+		for _, d := range m.devs {
+			if d.UUID == strings.TrimPrefix(dev, "/dev/disk/by-uuid/") {
+				return d.Path
+			}
+		}
+	}
 	return dev
 }
 
@@ -189,8 +196,8 @@ func TestPartitionRoleRule(t *testing.T) {
 			},
 			api: mockAPIPartition{
 				devs: []rules.BlockDevice{
-					{Path: "/dev/sda1", FSType: "ext4", PartType: "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", Label: "gentooboot"},
-					{Path: "/dev/sda2", FSType: "vfat", PartType: "ebd0a0a2-b9e5-4433-87c0-68b6b72699c7", UUID: "8F53-C3B9", MountPoints: []string{"/efi"}},
+					{DeviceID: "8:1", Path: "/dev/sda1", FSType: "ext4", PartType: "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", Label: "gentooboot"},
+					{DeviceID: "8:2", Path: "/dev/sda2", FSType: "vfat", PartType: "ebd0a0a2-b9e5-4433-87c0-68b6b72699c7", UUID: "8F53-C3B9", MountPoints: []string{"/efi"}},
 				},
 			},
 			wantIssues: []string{
@@ -207,7 +214,8 @@ func TestPartitionRoleRule(t *testing.T) {
 			},
 			api: mockAPIPartition{
 				devs: []rules.BlockDevice{
-					{Path: "/dev/sda1", FSType: "vfat", PartType: "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", Label: "gentooboot", MountPoints: []string{"/efi"}}, // it's vfat, label gentooboot, mounted at efi as well
+					{DeviceID: "8:1", Path: "/dev/sda1", FSType: "vfat", PartType: "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", Label: "gentooboot", MountPoints: []string{"/efi"}},
+					{DeviceID: "8:1", Path: "/dev/disk/by-uuid/123", FSType: "vfat", PartType: "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", Label: "gentooboot", MountPoints: []string{"/efi"}}, // same DeviceID!
 				},
 			},
 			wantIssues: []string{
@@ -220,6 +228,20 @@ func TestPartitionRoleRule(t *testing.T) {
 				RawLine: "UUID=8F53-C3B9 /boot/efi vfat defaults 1 2",
 				LineNum: 1,
 				Fields:  []string{"UUID=8F53-C3B9", "/boot/efi", "vfat", "defaults", "1", "2"},
+			},
+			api: mockAPIPartition{
+				devs: []rules.BlockDevice{
+					{Path: "/dev/sda1", FSType: "vfat", PartType: "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", UUID: "8F53-C3B9"},
+				},
+			},
+			wantIssues: []string{},
+		},
+		{
+			name: "/dev/disk/by-uuid resolution",
+			fstabEntry: &rules.FstabEntry{
+				RawLine: "/dev/disk/by-uuid/8F53-C3B9 /boot/efi vfat defaults 1 2",
+				LineNum: 1,
+				Fields:  []string{"/dev/disk/by-uuid/8F53-C3B9", "/boot/efi", "vfat", "defaults", "1", "2"},
 			},
 			api: mockAPIPartition{
 				devs: []rules.BlockDevice{
