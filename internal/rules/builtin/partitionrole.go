@@ -30,16 +30,16 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 	mountpoint := entry.Fields[1]
 	fstype := entry.Fields[2]
 
-	devs, err := api.GetBlockDevices()
+	inv, err := api.GetBlockDevices()
 	if err != nil {
 		return nil, nil
 	}
 
 	resolvedPath := api.ResolveDevicePath(dev)
 	var matched *rules.BlockDevice
-	for i, d := range devs {
+	for i, d := range inv.Devices {
 		if d.Path == resolvedPath {
-			matched = &devs[i]
+			matched = &inv.Devices[i]
 			break
 		}
 	}
@@ -59,20 +59,11 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 	actualIsFAT := false
 	if detectedFSType != "" {
 		actualIsFAT = (detectedFSType == "vfat" || detectedFSType == "fat")
-	} else if declaredFSType != "" && declaredFSType != "auto" {
-		actualIsFAT = (declaredFSType == "vfat" || declaredFSType == "fat")
 	}
 
 	// GPT ESP type on a non-FAT filesystem
 	if isESPType {
 		if detectedFSType != "" && !actualIsFAT {
-			issues = append(issues, rules.ValidationIssue{
-				Message:  "GPT partition type is EFI System Partition (ESP) but filesystem is not FAT",
-				Line:     entry.RawLine,
-				Level:    rules.IssueLevelError,
-				Severity: 0,
-			})
-		} else if detectedFSType == "" && declaredFSType != "auto" && declaredFSType != "" && !actualIsFAT {
 			issues = append(issues, rules.ValidationIssue{
 				Message:  "GPT partition type is EFI System Partition (ESP) but filesystem is not FAT",
 				Line:     entry.RawLine,
@@ -108,8 +99,11 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 	// `/boot` typed as ESP while a distinct `/efi` FAT partition exists and is the apparent EFI partition
 	if isESPType && mountpoint == "/boot" {
 		hasEfiFat := false
-		for _, d := range devs {
-			// Skip the same device seen through another mountpoint or alias
+		for _, d := range inv.Devices {
+			// Skip the same canonical device
+			if d.DeviceID != "" && matched.DeviceID != "" && d.DeviceID == matched.DeviceID {
+				continue
+			}
 			if d.Path == matched.Path {
 				continue
 			}

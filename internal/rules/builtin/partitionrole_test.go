@@ -20,8 +20,8 @@ func (m mockAPIPartition) CheckUserExists(uid int) bool           { return true 
 func (m mockAPIPartition) CheckGroupExists(gid int) bool          { return true }
 func (m mockAPIPartition) GetHostKernelVersion() string           { return "5.10.0" }
 func (m mockAPIPartition) CheckBlockDeviceExists(dev string) bool { return true }
-func (m mockAPIPartition) GetBlockDevices() ([]rules.BlockDevice, error) {
-	return m.devs, nil
+func (m mockAPIPartition) GetBlockDevices() (rules.BlockDeviceInventory, error) {
+	return rules.BlockDeviceInventory{Devices: m.devs}, nil
 }
 func (m mockAPIPartition) ResolveDevicePath(dev string) string {
 	if strings.HasPrefix(dev, "LABEL=") {
@@ -162,9 +162,7 @@ func TestPartitionRoleRule(t *testing.T) {
 					{Path: "/dev/sda1", FSType: "", PartType: "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", Label: "gentooboot"},
 				},
 			},
-			wantIssues: []string{
-				"GPT partition type is EFI System Partition (ESP) but filesystem is not FAT", // because fstab says ext4
-			},
+			wantIssues: []string{}, // do not guess from fstab
 		},
 		{
 			name: "FAT EFI mount with non-ESP type",

@@ -56,6 +56,6 @@ func (m *mockAPI) ResolveDevicePath(dev string) string {
     return rules.ResolveDevicePath(dev)
 }
 
-func (m *mockAPI) GetBlockDevices() ([]rules.BlockDevice, error) {
-    return nil, nil
+func (m *mockAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
+    return rules.BlockDeviceInventory{}, nil
 }

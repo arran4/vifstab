@@ -27,6 +27,17 @@ type BlockDevice struct {
 	PartUUID    string   `json:"partuuid"`
 	MountPoints []string `json:"mountpoints"`
 	SysfsName   string   `json:"sysfs_name"`
+	DeviceID    string   `json:"device_id"`
+}
+
+type BlockDeviceDiagnostic struct {
+	Source string
+	Error  string
+}
+
+type BlockDeviceInventory struct {
+	Devices     []BlockDevice
+	Diagnostics []BlockDeviceDiagnostic
 }
 
 type API interface {
@@ -35,7 +46,7 @@ type API interface {
 	GetHostKernelVersion() string
 	CheckUserExists(uid int) bool
 	CheckGroupExists(gid int) bool
-	GetBlockDevices() ([]BlockDevice, error)
+	GetBlockDevices() (BlockDeviceInventory, error)
 	ResolveDevicePath(dev string) string
 }
 
@@ -109,9 +120,9 @@ func (ActualFS) ResolveDevicePath(dev string) string {
 	return ResolveDevicePath(dev) // fallback to util.go behavior
 }
 
-func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
+func (ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 	devices := make(map[string]*BlockDevice)
-	var anyErr error
+	var diagnostics []BlockDeviceDiagnostic
 
 	// Helper to get or create device
 	getOrCreate := func(path string) *BlockDevice {
@@ -130,6 +141,7 @@ func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
 			if strings.HasPrefix(file.Name(), "b") {
 				f, err := os.Open(filepath.Join("/run/udev/data", file.Name()))
 				if err != nil {
+					diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: "/run/udev/data/" + file.Name(), Error: err.Error()})
 					continue
 				}
 				scanner := bufio.NewScanner(f)
@@ -144,6 +156,9 @@ func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
 						fstype = strings.TrimPrefix(line, "E:ID_FS_TYPE=")
 					}
 				}
+				if err := scanner.Err(); err != nil {
+					diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: "/run/udev/data/" + file.Name(), Error: "scanner error: " + err.Error()})
+				}
 				_ = f.Close()
 
 				majmin := strings.TrimPrefix(file.Name(), "b")
@@ -156,17 +171,20 @@ func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
 					path := "/dev/" + devname
 					dev := getOrCreate(path)
 					dev.SysfsName = devname
+					dev.DeviceID = majmin
 					if parttype != "" {
 						dev.PartType = parttype
 					}
 					if fstype != "" {
 						dev.FSType = fstype
 					}
+				} else if err != nil {
+					diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: "/sys/dev/block/" + majmin, Error: "readlink failed: " + err.Error()})
 				}
 			}
 		}
 	} else {
-		anyErr = err
+		diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: "/run/udev/data", Error: err.Error()})
 	}
 
 	// Fallback to purely sysfs block enumeration if udev failed
@@ -181,7 +199,14 @@ func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
 				path := "/dev/" + name
 				dev := getOrCreate(path)
 				dev.SysfsName = name
+
+				// Try to get dev id
+				if b, err := os.ReadFile(filepath.Join("/sys/class/block", name, "dev")); err == nil {
+					dev.DeviceID = strings.TrimSpace(string(b))
+				}
 			}
+		} else {
+			diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: "/sys/class/block", Error: err.Error()})
 		}
 	}
 
@@ -190,7 +215,7 @@ func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			if !os.IsNotExist(err) {
-				anyErr = err
+				diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: dir, Error: err.Error()})
 			}
 			return
 		}
@@ -203,7 +228,11 @@ func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
 					if dev, ok := devices[absTarget]; ok {
 						setFunc(dev, entry.Name())
 					}
+				} else {
+					diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: filepath.Join(dir, target), Error: "abs failed: " + err.Error()})
 				}
+			} else {
+				diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: filepath.Join(dir, entry.Name()), Error: "readlink failed: " + err.Error()})
 			}
 		}
 	}
@@ -220,31 +249,31 @@ func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
 	// 5. Discover Mountpoints
 	if mountsData, err := os.ReadFile("/proc/mounts"); err == nil {
 		lines := strings.Split(string(mountsData), "\n")
+		// Need to resolve aliases first
+		var deviceList []BlockDevice
+		for _, dev := range devices {
+			deviceList = append(deviceList, *dev)
+		}
 		for _, line := range lines {
 			fields := strings.Fields(line)
 			if len(fields) >= 3 {
 				devicePath := fields[0]
 				mountPoint := fields[1]
 				fsType := fields[2]
-				if dev, ok := devices[devicePath]; ok {
-					dev.MountPoints = append(dev.MountPoints, mountPoint)
-					if dev.FSType == "" {
-						dev.FSType = fsType // fallback best effort
-					}
-				} else {
-					// Deterministic /dev/root fallback
-					if devicePath == "/dev/root" {
-						for _, v := range devices {
-							// If we found a block device with the same fstype and no mountpoints
-							if len(v.MountPoints) == 0 && (v.FSType == fsType || v.FSType == "") {
-								// We cannot reliably guess without more info, so do not arbitrarily assign.
-								break
-							}
+
+				// Attempt to resolve through the same canonical resolution
+				if matched := findDeviceByPathOrAttr(deviceList, devicePath); matched != nil {
+					if dev, ok := devices[matched.Path]; ok {
+						dev.MountPoints = append(dev.MountPoints, mountPoint)
+						if dev.FSType == "" {
+							dev.FSType = fsType // fallback best effort
 						}
 					}
 				}
 			}
 		}
+	} else {
+		diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: "/proc/mounts", Error: err.Error()})
 	}
 
 	var result []BlockDevice
@@ -269,7 +298,10 @@ func (ActualFS) GetBlockDevices() ([]BlockDevice, error) {
 		return result[i].Path < result[j].Path
 	})
 
-	return result, anyErr
+	return BlockDeviceInventory{
+		Devices:     result,
+		Diagnostics: diagnostics,
+	}, nil
 }
 
 func (ActualFS) GetHostKernelVersion() string {
@@ -425,15 +457,15 @@ func (c *CacheFS) CheckGroupExists(gid int) bool {
 	return false
 }
 
-func (c *CacheFS) GetBlockDevices() ([]BlockDevice, error) {
+func (c *CacheFS) GetBlockDevices() (BlockDeviceInventory, error) {
 	if c.Cache != nil {
 		if v, ok := c.Cache.Get(CacheKey("block_devices")); ok {
 			if devs, ok := v.([]BlockDevice); ok {
-				return devs, nil
+				return BlockDeviceInventory{Devices: devs}, nil
 			}
 		}
 	}
-	return nil, nil
+	return BlockDeviceInventory{}, nil
 }
 
 func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
@@ -467,9 +499,9 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
 }
 
 func (c *CacheFS) ResolveDevicePath(dev string) string {
-	devs, err := c.GetBlockDevices()
+	inv, err := c.GetBlockDevices()
 	if err == nil {
-		if matched := findDeviceByPathOrAttr(devs, dev); matched != nil {
+		if matched := findDeviceByPathOrAttr(inv.Devices, dev); matched != nil {
 			return matched.Path
 		}
 	}
