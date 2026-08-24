@@ -24,7 +24,7 @@ nodev	proc
 	vfat
 -- cache --
 proc_filesystems=sysfs,tmpfs,proc,ext4,vfat
-block_devices=[{"path":"/dev/sda1","fstype":"vfat","parttype":"c12a7328-f81f-11d2-ba4b-00a0c93ec93b","label":"gentooboot"},{"path":"/dev/sda2","fstype":"vfat","parttype":"ebd0a0a2-b9e5-4433-87c0-68b6b72699c7","uuid":"8F53-C3B9","mountpoints":["/efi"]}]
+block_devices=[{"path":"/dev/sda1","fstype":"vfat","parttype":"c12a7328-f81f-11d2-ba4b-00a0c93ec93b","label":"gentooboot"},{"path":"/dev/sda2","fstype":"vfat","parttype":"ebd0a0a2-b9e5-4433-87c0-68b6b72699c7","uuid":"8F53-C3B9","mountpoints":["/efi"]},{"path":"/dev/sda3","device_id":"8:3","fstype":"vfat","parttype":"c12a7328-f81f-11d2-ba4b-00a0c93ec93b","uuid":"1111-2222"}]
 -- options.json --
 {
   "rules": ["PartitionRole"]

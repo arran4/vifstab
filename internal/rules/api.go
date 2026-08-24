@@ -72,7 +72,7 @@ func (defaultOSProvider) ReadFile(name string) ([]byte, error)       { return os
 func (defaultOSProvider) Readlink(name string) (string, error)       { return os.Readlink(name) }
 func (defaultOSProvider) Stat(name string) (fs.FileInfo, error)      { return os.Stat(name) }
 
-type ActualFS struct{
+type ActualFS struct {
 	OS OSProvider
 }
 
@@ -148,12 +148,6 @@ func (a ActualFS) CheckBlockDeviceExists(dev string) bool {
 }
 
 func (a ActualFS) ResolveDevicePath(dev string) string {
-	inv, err := a.GetBlockDevices()
-	if err == nil {
-		if matched := findDeviceByPathOrAttr(inv.Devices, dev); matched != nil {
-			return matched.Path
-		}
-	}
 	return ResolveDevicePath(dev) // fallback to util.go behavior
 }
 
@@ -217,7 +211,8 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 	// 2. Enrich from udev data
 	files, err := osProv.ReadDir("/run/udev/data")
 	if err == nil {
-		available = true
+		// Only consider udev as establishing canonical availability if it actually found a block device.
+		// We'll set available = true later if we enrich anything successfully.
 		for _, file := range files {
 			if strings.HasPrefix(file.Name(), "b") {
 				majmin := strings.TrimPrefix(file.Name(), "b")
@@ -267,6 +262,7 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 				}
 
 				dev := getOrCreate(majmin, path)
+				available = true
 				if parttype != "" {
 					dev.PartType = parttype
 				}
@@ -288,7 +284,6 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 			}
 			return
 		}
-		available = true
 		for _, entry := range entries {
 			target, err := osProv.Readlink(filepath.Join(dir, entry.Name()))
 			if err == nil {

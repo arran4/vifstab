@@ -21,7 +21,7 @@ func (m mockAPIPartition) CheckGroupExists(gid int) bool          { return true 
 func (m mockAPIPartition) GetHostKernelVersion() string           { return "5.10.0" }
 func (m mockAPIPartition) CheckBlockDeviceExists(dev string) bool { return true }
 func (m mockAPIPartition) GetBlockDevices() (rules.BlockDeviceInventory, error) {
-	return rules.BlockDeviceInventory{Devices: m.devs}, nil
+	return rules.BlockDeviceInventory{Devices: m.devs, Available: true}, nil
 }
 func (m mockAPIPartition) ResolveDevicePath(dev string) string {
 	if strings.HasPrefix(dev, "LABEL=") {
@@ -261,8 +261,8 @@ func TestPartitionRoleRule(t *testing.T) {
 				devs: []rules.BlockDevice{},
 			},
 			wantIssues: []string{
-				"Live metadata check unavailable for this block device",
-			}, // graceful ignore with warning
+				"Source could not be resolved against current live block metadata and partition-role check was skipped",
+			}, // graceful ignore with info message
 		},
 	}
 

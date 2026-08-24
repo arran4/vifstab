@@ -39,18 +39,13 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 
 	var issues []rules.ValidationIssue
 
-	// We want to avoid warning for loopbacks or LVM/mapper unless we explicitly trace them.
-	// For now, to keep offline verification non-fatal and avoid spurious warnings on lvm,
-	// only warn on /dev/sd, /dev/vd, /dev/nvme, etc or UUID/LABEL.
-	// (And only for actual file systems like fat/ext4, not swap or auto).
-	isLikelyPhysical := strings.HasPrefix(dev, "UUID=") || strings.HasPrefix(dev, "LABEL=") || strings.HasPrefix(dev, "PARTUUID=") || strings.HasPrefix(dev, "/dev/sd") || strings.HasPrefix(dev, "/dev/vd") || strings.HasPrefix(dev, "/dev/nvme") || strings.HasPrefix(dev, "/dev/disk/")
 	isSpecial := fstype == "swap" || fstype == "none" || fstype == "bind" || fstype == "ignore"
 
 	if matched == nil {
 		// Provide warning if it's the exact module we care about here (vfat/fat) or boot mounts.
 		// For generic FS matching issues #111 offline we only care to warn if it could be an ESP.
 		isRelevantToPartitionRole := mountpoint == "/boot" || mountpoint == "/efi" || mountpoint == "/boot/efi" || fstype == "vfat" || fstype == "fat"
-		if isLikelyPhysical && !isSpecial && isRelevantToPartitionRole {
+		if isLocalBlockReference(dev) && !isSpecial && isRelevantToPartitionRole {
 			if !inv.Available {
 				issues = append(issues, rules.ValidationIssue{
 					Message: "Live metadata check unavailable for this block device",
@@ -144,4 +139,17 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 	}
 
 	return issues, nil
+}
+
+func isLocalBlockReference(source string) bool {
+	if strings.HasPrefix(source, "UUID=") || strings.HasPrefix(source, "LABEL=") || strings.HasPrefix(source, "PARTUUID=") {
+		return true
+	}
+	if strings.HasPrefix(source, "/dev/disk/by-") {
+		return true
+	}
+	if strings.HasPrefix(source, "/dev/") && !strings.HasPrefix(source, "/dev/mapper/") && !strings.HasPrefix(source, "/dev/loop") && !strings.HasPrefix(source, "/dev/ram") {
+		return true
+	}
+	return false
 }
