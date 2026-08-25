@@ -7,6 +7,7 @@ import (
 
 	"github.com/arran4/vifstab/internal/rules"
 	"github.com/arran4/vifstab/internal/rules/builtin"
+	"github.com/arran4/vifstab/internal/rules/core"
 )
 
 type mockAPIPartition struct {
@@ -302,14 +303,14 @@ func TestPartitionRoleRule_MoreResolution(t *testing.T) {
 				Path:     "/dev/sda1",
 				FSType:   "vfat",
 				PartType: "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",
-				Label:    "gentooboot",
+				Label:    "Gentoo Boot",
 				PartUUID: "1234",
 				Aliases: []string{
 					"/dev/disk/by-label/gentooboot",
 					"/dev/disk/by-partuuid/1234",
 					"/dev/disk/by-path/pci-0000:00:1f.2-ata-1",
 					"/dev/disk/by-id/ata-VBOX_HARDDISK_VB0e7f7881-80718d05",
-					"/dev/disk/by-partlabel/EFI System Partition",
+					"/dev/disk/by-partlabel/EFI\\x20System\\x20Partition",
 				},
 			},
 		},
@@ -317,7 +318,7 @@ func TestPartitionRoleRule_MoreResolution(t *testing.T) {
 
 	validEntries := []string{
 		"PARTUUID=1234 /boot/efi vfat defaults 1 2",
-		"/dev/disk/by-label/gentooboot /boot/efi vfat defaults 1 2",
+		"LABEL=Gentoo\\040Boot /boot/efi vfat defaults 1 2",
 		"/dev/disk/by-partuuid/1234 /boot/efi vfat defaults 1 2",
 		"/dev/sda1 /boot/efi vfat defaults 1 2",
 		"/dev/disk/by-path/pci-0000:00:1f.2-ata-1 /boot/efi vfat defaults 1 2",
@@ -328,17 +329,12 @@ func TestPartitionRoleRule_MoreResolution(t *testing.T) {
 	}
 
 	for _, line := range validEntries {
-		entry := &rules.FstabEntry{
-			RawLine: line,
-			LineNum: 1,
-			Fields:  strings.Fields(line),
-		}
-		// unescape fields for testing since fstab parsing unescapes \040 to space
-		for i, f := range entry.Fields {
-			entry.Fields[i] = strings.ReplaceAll(f, "\\040", " ")
+		entries, err := core.ParseFstab(strings.NewReader(line))
+		if err != nil {
+			t.Fatalf("ParseFstab(%q): %v", line, err)
 		}
 
-		issues, _ := rule.Validate(ctx, api, entry)
+		issues, _ := rule.Validate(ctx, api, entries[0])
 		if len(issues) != 0 {
 			t.Errorf("expected 0 issues for %s, got %v", line, issues)
 		}

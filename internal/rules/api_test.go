@@ -219,12 +219,12 @@ func TestSyntheticProvider(t *testing.T) {
 			fsys: fstest.MapFS{
 				"sys/class/block/vda":                                  &fstest.MapFile{Mode: fs.ModeDir},
 				"sys/class/block/vda/dev":                              &fstest.MapFile{Data: []byte("254:0\n")},
-				"dev/disk/by-partlabel/EFI System Partition":           &fstest.MapFile{},
+				"dev/disk/by-partlabel/EFI\\x20System\\x20Partition":   &fstest.MapFile{},
 				"dev/disk/by-id/ata-VBOX_HARDDISK_VB0e7f7881-80718d05": &fstest.MapFile{},
 				"dev/disk/by-path/pci-0000:00:1f.2-ata-1":              &fstest.MapFile{},
 			},
 			symlinks: map[string]string{
-				"/dev/disk/by-partlabel/EFI System Partition":           "../../vda",
+				"/dev/disk/by-partlabel/EFI\\x20System\\x20Partition":   "../../vda",
 				"/dev/disk/by-id/ata-VBOX_HARDDISK_VB0e7f7881-80718d05": "../../vda",
 				"/dev/disk/by-path/pci-0000:00:1f.2-ata-1":              "../../vda",
 			},
@@ -232,7 +232,7 @@ func TestSyntheticProvider(t *testing.T) {
 				if len(inv.Devices) != 1 {
 					t.Fatalf("expected 1 device")
 				}
-				if inv.Resolve("PARTLABEL=EFI System Partition") == nil || inv.Resolve("PARTLABEL=EFI System Partition").Path != "/dev/vda" {
+				if inv.Resolve("PARTLABEL=EFI\\040System\\040Partition") == nil || inv.Resolve("PARTLABEL=EFI\\040System\\040Partition").Path != "/dev/vda" {
 					t.Errorf("failed PARTLABEL resolution")
 				}
 				if inv.Resolve("ID=ata-VBOX_HARDDISK_VB0e7f7881-80718d05") == nil || inv.Resolve("ID=ata-VBOX_HARDDISK_VB0e7f7881-80718d05").Path != "/dev/vda" {
@@ -241,7 +241,7 @@ func TestSyntheticProvider(t *testing.T) {
 				if inv.Resolve("/dev/disk/by-path/pci-0000:00:1f.2-ata-1") == nil || inv.Resolve("/dev/disk/by-path/pci-0000:00:1f.2-ata-1").Path != "/dev/vda" {
 					t.Errorf("failed by-path resolution")
 				}
-				if inv.Resolve("/dev/disk/by-partlabel/EFI System Partition") == nil || inv.Resolve("/dev/disk/by-partlabel/EFI System Partition").Path != "/dev/vda" {
+				if inv.Resolve("/dev/disk/by-partlabel/EFI\\040System\\040Partition") == nil || inv.Resolve("/dev/disk/by-partlabel/EFI\\040System\\040Partition").Path != "/dev/vda" {
 					t.Errorf("failed by-partlabel resolution")
 				}
 				if inv.Resolve("/dev/disk/by-id/ata-VBOX_HARDDISK_VB0e7f7881-80718d05") == nil || inv.Resolve("/dev/disk/by-id/ata-VBOX_HARDDISK_VB0e7f7881-80718d05").Path != "/dev/vda" {

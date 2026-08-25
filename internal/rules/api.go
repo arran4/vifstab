@@ -617,9 +617,9 @@ func findDeviceByPathOrAttr(devs []BlockDevice, dev string) *BlockDevice {
 		}
 	}
 	if strings.HasPrefix(dev, "LABEL=") {
-		label := strings.Trim(strings.TrimPrefix(dev, "LABEL="), `"'`)
+		label := normalizeDiskReference(strings.Trim(strings.TrimPrefix(dev, "LABEL="), `"'`))
 		for i := range devs {
-			if devs[i].Label == label {
+			if normalizeDiskReference(devs[i].Label) == label {
 				return &devs[i]
 			}
 		}
@@ -633,11 +633,10 @@ func findDeviceByPathOrAttr(devs []BlockDevice, dev string) *BlockDevice {
 		}
 	}
 	if strings.HasPrefix(dev, "PARTLABEL=") {
-		partlabel := strings.Trim(strings.TrimPrefix(dev, "PARTLABEL="), `"'`)
-		expectedAlias := "/dev/disk/by-partlabel/" + partlabel
+		partlabel := normalizeDiskReference(strings.Trim(strings.TrimPrefix(dev, "PARTLABEL="), `"'`))
 		for i := range devs {
 			for _, alias := range devs[i].Aliases {
-				if alias == expectedAlias {
+				if strings.HasPrefix(alias, "/dev/disk/by-partlabel/") && normalizeDiskReference(strings.TrimPrefix(alias, "/dev/disk/by-partlabel/")) == partlabel {
 					return &devs[i]
 				}
 			}
@@ -664,9 +663,9 @@ func findDeviceByPathOrAttr(devs []BlockDevice, dev string) *BlockDevice {
 		}
 	}
 	if strings.HasPrefix(dev, "/dev/disk/by-label/") {
-		label := strings.TrimPrefix(dev, "/dev/disk/by-label/")
+		label := normalizeDiskReference(strings.TrimPrefix(dev, "/dev/disk/by-label/"))
 		for i := range devs {
-			if devs[i].Label == label {
+			if normalizeDiskReference(devs[i].Label) == label {
 				return &devs[i]
 			}
 		}
@@ -676,6 +675,16 @@ func findDeviceByPathOrAttr(devs []BlockDevice, dev string) *BlockDevice {
 		for i := range devs {
 			if strings.EqualFold(devs[i].PartUUID, partuuid) {
 				return &devs[i]
+			}
+		}
+	}
+	if strings.HasPrefix(dev, "/dev/disk/by-partlabel/") {
+		partlabel := normalizeDiskReference(strings.TrimPrefix(dev, "/dev/disk/by-partlabel/"))
+		for i := range devs {
+			for _, alias := range devs[i].Aliases {
+				if strings.HasPrefix(alias, "/dev/disk/by-partlabel/") && normalizeDiskReference(strings.TrimPrefix(alias, "/dev/disk/by-partlabel/")) == partlabel {
+					return &devs[i]
+				}
 			}
 		}
 	}
@@ -695,4 +704,27 @@ func findDeviceByPathOrAttr(devs []BlockDevice, dev string) *BlockDevice {
 	}
 
 	return nil
+}
+
+func normalizeDiskReference(value string) string {
+	var b strings.Builder
+	for i := 0; i < len(value); {
+		if value[i] == '\\' && i+3 < len(value) {
+			if value[i+1] == 'x' {
+				if decoded, err := strconv.ParseUint(value[i+2:i+4], 16, 8); err == nil {
+					b.WriteByte(byte(decoded))
+					i += 4
+					continue
+				}
+			} else if value[i+1] >= '0' && value[i+1] <= '7' && value[i+2] >= '0' && value[i+2] <= '7' && value[i+3] >= '0' && value[i+3] <= '7' {
+				decoded, _ := strconv.ParseUint(value[i+1:i+4], 8, 8)
+				b.WriteByte(byte(decoded))
+				i += 4
+				continue
+			}
+		}
+		b.WriteByte(value[i])
+		i++
+	}
+	return b.String()
 }

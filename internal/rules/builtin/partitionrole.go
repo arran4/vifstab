@@ -2,6 +2,7 @@ package builtin
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
@@ -37,6 +38,13 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 
 	inv, err := api.GetBlockDevices()
 	if err != nil {
+		if isRelevantToPartitionRole(mountpoint, fstype) {
+			return []rules.ValidationIssue{{
+				Message: fmt.Sprintf("Live metadata and partition-role check unavailable: %v", err),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelInfo,
+			}}, nil
+		}
 		return nil, nil
 	}
 
@@ -45,8 +53,7 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 	var issues []rules.ValidationIssue
 
 	if matched == nil {
-		isRelevantToPartitionRole := mountpoint == "/boot" || mountpoint == "/efi" || mountpoint == "/boot/efi" || fstype == "vfat" || fstype == "fat"
-		if isRelevantToPartitionRole {
+		if isRelevantToPartitionRole(mountpoint, fstype) {
 			if !inv.Available {
 				issues = append(issues, rules.ValidationIssue{
 					Message: "Live metadata check unavailable for this block device",
@@ -140,6 +147,10 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 	}
 
 	return issues, nil
+}
+
+func isRelevantToPartitionRole(mountpoint, fstype string) bool {
+	return mountpoint == "/boot" || mountpoint == "/efi" || mountpoint == "/boot/efi" || fstype == "vfat" || fstype == "fat"
 }
 
 func isLocalBlockReference(source string) bool {

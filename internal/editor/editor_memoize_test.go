@@ -2,6 +2,7 @@ package editor
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/arran4/vifstab/internal/rules"
@@ -221,5 +222,33 @@ func TestLintEntries_MemoizationIntegration_PreservesDiagnosticsAndErrors(t *tes
 	}
 	if issues[0].Message != "Live metadata check unavailable for this block device" {
 		t.Errorf("unexpected issue message: %q", issues[0].Message)
+	}
+}
+
+func TestLintEntries_MemoizationIntegration_InventoryErrorIsInformational(t *testing.T) {
+	inventoryErr := errors.New("inventory provider failed")
+	api := &countingAPI{errToReturn: inventoryErr}
+	entries := []*rules.FstabEntry{
+		{RawLine: "UUID=1111 /boot vfat defaults 0 2", Fields: []string{"UUID=1111", "/boot", "vfat", "defaults", "0", "2"}},
+		{RawLine: "PARTLABEL=EFI\\040System /boot/efi vfat defaults 0 2", Fields: []string{"PARTLABEL=EFI\\040System", "/boot/efi", "vfat", "defaults", "0", "2"}},
+	}
+
+	issues, err := lintEntries(entries, api)
+	if err != nil {
+		t.Fatalf("lintEntries returned fatal error: %v", err)
+	}
+	if api.getBlockDevicesCount != 1 {
+		t.Fatalf("GetBlockDevices called %d times, expected 1", api.getBlockDevicesCount)
+	}
+	if len(issues) != 2 {
+		t.Fatalf("got %d issues, expected 2: %v", len(issues), issues)
+	}
+	for _, issue := range issues {
+		if issue.Level != rules.IssueLevelInfo {
+			t.Errorf("issue level = %v, expected info", issue.Level)
+		}
+		if !strings.Contains(issue.Message, inventoryErr.Error()) {
+			t.Errorf("issue %q does not preserve provider error", issue.Message)
+		}
 	}
 }
