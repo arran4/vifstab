@@ -18,6 +18,10 @@ func (m mockAPI) GetHostKernelVersion() string                       { return "5
 func (m mockAPI) IsVirtualMachine() bool                             { return false }
 func (m mockAPI) IsContainer() bool                                  { return false }
 func (m mockAPI) GetKernelModuleInfo(name string) (bool, error)      { return true, nil }
+func (m mockAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
+	return rules.BlockDeviceInventory{}, nil
+}
+func (m mockAPI) ResolveDevicePath(dev string) string { return rules.ResolveDevicePath(dev) }
 
 func BenchmarkNfsOptions(b *testing.B) {
 	rule := &NfsRule{}
@@ -26,7 +30,7 @@ func BenchmarkNfsOptions(b *testing.B) {
 	ctx := context.Background()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		rule.Validate(ctx, mockAPI{}, entry1)
-		rule.Validate(ctx, mockAPI{}, entry2)
+		_, _ = rule.Validate(ctx, mockAPI{}, entry1)
+		_, _ = rule.Validate(ctx, mockAPI{}, entry2)
 	}
 }

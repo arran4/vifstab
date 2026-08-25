@@ -51,3 +51,11 @@ func (m *mockAPI) CheckBlockDeviceExists(dev string) bool {
 func (m *mockAPI) GetHostKernelVersion() string {
 	return m.kernelVerStr
 }
+
+func (m *mockAPI) ResolveDevicePath(dev string) string {
+	return rules.ResolveDevicePath(dev)
+}
+
+func (m *mockAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
+	return rules.BlockDeviceInventory{}, nil
+}
