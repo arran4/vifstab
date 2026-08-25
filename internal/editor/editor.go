@@ -93,7 +93,20 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 			return err
 		}
 
-		if len(allIssues) == 0 {
+		var issueCount int
+		for _, s := range allIssues {
+			if rules.IsBlockingIssue(s) {
+				issueCount++
+			}
+		}
+
+		if issueCount == 0 {
+			if len(allIssues) > 0 {
+				fmt.Println("Validation successful, but issues were noted:")
+				for _, s := range allIssues {
+					fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
+				}
+			}
 			break // Valid
 		}
 

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"path/filepath"
@@ -180,6 +181,11 @@ func TestAllTxtarRules(t *testing.T) {
 						}
 					}
 					c.Set(rules.CacheKey(k), fsMap)
+				} else if k == "block_devices" {
+					var devs []rules.BlockDevice
+					if err := json.Unmarshal([]byte(v), &devs); err == nil {
+						c.Set(rules.CacheKey(k), devs)
+					}
 				} else if v == "true" {
 					c.Set(rules.CacheKey(k), true)
 				} else if v == "false" {
@@ -258,6 +264,8 @@ func TestAllTxtarRules(t *testing.T) {
 							level = "Security"
 						case rules.IssueLevelError:
 							level = "Error"
+						case rules.IssueLevelInfo:
+							level = "Info"
 						}
 						gotOutput += fmt.Sprintf("%s: %s\n", level, s.Message)
 					} else {

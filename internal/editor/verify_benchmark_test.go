@@ -37,6 +37,10 @@ func (m *mockAPI) CheckBlockDeviceExists(dev string) bool                      {
 func (m *mockAPI) GetHostKernelVersion() string                                { return "5.15.0" }
 func (m *mockAPI) CheckUserExists(uid int) bool                                { return true }
 func (m *mockAPI) CheckGroupExists(gid int) bool                               { return true }
+func (m *mockAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
+	return rules.BlockDeviceInventory{}, nil
+}
+func (m *mockAPI) ResolveDevicePath(dev string) string { return rules.ResolveDevicePath(dev) }
 
 func validateFixture(b *testing.B, entries []*rules.FstabEntry, expectedIssues int) {
 	b.Helper()
