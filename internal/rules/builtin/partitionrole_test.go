@@ -340,3 +340,24 @@ func TestPartitionRoleRule_MoreResolution(t *testing.T) {
 		}
 	}
 }
+
+func TestPartitionRoleRule_MSDOSIsRelevantWhenMetadataUnavailable(t *testing.T) {
+	entries, err := core.ParseFstab(strings.NewReader("UUID=1234 /data msdos defaults 0 2"))
+	if err != nil {
+		t.Fatalf("ParseFstab: %v", err)
+	}
+
+	issues, err := (&builtin.PartitionRoleRule{}).Validate(context.Background(), mockAPIPartition{available: false}, entries[0])
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if len(issues) != 1 {
+		t.Fatalf("got %d issues, want 1: %v", len(issues), issues)
+	}
+	if issues[0].Level != rules.IssueLevelInfo {
+		t.Errorf("issue level = %v, want info", issues[0].Level)
+	}
+	if issues[0].Message != "Live metadata check unavailable for this block device" {
+		t.Errorf("issue message = %q", issues[0].Message)
+	}
+}

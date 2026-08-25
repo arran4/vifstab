@@ -150,7 +150,7 @@ func (r *PartitionRoleRule) Validate(ctx context.Context, api rules.API, entry *
 }
 
 func isRelevantToPartitionRole(mountpoint, fstype string) bool {
-	return mountpoint == "/boot" || mountpoint == "/efi" || mountpoint == "/boot/efi" || fstype == "vfat" || fstype == "fat"
+	return mountpoint == "/boot" || mountpoint == "/efi" || mountpoint == "/boot/efi" || fstype == "vfat" || fstype == "fat" || fstype == "msdos"
 }
 
 func isLocalBlockReference(source string) bool {
