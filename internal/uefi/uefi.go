@@ -18,9 +18,9 @@ type EFIInfo struct {
 	MountPoint     string
 	IsFAT          bool
 	IsESP          bool
-	HasEFITree     bool
-	NVRAMRefs      []NVRAMRef
-	BootedMatch    bool
+	HasEFITree     *bool // Nil means unknown
+	NVRAMRefs      *[]NVRAMRef // Nil means unknown
+	BootedMatch    *bool // Nil means unknown
 }
 
 type NVRAMRef struct {
@@ -59,55 +59,83 @@ func Analyze(api rules.API, dev string, mountPoint string) (*EFIInfo, error) {
 	}
 
 	if mountPoint != "" {
-		if _, err := os.Stat(filepath.Join(mountPoint, "EFI")); err == nil {
-			info.HasEFITree = true
+		// Only check for EFI tree on the canonical mountpoint of this block device
+		// Wait, the PR says: "Do not derive UUID... from one device while checking EFI tree on an unrelated mountpoint."
+		// Let's verify the device is mounted at `mountPoint`.
+		// A block device might be mounted at `mountPoint`.
+		isMountedHere := false
+		for _, m := range matched.MountPoints {
+			if m == mountPoint {
+				isMountedHere = true
+				break
+			}
+		}
+
+		if isMountedHere {
+			hasTree := false
+			if _, err := os.Stat(filepath.Join(mountPoint, "EFI")); err == nil {
+				hasTree = true
+			}
+			info.HasEFITree = &hasTree
+		} else {
+			// If not mounted, or mounted elsewhere, we can't be sure if `mountPoint` has the tree for this device.
+			info.HasEFITree = nil
 		}
 	}
 
-	// We only need efivar checking if this partition could be an ESP.
 	if matched.PartUUID != "" {
 		files, err := os.ReadDir("/sys/firmware/efi/efivars")
 		if err == nil {
 			partUUIDBytes, err := parseUUID(matched.PartUUID)
 			if err == nil {
+				var refs []NVRAMRef
+				var matchFound bool
+				var anyParseable bool
+
 				for _, file := range files {
 					name := file.Name()
-					if strings.HasPrefix(name, "Boot") && len(name) >= 8 && name[4:8] != "Order" {
+					if strings.HasPrefix(name, "Boot") && len(name) >= 8 && name[4:8] != "Order" && name[4:8] != "Curr" {
 						data, err := os.ReadFile(filepath.Join("/sys/firmware/efi/efivars", name))
 						if err == nil && len(data) > 4 {
 							content := data[4:]
-							if bytes.Contains(content, partUUIDBytes) {
+							if containsHardDriveMediaDevicePath(content, partUUIDBytes) {
+								anyParseable = true
 								desc, path := parseEFIPath(content)
-								info.NVRAMRefs = append(info.NVRAMRefs, NVRAMRef{
+								refs = append(refs, NVRAMRef{
 									Name: desc,
 									Path: path,
 								})
-								// If the current boot matches this, how to check?
-								// We could read BootCurrent
+							} else if len(content) > 6 {
+								anyParseable = true
 							}
 						}
 					}
 				}
 
+				if anyParseable {
+					info.NVRAMRefs = &refs
+				}
+
 				// Check BootCurrent
-				if len(info.NVRAMRefs) > 0 {
-					currentData, err := os.ReadFile("/sys/firmware/efi/efivars/BootCurrent-8be4df61-93ca-11d2-aa0d-00e098032b8c")
-					if err == nil && len(currentData) >= 6 {
-						currentID := binary.LittleEndian.Uint16(currentData[4:6])
-						expectedBootName := fmt.Sprintf("Boot%04X", currentID)
-						for _, file := range files {
-							if strings.HasPrefix(file.Name(), expectedBootName) {
-								data, err := os.ReadFile(filepath.Join("/sys/firmware/efi/efivars", file.Name()))
-								if err == nil && len(data) > 4 {
-									content := data[4:]
-									if bytes.Contains(content, partUUIDBytes) {
-										info.BootedMatch = true
-									}
+				currentData, err := os.ReadFile("/sys/firmware/efi/efivars/BootCurrent-8be4df61-93ca-11d2-aa0d-00e098032b8c")
+				if err == nil && len(currentData) >= 6 {
+					currentID := binary.LittleEndian.Uint16(currentData[4:6])
+					expectedBootName := fmt.Sprintf("Boot%04X", currentID)
+					for _, file := range files {
+						if strings.HasPrefix(file.Name(), expectedBootName) {
+							data, err := os.ReadFile(filepath.Join("/sys/firmware/efi/efivars", file.Name()))
+							if err == nil && len(data) > 4 {
+								content := data[4:]
+								if containsHardDriveMediaDevicePath(content, partUUIDBytes) {
+									matchFound = true
 								}
-								break
 							}
+							break
 						}
 					}
+
+					// Set BootedMatch
+					info.BootedMatch = &matchFound
 				}
 			}
 		}
@@ -148,10 +176,59 @@ func parseUUID(s string) ([]byte, error) {
 	return b, nil
 }
 
+func containsHardDriveMediaDevicePath(content []byte, partUUIDBytes []byte) bool {
+	// Simple structure traversal to find a Hard Drive Media Device Path containing partUUIDBytes
+	if len(content) < 6 {
+		return false
+	}
+	filePathListLength := binary.LittleEndian.Uint16(content[4:6])
+
+	offset := 6
+	for offset+1 < len(content) {
+		u := binary.LittleEndian.Uint16(content[offset : offset+2])
+		offset += 2
+		if u == 0 {
+			break
+		}
+	}
+
+	endOfList := offset + int(filePathListLength)
+	if endOfList > len(content) {
+		endOfList = len(content)
+	}
+
+	for offset+3 < endOfList {
+		pType := content[offset]
+		pSubType := content[offset+1]
+		pLength := binary.LittleEndian.Uint16(content[offset+2 : offset+4])
+
+		if pLength < 4 || offset+int(pLength) > endOfList {
+			break
+		}
+
+		if pType == 0x04 && pSubType == 0x01 { // Hard Drive Media Device Path
+			if int(pLength) >= 38 {
+				// Offset 20 is the 16-byte Signature
+				signature := content[offset+20 : offset+36]
+				if bytes.Equal(signature, partUUIDBytes) {
+					return true
+				}
+			}
+		}
+
+		offset += int(pLength)
+	}
+
+	return false
+}
+
+
 func parseEFIPath(content []byte) (string, string) {
 	if len(content) < 6 {
 		return "", ""
 	}
+
+	filePathListLength := binary.LittleEndian.Uint16(content[4:6])
 
 	offset := 6
 	var descRunes []rune
@@ -166,12 +243,18 @@ func parseEFIPath(content []byte) (string, string) {
 	desc := string(descRunes)
 
 	var efiPath string
-	for offset+3 < len(content) {
+
+	endOfList := offset + int(filePathListLength)
+	if endOfList > len(content) {
+		endOfList = len(content)
+	}
+
+	for offset+3 < endOfList {
 		pType := content[offset]
 		pSubType := content[offset+1]
 		pLength := binary.LittleEndian.Uint16(content[offset+2 : offset+4])
 
-		if pLength < 4 || offset+int(pLength) > len(content) {
+		if pLength < 4 || offset+int(pLength) > endOfList {
 			break
 		}
 
@@ -218,25 +301,31 @@ func FormatReport(info *EFIInfo, originalSource string) string {
 		sb.WriteString("  GPT role: Not ESP\n")
 	}
 
-	if info.HasEFITree {
+	if info.HasEFITree == nil {
+		sb.WriteString("  EFI tree: unknown\n")
+	} else if *info.HasEFITree {
 		sb.WriteString("  EFI tree: present\n")
 	} else {
 		sb.WriteString("  EFI tree: absent\n")
 	}
 
 	sb.WriteString("  NVRAM refs:\n")
-	if len(info.NVRAMRefs) == 0 {
+	if info.NVRAMRefs == nil {
+		sb.WriteString("    (unknown)\n")
+	} else if len(*info.NVRAMRefs) == 0 {
 		sb.WriteString("    (none)\n")
 	} else {
-		for _, ref := range info.NVRAMRefs {
+		for _, ref := range *info.NVRAMRefs {
 			sb.WriteString(fmt.Sprintf("    %-18s %s\n", ref.Name, ref.Path))
 		}
 	}
 
-	if info.BootedMatch {
+	if info.BootedMatch == nil {
+		sb.WriteString("  current loader partition: unknown\n")
+	} else if *info.BootedMatch {
 		sb.WriteString("  current loader partition: match\n")
 	} else {
-		sb.WriteString("  current loader partition: mismatch or unknown\n")
+		sb.WriteString("  current loader partition: mismatch\n")
 	}
 
 	return sb.String()
