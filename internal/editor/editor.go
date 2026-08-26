@@ -211,11 +211,6 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) error {
 	if fsLayer == nil {
 		fsLayer = DefaultFS
 	}
-	// First update RCS
-	rcsCfg := rcs.Config{Dir: cfg.BackupDir}
-	if err := rcs.Update(cfg.FilePath, content, rcsCfg, fsLayer); err != nil {
-		return fmt.Errorf("rcs update failed: %w", err)
-	}
 
 	var targetMode *os.FileMode
 	if info, err := fsLayer.Stat(cfg.FilePath); err == nil {
@@ -260,6 +255,11 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) error {
 		if err := fsLayer.WriteFile(cfg.FilePath, content, perm); err != nil {
 			return fmt.Errorf("failed to replace destination file: %w", err)
 		}
+	}
+
+	rcsCfg := rcs.Config{Dir: cfg.BackupDir}
+	if err := rcs.Update(cfg.FilePath, content, rcsCfg, fsLayer); err != nil {
+		return fmt.Errorf("rcs update failed: %w", err)
 	}
 
 	return nil

@@ -20,6 +20,9 @@ var testdataFS embed.FS
 // mockFS implements the editor.FS interface using fstest.MapFS
 type mockFS struct {
 	mfs fstest.MapFS
+
+	statErr  error
+	writeErr error
 }
 
 func (m *mockFS) ReadFile(name string) ([]byte, error) {
@@ -31,6 +34,9 @@ func (m *mockFS) ReadFile(name string) ([]byte, error) {
 }
 
 func (m *mockFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	if m.writeErr != nil {
+		return m.writeErr
+	}
 	name = strings.TrimPrefix(filepath.ToSlash(name), "/")
 	m.mfs[name] = &fstest.MapFile{Data: data, Mode: perm}
 	return nil
@@ -65,6 +71,11 @@ func (d dummyFileInfo) IsDir() bool        { return false }
 func (d dummyFileInfo) Sys() interface{}   { return nil }
 
 func (m *mockFS) Stat(name string) (os.FileInfo, error) {
+	if m.statErr != nil {
+		if name == "etc/fstab" || name == "/etc/fstab" {
+			return nil, m.statErr
+		}
+	}
 	name = strings.TrimPrefix(filepath.ToSlash(name), "/")
 	if f, ok := m.mfs[name]; ok {
 		// Return a dummy stat with the file mode
@@ -314,4 +325,55 @@ func fileHasRCS(archive *txtar.Archive) bool {
 		}
 	}
 	return false
+}
+
+func TestSaveAndVersionFailure(t *testing.T) {
+	cfg := config.Config{
+		FilePath:  "/etc/fstab",
+		BackupDir: "/var/backup",
+	}
+
+	content := []byte("fstab content")
+
+	tests := []struct {
+		name          string
+		statErr       error
+		writeErr      error
+		expectedError string
+	}{
+		{
+			name:          "stat error unexpected",
+			statErr:       os.ErrPermission,
+			expectedError: "failed to stat destination file",
+		},
+		{
+			name:          "write file error",
+			writeErr:      os.ErrClosed,
+			expectedError: "failed to replace destination file",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mfs := &mockFS{
+				mfs:       make(fstest.MapFS),
+				statErr:   tt.statErr,
+				writeErr:  tt.writeErr,
+			}
+
+			err := SaveAndVersion(cfg, content, mfs)
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", tt.expectedError)
+			}
+			if !strings.Contains(err.Error(), tt.expectedError) {
+				t.Errorf("expected error containing %q, got %v", tt.expectedError, err)
+			}
+
+			// Verify RCS state is untouched
+			_, statErr := mfs.Stat("/var/backup/fstab,v")
+			if !os.IsNotExist(statErr) {
+				t.Errorf("expected RCS file to not exist on failure, got %v", statErr)
+			}
+		})
+	}
 }

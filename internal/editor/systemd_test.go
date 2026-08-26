@@ -107,15 +107,15 @@ func TestCommitEditSaveFailureDoesNotReload(t *testing.T) {
 	sm := &mockSystemdManager{isActive: true}
 	cfg := config.Config{FilePath: "/etc/fstab", BackupDir: "/backup", SystemdReload: config.SystemdReloadAuto}
 	err := commitEdit(cfg, []byte("new"), true, Dependencies{FS: fsLayer, Systemd: sm})
-	if err == nil || !strings.Contains(err.Error(), "rcs update failed") {
-		t.Fatalf("got error %v, want RCS failure", err)
+	if err == nil || (!strings.Contains(err.Error(), "rcs update failed") && !strings.Contains(err.Error(), "failed to replace destination file")) {
+		t.Fatalf("got error %v, want failure", err)
 	}
 	if sm.reloadCount != 0 {
 		t.Fatalf("Reload called %d times after failed save", sm.reloadCount)
 	}
 }
 
-func TestCommitEditDestinationFailureAfterRCSSuccessDoesNotReload(t *testing.T) {
+func TestCommitEditDestinationFailureBeforeRCSSuccessDoesNotReload(t *testing.T) {
 	fsLayer := &destinationFailFS{mockFS: newCommitTestFS()}
 	sm := &mockSystemdManager{isActive: true}
 	cfg := config.Config{FilePath: "/etc/fstab", BackupDir: "/backup", SystemdReload: config.SystemdReloadAuto}
@@ -123,8 +123,8 @@ func TestCommitEditDestinationFailureAfterRCSSuccessDoesNotReload(t *testing.T) 
 	if err == nil || !strings.Contains(err.Error(), "failed to replace destination file") {
 		t.Fatalf("got error %v, want destination failure", err)
 	}
-	if _, rcsErr := fsLayer.ReadFile("/backup/fstab,v"); rcsErr != nil {
-		t.Fatalf("RCS update did not succeed before destination failure: %v", rcsErr)
+	if _, rcsErr := fsLayer.ReadFile("/backup/fstab,v"); !os.IsNotExist(rcsErr) {
+		t.Fatalf("RCS file should not exist, got err: %v", rcsErr)
 	}
 	if sm.reloadCount != 0 {
 		t.Fatalf("Reload called %d times after destination failure", sm.reloadCount)
