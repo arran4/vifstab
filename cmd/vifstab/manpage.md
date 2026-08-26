@@ -7,6 +7,7 @@ vifstab - Edit fstab files with linting and versioning
 vifstab [--backup-dir=<value>] [--file=<value>] [--generate-manpage] [--systemd-reload=<value>] [--verify] [--help|-h]
 vifstab diagram <device>
 vifstab format [--file=<value>]
+vifstab uefi <device> <mountpoint>
 
 ## DESCRIPTION
 
@@ -35,6 +36,8 @@ If the validation fails (for example, if a mount point does not exist or a files
 **diagram** `<device>`: Generates an ASCII art diagram of the filesystem stack and dependencies for the specified block device.
 
 **format** `[--file=<value>] [-i]`: Reads fstab entries and outputs them in a formatted, column-aligned manner. Defaults to formatting `/etc/fstab` unless `--file` is specified. The `-i` flag writes the formatted output back to the file in-place (cannot be used when reading from standard input).
+
+**uefi** `<device> <mountpoint>`: Correlates an fstab ESP entry with firmware boot entries and the currently booted EFI partition. Note this subcommand depends on access to `/sys/firmware/efi` to determine EFI boot variables.
 
 ## ENVIRONMENT
 **VISUAL**, **EDITOR**: Determines the text editor to be launched by `vifstab`. The command respects standard arguments provided in these variables. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is ignored. If neither is set, it defaults to `vi`. Editor commands are executed directly rather than through a shell. Note that `vifstab` does not acquire or manage privileges; it executes the editor using the credentials of the invoking process.

@@ -88,6 +88,7 @@ vifstab --file /path/to/custom/fstab --backup-dir /var/backups/vifstab
 
 - `diagram <device>`: Generates an ASCII art diagram of the filesystem stack and dependencies for the given block device.
 - `format [options]`: Formats the `fstab` entries into a column-aligned format.
+- `uefi <device> <mountpoint>`: Correlates an fstab ESP entry with firmware boot entries and the currently booted EFI partition.
 
 Examples:
 
