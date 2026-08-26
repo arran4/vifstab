@@ -48,8 +48,16 @@ func VerifyAndLint(cfg config.Config, api rules.API) ([]rules.ValidationIssue, e
 
 // lintEntries validates a list of fstab entries against all registered rules.
 func lintEntries(entries []*rules.FstabEntry, api rules.API) ([]rules.ValidationIssue, error) {
+	return lintEntriesWithContext(context.Background(), entries, api)
+}
+
+func lintEntriesWithContext(ctx context.Context, entries []*rules.FstabEntry, api rules.API) ([]rules.ValidationIssue, error) {
 	allRules := rules.GetAllRules()
-	ctx := rules.WithCache(context.Background(), rules.NewCache())
+
+	if rules.CacheFromContext(ctx) == nil {
+		ctx = rules.WithCache(ctx, rules.NewCache())
+	}
+
 	memoized := &memoizedAPI{API: api}
 
 	var allIssues []rules.ValidationIssue

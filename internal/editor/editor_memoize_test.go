@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -106,6 +107,12 @@ func TestMemoizedAPI_Delegation(t *testing.T) {
 	}
 }
 
+func getTestContext() context.Context {
+	c := rules.NewCache()
+	c.Set(rules.CacheKey("proc_filesystems"), map[string]bool{"vfat": true, "ext4": true})
+	return rules.WithCache(context.Background(), c)
+}
+
 func TestLintEntries_MemoizationIntegration_MultipleRelevantEntries(t *testing.T) {
 	api := &countingAPI{
 		invToReturn: rules.BlockDeviceInventory{
@@ -136,7 +143,7 @@ func TestLintEntries_MemoizationIntegration_MultipleRelevantEntries(t *testing.T
 		},
 	}
 
-	issues, err := lintEntries(entries, api)
+	issues, err := lintEntriesWithContext(getTestContext(), entries, api)
 	if err != nil {
 		t.Fatalf("lintEntries failed: %v", err)
 	}
@@ -176,7 +183,7 @@ func TestLintEntries_MemoizationIntegration_NoRelevantEntries(t *testing.T) {
 		},
 	}
 
-	_, err := lintEntries(entries, api)
+	_, err := lintEntriesWithContext(getTestContext(), entries, api)
 	if err != nil {
 		t.Fatalf("lintEntries failed: %v", err)
 	}
@@ -204,7 +211,7 @@ func TestLintEntries_MemoizationIntegration_PreservesDiagnosticsAndErrors(t *tes
 		},
 	}
 
-	issues, err := lintEntries(entries, api)
+	issues, err := lintEntriesWithContext(getTestContext(), entries, api)
 	if err != nil {
 		t.Fatalf("lintEntries failed: %v", err)
 	}
@@ -233,7 +240,7 @@ func TestLintEntries_MemoizationIntegration_InventoryErrorIsInformational(t *tes
 		{RawLine: "PARTLABEL=EFI\\040System /boot/efi vfat defaults 0 2", Fields: []string{"PARTLABEL=EFI\\040System", "/boot/efi", "vfat", "defaults", "0", "2"}},
 	}
 
-	issues, err := lintEntries(entries, api)
+	issues, err := lintEntriesWithContext(getTestContext(), entries, api)
 	if err != nil {
 		t.Fatalf("lintEntries returned fatal error: %v", err)
 	}

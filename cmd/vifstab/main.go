@@ -14,6 +14,7 @@ import (
 	"github.com/arran4/vifstab/internal/format"
 	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/uefi"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
 )
 
@@ -21,6 +22,31 @@ import (
 var manPageMarkdown []byte
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "uefi" {
+		uefiCmd := flag.NewFlagSet("uefi", flag.ExitOnError)
+		uefiCmd.Usage = func() {
+			fmt.Fprintf(os.Stderr, "Usage: %s uefi <device> <mountpoint>\n", os.Args[0])
+			uefiCmd.PrintDefaults()
+		}
+		_ = uefiCmd.Parse(os.Args[2:])
+
+		if uefiCmd.NArg() != 2 {
+			uefiCmd.Usage()
+			os.Exit(1)
+		}
+
+		device := uefiCmd.Arg(0)
+		mountPoint := uefiCmd.Arg(1)
+
+		info, err := uefi.Analyze(rules.ActualFS{}, device, mountPoint)
+		if err != nil {
+			handleError(err)
+		}
+
+		fmt.Print(uefi.FormatReport(info, device))
+		return
+	}
+
 	if len(os.Args) > 1 && os.Args[1] == "diagram" {
 		diagramCmd := flag.NewFlagSet("diagram", flag.ExitOnError)
 		diagramCmd.Usage = func() {
