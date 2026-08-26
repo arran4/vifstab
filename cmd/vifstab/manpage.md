@@ -25,7 +25,7 @@ If the validation fails (for example, if a mount point does not exist or a files
 
 **--generate-manpage**: Generates this man page to `vifstab.1` in the current directory.
 
-**--systemd-reload**="warn": Behavior when editing fstab on systemd hosts (auto|warn|never). When set to `auto`, `systemctl daemon-reload` is executed after a successful save. When set to `warn`, a diagnostic message is printed to remind the user. When set to `never`, no action or warning is given.
+**--systemd-reload**="warn": Post-save systemd handling for `/etc/fstab` (auto|warn|never). `auto` runs `systemctl daemon-reload` only after blocking validation succeeds and the file and backup are committed. `warn` prints a diagnostic without reloading. `never` takes no systemd action and prints no systemd diagnostic. A reload failure is reported after the saved fstab is left in place.
 
 **--verify**: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
 
