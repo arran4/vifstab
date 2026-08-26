@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/rcs"
@@ -271,6 +272,13 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) error {
 func commitEdit(cfg config.Config, content []byte, blockingValidationPassed bool, deps Dependencies) error {
 	deps = deps.withDefaults()
 	if err := SaveAndVersion(cfg, content, deps.FS); err != nil {
+		if !strings.Contains(err.Error(), "rcs update failed") {
+			return err
+		}
+		fmt.Printf("Saved successfully, but %v\n", err)
+		if sysErr := handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed); sysErr != nil {
+			return fmt.Errorf("%w; additionally %v", err, sysErr)
+		}
 		return err
 	}
 	fmt.Println("Saved successfully.")

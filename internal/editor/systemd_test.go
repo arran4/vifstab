@@ -102,13 +102,13 @@ func TestCommitEditSystemdHandling(t *testing.T) {
 	}
 }
 
-func TestCommitEditSaveFailureDoesNotReload(t *testing.T) {
+func TestCommitEditSaveFailureBeforeRCSDoesNotReload(t *testing.T) {
 	fsLayer := &failingWriteFS{mockFS: newCommitTestFS()}
 	sm := &mockSystemdManager{isActive: true}
 	cfg := config.Config{FilePath: "/etc/fstab", BackupDir: "/backup", SystemdReload: config.SystemdReloadAuto}
 	err := commitEdit(cfg, []byte("new"), true, Dependencies{FS: fsLayer, Systemd: sm})
-	if err == nil || (!strings.Contains(err.Error(), "rcs update failed") && !strings.Contains(err.Error(), "failed to replace destination file")) {
-		t.Fatalf("got error %v, want failure", err)
+	if err == nil || !strings.Contains(err.Error(), "failed to replace destination file") {
+		t.Fatalf("got error %v, want destination failure", err)
 	}
 	if sm.reloadCount != 0 {
 		t.Fatalf("Reload called %d times after failed save", sm.reloadCount)
@@ -257,4 +257,26 @@ func TestSaveWithoutValidationUsesConservativeSystemdWarning(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCommitEditRCSFailureAfterSaveStillReloads(t *testing.T) {
+	fsLayer := &rcsFailFS{mockFS: newCommitTestFS()}
+	sm := &mockSystemdManager{isActive: true}
+	cfg := config.Config{FilePath: "/etc/fstab", BackupDir: "/backup", SystemdReload: config.SystemdReloadAuto}
+	err := commitEdit(cfg, []byte("new"), true, Dependencies{FS: fsLayer, Systemd: sm})
+	if err == nil || !strings.Contains(err.Error(), "rcs update failed") {
+		t.Fatalf("got error %v, want rcs failure", err)
+	}
+	if sm.reloadCount != 1 {
+		t.Fatalf("Reload called %d times after rcs failure, want 1", sm.reloadCount)
+	}
+}
+
+type rcsFailFS struct{ *mockFS }
+
+func (f *rcsFailFS) WriteFile(name string, data []byte, mode os.FileMode) error {
+	if strings.Contains(name, "/backup") {
+		return errors.New("rcs write failed")
+	}
+	return f.mockFS.WriteFile(name, data, mode)
 }
