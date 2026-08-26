@@ -130,7 +130,7 @@ func TestSaveAndVersionRealFS(t *testing.T) {
 				os.Remove(fstabPath) // Ensure it doesn't exist
 			}
 
-			if err := SaveAndVersion(cfg, content, DefaultFS); err != nil {
+			if err := SaveAndVersion(cfg, content); err != nil {
 				t.Fatalf("SaveAndVersion failed: %v", err)
 			}
 

@@ -101,7 +101,7 @@ func main() {
 			}
 
 			cfg := config.GetDefaultConfig(*fileFlag)
-			if err := editor.SaveAndVersion(cfg, content, editor.DefaultFS); err != nil {
+			if err := editor.SaveAndVersion(cfg, content); err != nil {
 				handleError(err)
 			}
 		} else {
@@ -126,7 +126,7 @@ func main() {
 	flag.StringVar(&file, "file", "/etc/fstab", "File to edit")
 	flag.BoolVar(&generateManpage, "generate-manpage", false, "Generate man page for vifstab to vifstab.1")
 	flag.BoolVar(&verifyOnly, "verify", false, "Verify the file without opening an editor")
-	flag.StringVar(&systemdReload, "systemd-reload", "warn", "Post-save systemd handling for /etc/fstab (auto|warn|never)")
+	flag.StringVar(&systemdReload, "systemd-reload", "warn", "Behavior when editing fstab on systemd hosts (auto|warn|never)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", os.Args[0])
@@ -193,7 +193,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err := editor.EditAndLint(cfg, rules.ActualFS{}, editor.DefaultDependencies())
+	err := editor.EditAndLint(cfg, rules.ActualFS{})
 	if err != nil {
 		handleError(err)
 	}
