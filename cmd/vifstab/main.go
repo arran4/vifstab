@@ -38,7 +38,7 @@ func main() {
 		device := uefiCmd.Arg(0)
 		mountPoint := uefiCmd.Arg(1)
 
-		info, err := uefi.Analyze(rules.ActualFS{}, device, mountPoint)
+		info, err := uefi.Analyze(rules.ActualFS{}, uefi.ActualEFIProvider{}, device, mountPoint)
 		if err != nil {
 			handleError(err)
 		}
