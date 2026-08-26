@@ -216,23 +216,45 @@ func TestEditAndLintContinueAfterBlockingValidationDoesNotReload(t *testing.T) {
 }
 
 func TestSaveWithoutValidationUsesConservativeSystemdWarning(t *testing.T) {
-	fsLayer := newCommitTestFS()
-	sm := &mockSystemdManager{isActive: true}
-	cfg := config.Config{FilePath: "/etc/fstab", SystemdReload: config.SystemdReloadAuto}
-	out, err := captureOutput(t, func() error {
-		return SaveWithoutValidation(cfg, []byte("formatted"), Dependencies{FS: fsLayer, Systemd: sm})
-	})
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name        string
+		filePath    string
+		action      config.SystemdReloadAction
+		active      bool
+		wantWarning bool
+	}{
+		{"auto", "/etc/fstab", config.SystemdReloadAuto, true, true},
+		{"warn", "/etc/fstab", config.SystemdReloadWarn, true, true},
+		{"never", "/etc/fstab", config.SystemdReloadNever, true, false},
+		{"inactive systemd", "/etc/fstab", config.SystemdReloadWarn, false, false},
+		{"non-/etc/fstab", "/etc/fstab.test", config.SystemdReloadWarn, true, false},
 	}
-	if sm.reloadCount != 0 {
-		t.Fatalf("Reload called %d times for unvalidated formatted content", sm.reloadCount)
-	}
-	if !strings.Contains(out, "warning: systemd") {
-		t.Fatalf("missing stale-systemd warning: %q", out)
-	}
-	got, readErr := fsLayer.ReadFile("/etc/fstab")
-	if readErr != nil || string(got) != "formatted" {
-		t.Fatalf("formatted content was not saved: %q, %v", got, readErr)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fsLayer := newCommitTestFS()
+			sm := &mockSystemdManager{isActive: tt.active}
+			cfg := config.Config{FilePath: tt.filePath, SystemdReload: tt.action}
+			out, err := captureOutput(t, func() error {
+				return SaveWithoutValidation(cfg, []byte("formatted"), Dependencies{FS: fsLayer, Systemd: sm})
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if sm.reloadCount != 0 {
+				t.Fatalf("Reload called %d times for unvalidated formatted content", sm.reloadCount)
+			}
+			hasWarning := strings.Contains(out, "warning: systemd")
+			if hasWarning != tt.wantWarning {
+				t.Fatalf("warning present = %v, want %v; output: %q", hasWarning, tt.wantWarning, out)
+			}
+			if tt.wantWarning && !strings.Contains(out, "currently mounted filesystems may also require a remount or reboot") {
+				t.Fatalf("missing mounted-filesystem note: %q", out)
+			}
+			got, readErr := fsLayer.ReadFile(tt.filePath)
+			if readErr != nil || string(got) != "formatted" {
+				t.Fatalf("formatted content was not saved: %q, %v", got, readErr)
+			}
+		})
 	}
 }

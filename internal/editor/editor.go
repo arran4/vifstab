@@ -320,4 +320,5 @@ func handlePostSaveSystemd(cfg config.Config, sm systemd.Manager, autoEligible b
 func printStaleSystemdWarning() {
 	fmt.Println("warning: systemd mount-unit state predates this fstab change.")
 	fmt.Println("run: systemctl daemon-reload")
+	fmt.Println("note: currently mounted filesystems may also require a remount or reboot.")
 }
