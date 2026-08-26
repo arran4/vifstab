@@ -13,6 +13,7 @@ import (
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
 	"github.com/arran4/vifstab/internal/rules/core"
+	"github.com/arran4/vifstab/internal/systemd"
 )
 
 // FS provides filesystem operations to allow mocking
@@ -36,7 +37,35 @@ func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name)
 
 var DefaultFS FS = osFS{}
 
-func EditAndLint(cfg config.Config, api rules.API) error {
+// Dependencies contains the side-effecting services used by the edit workflow.
+// Supplying it explicitly keeps tests on the same production path as the CLI.
+type Dependencies struct {
+	FS      FS
+	Systemd systemd.Manager
+	Editor  func(path string) error
+	Input   io.Reader
+}
+
+func DefaultDependencies() Dependencies {
+	return Dependencies{FS: DefaultFS, Systemd: systemd.NewManager(nil)}
+}
+
+func (d Dependencies) withDefaults() Dependencies {
+	if d.FS == nil {
+		d.FS = DefaultFS
+	}
+	if d.Systemd == nil {
+		d.Systemd = systemd.NewManager(nil)
+	}
+	if d.Input == nil {
+		d.Input = os.Stdin
+	}
+	return d
+}
+
+func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
+	deps = deps.withDefaults()
+
 	// 1. Copy target file to temp
 	tempFile, err := os.CreateTemp("", "vifstab-*")
 	if err != nil {
@@ -59,19 +88,25 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 	}
 	_ = tempFile.Close()
 
-	editorParts, err := editorCommandFromEnvironment()
-	if err != nil {
-		return err
+	if deps.Editor == nil {
+		editorParts, err := editorCommandFromEnvironment()
+		if err != nil {
+			return err
+		}
+		deps.Editor = func(path string) error {
+			cmdArgs := append(editorParts[1:], "--", path)
+			cmd := exec.Command(editorParts[0], cmdArgs...)
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			return cmd.Run()
+		}
 	}
 
+	blockingValidationPassed := false
 	for {
 		// 2. Open Editor
-		cmdArgs := append(editorParts[1:], "--", tempFile.Name())
-		cmd := exec.Command(editorParts[0], cmdArgs...)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
+		if err := deps.Editor(tempFile.Name()); err != nil {
 			return fmt.Errorf("editor failed: %w", err)
 		}
 
@@ -101,6 +136,7 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 		}
 
 		if issueCount == 0 {
+			blockingValidationPassed = true
 			if len(allIssues) > 0 {
 				fmt.Println("Validation successful, but issues were noted:")
 				for _, s := range allIssues {
@@ -117,7 +153,7 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 		}
 
 		fmt.Print("What now? (e)dit again, (c)ontinue and save anyway, (q)uit without saving: ")
-		scanner := bufio.NewScanner(os.Stdin)
+		scanner := bufio.NewScanner(deps.Input)
 		if !scanner.Scan() {
 			return fmt.Errorf("failed to read user input: %w", scanner.Err())
 		}
@@ -138,12 +174,7 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 		return fmt.Errorf("failed to read temp file for saving: %w", err)
 	}
 
-	if err := SaveAndVersion(cfg, content); err != nil {
-		return err
-	}
-
-	fmt.Println("Saved successfully.")
-	return nil
+	return commitEdit(cfg, content, blockingValidationPassed, deps)
 }
 
 func editorCommandFromEnvironment() ([]string, error) {
@@ -175,15 +206,11 @@ func editorCommandFromEnvironment() ([]string, error) {
 }
 
 // SaveAndVersion saves the given content to the target file and versions it using RCS.
-// Accepts an optional dependency injection for the FS layer.
-func SaveAndVersion(cfg config.Config, content []byte, opts ...any) error {
-	var fsLayer FS = DefaultFS
-	for _, opt := range opts {
-		if injection, ok := opt.(FS); ok {
-			fsLayer = injection
-		}
+// It deliberately has no post-save systemd side effects.
+func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) error {
+	if fsLayer == nil {
+		fsLayer = DefaultFS
 	}
-
 	// First update RCS
 	rcsCfg := rcs.Config{Dir: cfg.BackupDir}
 	if err := rcs.Update(cfg.FilePath, content, rcsCfg, fsLayer); err != nil {
@@ -236,4 +263,62 @@ func SaveAndVersion(cfg config.Config, content []byte, opts ...any) error {
 	}
 
 	return nil
+}
+
+// commitEdit commits an edited fstab before considering any systemd action.
+// A user may save after blocking validation fails, but that save is never
+// eligible for an automatic reload and receives the conservative warning.
+func commitEdit(cfg config.Config, content []byte, blockingValidationPassed bool, deps Dependencies) error {
+	deps = deps.withDefaults()
+	if err := SaveAndVersion(cfg, content, deps.FS); err != nil {
+		return err
+	}
+	fmt.Println("Saved successfully.")
+	return handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed)
+}
+
+// SaveWithoutValidation saves content produced by a workflow that has not
+// passed blocking editor validation, then conservatively reports stale systemd
+// state. It never performs an automatic reload.
+func SaveWithoutValidation(cfg config.Config, content []byte, deps Dependencies) error {
+	deps = deps.withDefaults()
+	if err := SaveAndVersion(cfg, content, deps.FS); err != nil {
+		return err
+	}
+	return handlePostSaveSystemd(cfg, deps.Systemd, false)
+}
+
+// HandleSystemdReload performs the configured post-save action after
+// successful blocking validation.
+func HandleSystemdReload(cfg config.Config, sm systemd.Manager) error {
+	return handlePostSaveSystemd(cfg, sm, true)
+}
+
+func handlePostSaveSystemd(cfg config.Config, sm systemd.Manager, autoEligible bool) error {
+	if cfg.FilePath != "/etc/fstab" || !sm.IsActive() {
+		return nil
+	}
+
+	switch cfg.SystemdReload {
+	case config.SystemdReloadAuto:
+		if !autoEligible {
+			printStaleSystemdWarning()
+			return nil
+		}
+		if err := sm.Reload(); err != nil {
+			return fmt.Errorf("fstab saved, but systemd daemon-reload failed: %w", err)
+		}
+		fmt.Println("note: systemd daemon-reload completed.")
+	case config.SystemdReloadWarn, "":
+		printStaleSystemdWarning()
+	case config.SystemdReloadNever:
+		// Do nothing.
+	}
+	return nil
+}
+
+func printStaleSystemdWarning() {
+	fmt.Println("warning: systemd mount-unit state predates this fstab change.")
+	fmt.Println("run: systemctl daemon-reload")
+	fmt.Println("note: currently mounted filesystems may also require a remount or reboot.")
 }

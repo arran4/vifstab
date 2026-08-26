@@ -2,9 +2,18 @@ package config
 
 import "os"
 
+type SystemdReloadAction string
+
+const (
+	SystemdReloadWarn  SystemdReloadAction = "warn"
+	SystemdReloadAuto  SystemdReloadAction = "auto"
+	SystemdReloadNever SystemdReloadAction = "never"
+)
+
 type Config struct {
-	BackupDir string
-	FilePath  string
+	BackupDir     string
+	FilePath      string
+	SystemdReload SystemdReloadAction
 }
 
 func GetDefaultConfig(filePath string) Config {
@@ -18,7 +27,8 @@ func GetDefaultConfig(filePath string) Config {
 	}
 
 	return Config{
-		BackupDir: backupDir,
-		FilePath:  filePath,
+		BackupDir:     backupDir,
+		FilePath:      filePath,
+		SystemdReload: SystemdReloadWarn,
 	}
 }
