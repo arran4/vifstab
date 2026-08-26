@@ -119,12 +119,14 @@ func main() {
 		file            string
 		generateManpage bool
 		verifyOnly      bool
+		systemdReload   string
 	)
 
 	flag.StringVar(&backupDir, "backup-dir", "", "Directory to store RCS backups (defaults to a sensible location based on the file being edited and the user running the command)")
 	flag.StringVar(&file, "file", "/etc/fstab", "File to edit")
 	flag.BoolVar(&generateManpage, "generate-manpage", false, "Generate man page for vifstab to vifstab.1")
 	flag.BoolVar(&verifyOnly, "verify", false, "Verify the file without opening an editor")
+	flag.StringVar(&systemdReload, "systemd-reload", "ask", "Behavior when editing fstab on systemd hosts (auto|ask|never)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", os.Args[0])
@@ -149,6 +151,14 @@ func main() {
 	cfg := config.GetDefaultConfig(file)
 	if backupDir != "" {
 		cfg.BackupDir = backupDir
+	}
+
+	switch config.SystemdReloadAction(systemdReload) {
+	case config.SystemdReloadAuto, config.SystemdReloadAsk, config.SystemdReloadNever:
+		cfg.SystemdReload = config.SystemdReloadAction(systemdReload)
+	default:
+		fmt.Fprintf(os.Stderr, "Error: invalid --systemd-reload value '%s'. Allowed values are: auto, ask, never\n", systemdReload)
+		os.Exit(1)
 	}
 
 	if verifyOnly {

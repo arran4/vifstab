@@ -13,6 +13,7 @@ import (
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
 	"github.com/arran4/vifstab/internal/rules/core"
+	"github.com/arran4/vifstab/internal/systemd"
 )
 
 // FS provides filesystem operations to allow mocking
@@ -36,7 +37,8 @@ func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name)
 
 var DefaultFS FS = osFS{}
 
-func EditAndLint(cfg config.Config, api rules.API) error {
+func EditAndLint(cfg config.Config, api rules.API, opts ...any) error {
+
 	// 1. Copy target file to temp
 	tempFile, err := os.CreateTemp("", "vifstab-*")
 	if err != nil {
@@ -143,6 +145,9 @@ func EditAndLint(cfg config.Config, api rules.API) error {
 	}
 
 	fmt.Println("Saved successfully.")
+
+
+
 	return nil
 }
 
@@ -178,9 +183,13 @@ func editorCommandFromEnvironment() ([]string, error) {
 // Accepts an optional dependency injection for the FS layer.
 func SaveAndVersion(cfg config.Config, content []byte, opts ...any) error {
 	var fsLayer FS = DefaultFS
+	var sm systemd.Manager = systemd.NewManager(nil)
 	for _, opt := range opts {
 		if injection, ok := opt.(FS); ok {
 			fsLayer = injection
+		}
+		if managerOpt, ok := opt.(systemd.Manager); ok {
+			sm = managerOpt
 		}
 	}
 
@@ -232,6 +241,23 @@ func SaveAndVersion(cfg config.Config, content []byte, opts ...any) error {
 		}
 		if err := fsLayer.WriteFile(cfg.FilePath, content, perm); err != nil {
 			return fmt.Errorf("failed to replace destination file: %w", err)
+		}
+	}
+
+	if cfg.FilePath == "/etc/fstab" && sm.IsActive() {
+		switch cfg.SystemdReload {
+		case config.SystemdReloadAuto:
+			if err := sm.Reload(); err != nil {
+				fmt.Printf("warning: automatic daemon-reload failed: %v\n", err)
+			} else {
+				fmt.Println("note: systemd daemon-reload completed.")
+			}
+		case config.SystemdReloadAsk, "":
+			fmt.Println("warning: systemd mount-unit state predates this fstab change.")
+			fmt.Println("run: systemctl daemon-reload")
+			fmt.Println("note: currently mounted filesystems may also require a remount or reboot.")
+		case config.SystemdReloadNever:
+			// Do nothing
 		}
 	}
 

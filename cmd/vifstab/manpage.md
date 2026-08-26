@@ -4,7 +4,7 @@
 vifstab - Edit fstab files with linting and versioning
 
 ## SYNOPSIS
-vifstab [--backup-dir=<value>] [--file=<value>] [--generate-manpage] [--verify] [--help|-h]
+vifstab [--backup-dir=<value>] [--file=<value>] [--generate-manpage] [--systemd-reload=<value>] [--verify] [--help|-h]
 vifstab diagram <device>
 vifstab format [--file=<value>]
 
@@ -24,6 +24,8 @@ If the validation fails (for example, if a mount point does not exist or a files
 **--file**="": The specific file to edit. (default: "/etc/fstab")
 
 **--generate-manpage**: Generates this man page to `vifstab.1` in the current directory.
+
+**--systemd-reload**="ask": Behavior when editing fstab on systemd hosts (auto|ask|never). When set to `auto`, `systemctl daemon-reload` is executed after a successful save. When set to `ask`, a diagnostic message is printed to remind the user. When set to `never`, no action or warning is given.
 
 **--verify**: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
 
