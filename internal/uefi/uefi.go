@@ -109,7 +109,7 @@ func Analyze(api rules.API, efiProv EFIProvider, dev string, mountPoint string) 
 
 				for _, file := range files {
 					name := file.Name()
-					if strings.HasPrefix(name, "Boot") && len(name) >= 8 && name[4:8] != "Order" && name[4:8] != "Curr" {
+					if isBootEntryVar(name) {
 						data, err := efiProv.ReadFile(filepath.Join("/sys/firmware/efi/efivars", name))
 						if err == nil && len(data) > 4 {
 							content := data[4:]
@@ -143,7 +143,7 @@ func Analyze(api rules.API, efiProv EFIProvider, dev string, mountPoint string) 
 
 					var currentBootParsedSuccessfully bool
 					for _, file := range files {
-						if strings.HasPrefix(file.Name(), expectedBootName) {
+						if file.Name() == expectedBootName+"-8be4df61-93ca-11d2-aa0d-00e098032b8c" {
 							data, err := efiProv.ReadFile(filepath.Join("/sys/firmware/efi/efivars", file.Name()))
 							if err == nil && len(data) > 4 {
 								content := data[4:]
@@ -364,4 +364,20 @@ func FormatReport(info *EFIInfo, originalSource string) string {
 	}
 
 	return sb.String()
+}
+
+func isBootEntryVar(name string) bool {
+	if len(name) != 45 { // 8 for "BootXXXX", 1 for "-", 36 for GUID
+		return false
+	}
+	if !strings.HasPrefix(name, "Boot") || !strings.HasSuffix(name, "-8be4df61-93ca-11d2-aa0d-00e098032b8c") {
+		return false
+	}
+	for i := 4; i < 8; i++ {
+		c := name[i]
+		if !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) {
+			return false
+		}
+	}
+	return true
 }
