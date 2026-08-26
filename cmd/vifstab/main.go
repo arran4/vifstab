@@ -101,7 +101,7 @@ func main() {
 			}
 
 			cfg := config.GetDefaultConfig(*fileFlag)
-			if err := editor.SaveAndVersion(cfg, content, editor.DefaultFS); err != nil {
+			if err := editor.SaveWithoutValidation(cfg, content, editor.DefaultDependencies()); err != nil {
 				handleError(err)
 			}
 		} else {

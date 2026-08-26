@@ -73,7 +73,7 @@ Note: `SUDO_EDITOR` is intentionally ignored because `vifstab` does not infer or
 - `--backup-dir value`: Directory to store RCS backups. If not provided, it defaults to `$XDG_CACHE_HOME/vifstab` or `~/.cache/vifstab` for the current user.
 - `--file value`: File to edit (default: "/etc/fstab")
 - `--generate-manpage`: Generate man page for vifstab to `vifstab.1`
-- `--systemd-reload value`: Post-save systemd handling for `/etc/fstab` (`auto|warn|never`) (default: `warn`). `auto` runs `systemctl daemon-reload` only after validation and a committed save; `warn` prints a diagnostic; `never` does nothing.
+- `--systemd-reload value`: Post-save systemd handling for `/etc/fstab` (`auto|warn|never`) (default: `warn`). `auto` runs `systemctl daemon-reload` only after validation and a committed save; an explicitly saved validation failure is warned instead. `warn` prints a diagnostic; `never` does nothing. In-place formatting of `/etc/fstab` warns conservatively and never reloads automatically.
 - `--verify`: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
 
 Example:

@@ -72,7 +72,7 @@ func TestCommitEditSystemdHandling(t *testing.T) {
 		{"never", "/etc/fstab", config.SystemdReloadNever, true, true, 0, "", true},
 		{"other file", "/etc/fstab.test", config.SystemdReloadAuto, true, true, 0, "", true},
 		{"inactive", "/etc/fstab", config.SystemdReloadAuto, false, true, 0, "", true},
-		{"continued after blocking validation", "/etc/fstab", config.SystemdReloadAuto, true, false, 0, "", true},
+		{"continued after blocking validation", "/etc/fstab", config.SystemdReloadAuto, true, false, 0, "warning: systemd", false},
 	}
 
 	for _, tt := range tests {
@@ -115,10 +115,35 @@ func TestCommitEditSaveFailureDoesNotReload(t *testing.T) {
 	}
 }
 
+func TestCommitEditDestinationFailureAfterRCSSuccessDoesNotReload(t *testing.T) {
+	fsLayer := &destinationFailFS{mockFS: newCommitTestFS()}
+	sm := &mockSystemdManager{isActive: true}
+	cfg := config.Config{FilePath: "/etc/fstab", BackupDir: "/backup", SystemdReload: config.SystemdReloadAuto}
+	err := commitEdit(cfg, []byte("new"), true, Dependencies{FS: fsLayer, Systemd: sm})
+	if err == nil || !strings.Contains(err.Error(), "failed to replace destination file") {
+		t.Fatalf("got error %v, want destination failure", err)
+	}
+	if _, rcsErr := fsLayer.ReadFile("/backup/fstab,v"); rcsErr != nil {
+		t.Fatalf("RCS update did not succeed before destination failure: %v", rcsErr)
+	}
+	if sm.reloadCount != 0 {
+		t.Fatalf("Reload called %d times after destination failure", sm.reloadCount)
+	}
+}
+
 type failingWriteFS struct{ *mockFS }
 
 func (f *failingWriteFS) WriteFile(string, []byte, os.FileMode) error {
 	return errors.New("write failed")
+}
+
+type destinationFailFS struct{ *mockFS }
+
+func (f *destinationFailFS) WriteFile(name string, data []byte, mode os.FileMode) error {
+	if name == "/etc/fstab" {
+		return errors.New("destination write failed")
+	}
+	return f.mockFS.WriteFile(name, data, mode)
 }
 
 func TestCommitEditSavesBeforeSystemdHandling(t *testing.T) {
@@ -174,14 +199,40 @@ func TestEditAndLintContinueAfterBlockingValidationDoesNotReload(t *testing.T) {
 		},
 	}
 	cfg := config.Config{FilePath: "/etc/fstab", SystemdReload: config.SystemdReloadAuto}
-	if err := EditAndLint(cfg, &blockingWorkflowAPI{}, deps); err != nil {
-		t.Fatalf("EditAndLint: %v", err)
+	out, editErr := captureOutput(t, func() error { return EditAndLint(cfg, &blockingWorkflowAPI{}, deps) })
+	if editErr != nil {
+		t.Fatalf("EditAndLint: %v", editErr)
 	}
 	if sm.reloadCount != 0 {
 		t.Fatalf("Reload called %d times after blocking validation", sm.reloadCount)
 	}
+	if !strings.Contains(out, "warning: systemd") {
+		t.Fatalf("missing stale-systemd warning after overridden validation: %q", out)
+	}
 	got, err := fsLayer.ReadFile("/etc/fstab")
 	if err != nil || !bytes.Contains(got, []byte("/dev/missing")) {
 		t.Fatalf("explicit save did not commit edited file: %q, %v", got, err)
+	}
+}
+
+func TestSaveWithoutValidationUsesConservativeSystemdWarning(t *testing.T) {
+	fsLayer := newCommitTestFS()
+	sm := &mockSystemdManager{isActive: true}
+	cfg := config.Config{FilePath: "/etc/fstab", SystemdReload: config.SystemdReloadAuto}
+	out, err := captureOutput(t, func() error {
+		return SaveWithoutValidation(cfg, []byte("formatted"), Dependencies{FS: fsLayer, Systemd: sm})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sm.reloadCount != 0 {
+		t.Fatalf("Reload called %d times for unvalidated formatted content", sm.reloadCount)
+	}
+	if !strings.Contains(out, "warning: systemd") {
+		t.Fatalf("missing stale-systemd warning: %q", out)
+	}
+	got, readErr := fsLayer.ReadFile("/etc/fstab")
+	if readErr != nil || string(got) != "formatted" {
+		t.Fatalf("formatted content was not saved: %q, %v", got, readErr)
 	}
 }

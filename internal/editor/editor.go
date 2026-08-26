@@ -267,36 +267,57 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) error {
 
 // commitEdit commits an edited fstab before considering any systemd action.
 // A user may save after blocking validation fails, but that save is never
-// eligible for automatic reload handling.
+// eligible for an automatic reload and receives the conservative warning.
 func commitEdit(cfg config.Config, content []byte, blockingValidationPassed bool, deps Dependencies) error {
 	deps = deps.withDefaults()
 	if err := SaveAndVersion(cfg, content, deps.FS); err != nil {
 		return err
 	}
 	fmt.Println("Saved successfully.")
-	if !blockingValidationPassed {
-		return nil
-	}
-	return HandleSystemdReload(cfg, deps.Systemd)
+	return handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed)
 }
 
-// HandleSystemdReload performs the explicitly configured post-save action.
+// SaveWithoutValidation saves content produced by a workflow that has not
+// passed blocking editor validation, then conservatively reports stale systemd
+// state. It never performs an automatic reload.
+func SaveWithoutValidation(cfg config.Config, content []byte, deps Dependencies) error {
+	deps = deps.withDefaults()
+	if err := SaveAndVersion(cfg, content, deps.FS); err != nil {
+		return err
+	}
+	return handlePostSaveSystemd(cfg, deps.Systemd, false)
+}
+
+// HandleSystemdReload performs the configured post-save action after
+// successful blocking validation.
 func HandleSystemdReload(cfg config.Config, sm systemd.Manager) error {
+	return handlePostSaveSystemd(cfg, sm, true)
+}
+
+func handlePostSaveSystemd(cfg config.Config, sm systemd.Manager, autoEligible bool) error {
 	if cfg.FilePath != "/etc/fstab" || !sm.IsActive() {
 		return nil
 	}
 
 	switch cfg.SystemdReload {
 	case config.SystemdReloadAuto:
+		if !autoEligible {
+			printStaleSystemdWarning()
+			return nil
+		}
 		if err := sm.Reload(); err != nil {
 			return fmt.Errorf("fstab saved, but systemd daemon-reload failed: %w", err)
 		}
 		fmt.Println("note: systemd daemon-reload completed.")
 	case config.SystemdReloadWarn, "":
-		fmt.Println("warning: systemd mount-unit state predates this fstab change.")
-		fmt.Println("run: systemctl daemon-reload")
+		printStaleSystemdWarning()
 	case config.SystemdReloadNever:
 		// Do nothing.
 	}
 	return nil
+}
+
+func printStaleSystemdWarning() {
+	fmt.Println("warning: systemd mount-unit state predates this fstab change.")
+	fmt.Println("run: systemctl daemon-reload")
 }
