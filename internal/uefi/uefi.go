@@ -84,8 +84,13 @@ func Analyze(api rules.API, efiProv EFIProvider, dev string, mountPoint string) 
 			hasTree := false
 			if _, err := efiProv.Stat(filepath.Join(mountPoint, "EFI")); err == nil {
 				hasTree = true
+				info.HasEFITree = &hasTree
+			} else if os.IsNotExist(err) || err == fs.ErrNotExist {
+				info.HasEFITree = &hasTree
+			} else {
+				// permission denied or other errors -> unknown
+				info.HasEFITree = nil
 			}
-			info.HasEFITree = &hasTree
 		} else {
 			info.HasEFITree = nil
 		}
@@ -98,7 +103,9 @@ func Analyze(api rules.API, efiProv EFIProvider, dev string, mountPoint string) 
 			if err == nil {
 				var refs []NVRAMRef
 				var matchFound *bool
-				var anyParseable bool
+
+				allParseable := true
+				hasPositiveMatch := false
 
 				for _, file := range files {
 					name := file.Name()
@@ -107,21 +114,24 @@ func Analyze(api rules.API, efiProv EFIProvider, dev string, mountPoint string) 
 						if err == nil && len(data) > 4 {
 							content := data[4:]
 							contains, valid := containsHardDriveMediaDevicePath(content, partUUIDBytes)
-							if valid {
-								anyParseable = true
+							if !valid {
+								allParseable = false
 							}
 							if contains {
+								hasPositiveMatch = true
 								desc, path, _ := parseEFIPath(content)
 								refs = append(refs, NVRAMRef{
 									Name: desc,
 									Path: path,
 								})
 							}
+						} else {
+							allParseable = false
 						}
 					}
 				}
 
-				if anyParseable {
+				if allParseable || hasPositiveMatch {
 					info.NVRAMRefs = &refs
 				}
 

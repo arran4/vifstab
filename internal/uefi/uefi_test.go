@@ -295,3 +295,92 @@ func TestAnalyze_MismatchBootCurrent(t *testing.T) {
 		t.Errorf("Expected BootedMatch false")
 	}
 }
+
+
+type customErr struct { msg string }
+func (e customErr) Error() string { return e.msg }
+
+func TestAnalyze_PermissionDeniedEFI(t *testing.T) {
+	partUUID := "71cc0b59-9cd1-6642-9de4-d16d59f5ea94"
+	api := mockAPI{
+		devices: []rules.BlockDevice{
+			{
+				Path:        "/dev/nvme1n1p6",
+				UUID:        "8F53-C3B9",
+				PartUUID:    partUUID,
+				FSType:      "vfat",
+				PartType:    "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",
+				MountPoints: []string{"/efi"},
+			},
+		},
+	}
+
+	prov := mockEFIProv{
+		statFunc: func(name string) (fs.FileInfo, error) {
+			if strings.Contains(name, "EFI") {
+				return nil, customErr{"permission denied"}
+			}
+			return mockFileInfo{}, nil
+		},
+		readDirFunc: func(name string) ([]fs.DirEntry, error) {
+			return nil, osErrNotExist
+		},
+	}
+
+	info, err := Analyze(api, prov, "/dev/nvme1n1p6", "/efi")
+	if err != nil {
+		t.Fatalf("Analyze failed: %v", err)
+	}
+	if info.HasEFITree != nil {
+		t.Errorf("Expected HasEFITree nil (unknown), got %v", *info.HasEFITree)
+	}
+}
+
+func TestAnalyze_UnreadableBootEntry(t *testing.T) {
+	partUUID := "71cc0b59-9cd1-6642-9de4-d16d59f5ea94"
+	api := mockAPI{
+		devices: []rules.BlockDevice{
+			{
+				Path:        "/dev/nvme1n1p6",
+				UUID:        "8F53-C3B9",
+				PartUUID:    partUUID,
+				FSType:      "vfat",
+				PartType:    "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",
+				MountPoints: []string{"/efi"},
+			},
+		},
+	}
+
+	prov := mockEFIProv{
+		statFunc: func(name string) (fs.FileInfo, error) {
+			return mockFileInfo{}, nil
+		},
+		readDirFunc: func(name string) ([]fs.DirEntry, error) {
+			return []fs.DirEntry{
+				mockDirEntry{name: "Boot0001-8be4df61-93ca-11d2-aa0d-00e098032b8c"},
+				mockDirEntry{name: "Boot0002-8be4df61-93ca-11d2-aa0d-00e098032b8c"},
+			}, nil
+		},
+		readFileFunc: func(name string) ([]byte, error) {
+			if strings.Contains(name, "BootCurrent") {
+				return nil, osErrNotExist
+			}
+			if strings.Contains(name, "Boot0001") {
+				otherUUID, _ := parseUUID("11111111-2222-3333-4444-555555555555")
+				return buildLoadOption("Windows", "\\EFI\\Microsoft\\Boot\\bootmgfw.efi", otherUUID, true), nil
+			}
+			if strings.Contains(name, "Boot0002") {
+				return nil, customErr{"permission denied"}
+			}
+			return nil, osErrNotExist
+		},
+	}
+
+	info, err := Analyze(api, prov, "/dev/nvme1n1p6", "/efi")
+	if err != nil {
+		t.Fatalf("Analyze failed: %v", err)
+	}
+	if info.NVRAMRefs != nil {
+		t.Errorf("Expected NVRAMRefs nil (unknown), got %v", info.NVRAMRefs)
+	}
+}
