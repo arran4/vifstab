@@ -2,170 +2,186 @@ package editor
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"io"
 	"os"
+	"strings"
 	"testing"
 	"testing/fstest"
 
 	"github.com/arran4/vifstab/internal/config"
+	"github.com/arran4/vifstab/internal/rules"
 )
 
 type mockSystemdManager struct {
-	isActive  bool
-	reloadErr error
-	reloaded  bool
+	isActive    bool
+	reloadErr   error
+	reloadCount int
+	onReload    func()
 }
 
-func (m *mockSystemdManager) IsActive() bool {
-	return m.isActive
-}
-
+func (m *mockSystemdManager) IsActive() bool { return m.isActive }
 func (m *mockSystemdManager) Reload() error {
-	m.reloaded = true
+	m.reloadCount++
+	if m.onReload != nil {
+		m.onReload()
+	}
 	return m.reloadErr
 }
 
-// captureOutput captures stdout output of a function
-func captureOutput(f func()) string {
+func captureOutput(t *testing.T, f func() error) (string, error) {
+	t.Helper()
 	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
 	os.Stdout = w
+	defer func() { os.Stdout = oldStdout }()
 
-	f()
-
-	_ = w.Close()
-	os.Stdout = oldStdout
-
+	callErr := f()
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
 	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
-	return buf.String()
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatal(err)
+	}
+	return buf.String(), callErr
 }
 
-func TestSaveAndVersionSystemdReload(t *testing.T) {
-	dir := t.TempDir()
-	fstabPath := dir + "/fstab"
-	backupDir := dir + "/backup"
+func newCommitTestFS() *mockFS {
+	return &mockFS{mfs: fstest.MapFS{
+		"etc/fstab": &fstest.MapFile{Data: []byte("old"), Mode: 0644},
+	}}
+}
 
+func TestCommitEditSystemdHandling(t *testing.T) {
 	tests := []struct {
-		name          string
-		filePath      string // what is set in config (could be /etc/fstab for simulation)
-		isActive      bool
-		systemdReload config.SystemdReloadAction
-		reloadErr     error
-		expectedOut   string
-		expectReload  bool
+		name             string
+		path             string
+		action           config.SystemdReloadAction
+		active           bool
+		validationPassed bool
+		wantReloads      int
+		wantOutput       string
+		wantNoSystemdOut bool
 	}{
-		{
-			name:          "not /etc/fstab",
-			filePath:      "/etc/fstab.old",
-			isActive:      true,
-			systemdReload: config.SystemdReloadAsk,
-			expectedOut:   "",
-			expectReload:  false,
-		},
-		{
-			name:          "/etc/fstab, active, ask",
-			filePath:      "/etc/fstab",
-			isActive:      true,
-			systemdReload: config.SystemdReloadAsk,
-			expectedOut:   "warning: systemd mount-unit state predates this fstab change",
-			expectReload:  false,
-		},
-		{
-			name:          "/etc/fstab, not active",
-			filePath:      "/etc/fstab",
-			isActive:      false,
-			systemdReload: config.SystemdReloadAsk,
-			expectedOut:   "",
-			expectReload:  false,
-		},
-		{
-			name:          "/etc/fstab, active, never",
-			filePath:      "/etc/fstab",
-			isActive:      true,
-			systemdReload: config.SystemdReloadNever,
-			expectedOut:   "",
-			expectReload:  false,
-		},
-		{
-			name:          "/etc/fstab, active, auto success",
-			filePath:      "/etc/fstab",
-			isActive:      true,
-			systemdReload: config.SystemdReloadAuto,
-			expectedOut:   "note: systemd daemon-reload completed",
-			expectReload:  true,
-		},
-		{
-			name:          "/etc/fstab, active, auto fail",
-			filePath:      "/etc/fstab",
-			isActive:      true,
-			systemdReload: config.SystemdReloadAuto,
-			reloadErr:     os.ErrPermission,
-			expectedOut:   "warning: automatic daemon-reload failed",
-			expectReload:  true,
-		},
+		{"auto", "/etc/fstab", config.SystemdReloadAuto, true, true, 1, "daemon-reload completed", false},
+		{"warn diagnostic", "/etc/fstab", config.SystemdReloadWarn, true, true, 0, "warning: systemd", false},
+		{"never", "/etc/fstab", config.SystemdReloadNever, true, true, 0, "", true},
+		{"other file", "/etc/fstab.test", config.SystemdReloadAuto, true, true, 0, "", true},
+		{"inactive", "/etc/fstab", config.SystemdReloadAuto, false, true, 0, "", true},
+		{"continued after blocking validation", "/etc/fstab", config.SystemdReloadAuto, true, false, 0, "", true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := config.Config{
-				FilePath:      tt.filePath,
-				BackupDir:     backupDir,
-				SystemdReload: tt.systemdReload,
-			}
-			sm := &mockSystemdManager{
-				isActive:  tt.isActive,
-				reloadErr: tt.reloadErr,
-			}
-
-			// we replace real file path if we spoof "/etc/fstab" so it doesn't try to write to root FS
-			actualFilePath := fstabPath
-			if tt.filePath == "/etc/fstab" {
-				cfg.FilePath = actualFilePath
-			}
-
-			// We need a mock fs that just returns ok for writes so we can isolate testing the output
-			fsLayer := &mockFS{
-				mfs: fstest.MapFS{},
-			}
-			fsLayer.mfs[actualFilePath] = &fstest.MapFile{Data: []byte(""), Mode: 0644}
-
-			out := captureOutput(func() {
-				cfg.FilePath = tt.filePath // spoof back for checking
-				// Test the exact snippet of code from SaveAndVersion.
-				if cfg.FilePath == "/etc/fstab" && sm.IsActive() {
-					switch cfg.SystemdReload {
-					case config.SystemdReloadAuto:
-						if err := sm.Reload(); err != nil {
-							fmt.Printf("warning: automatic daemon-reload failed: %v\n", err)
-						} else {
-							fmt.Println("note: systemd daemon-reload completed.")
-						}
-					case config.SystemdReloadAsk, "":
-						fmt.Println("warning: systemd mount-unit state predates this fstab change.")
-						fmt.Println("run: systemctl daemon-reload")
-						fmt.Println("note: currently mounted filesystems may also require a remount or reboot.")
-					case config.SystemdReloadNever:
-						// Do nothing
-					}
-				}
+			fsLayer := newCommitTestFS()
+			sm := &mockSystemdManager{isActive: tt.active}
+			cfg := config.Config{FilePath: tt.path, SystemdReload: tt.action}
+			out, err := captureOutput(t, func() error {
+				return commitEdit(cfg, []byte("new"), tt.validationPassed, Dependencies{FS: fsLayer, Systemd: sm})
 			})
-
-			if tt.expectReload != sm.reloaded {
-				t.Errorf("expected reload=%v, got %v", tt.expectReload, sm.reloaded)
+			if err != nil {
+				t.Fatalf("commitEdit: %v", err)
 			}
-			if tt.expectedOut != "" && !bytes.Contains([]byte(out), []byte(tt.expectedOut)) {
-				t.Errorf("expected output containing %q, got %q", tt.expectedOut, out)
+			if sm.reloadCount != tt.wantReloads {
+				t.Fatalf("Reload called %d times, want %d", sm.reloadCount, tt.wantReloads)
 			}
-			if tt.expectedOut == "" && bytes.Contains([]byte(out), []byte("systemd")) {
-				t.Errorf("expected no systemd output, got %q", out)
+			if tt.wantOutput != "" && !strings.Contains(out, tt.wantOutput) {
+				t.Fatalf("output %q does not contain %q", out, tt.wantOutput)
+			}
+			if tt.wantNoSystemdOut && strings.Contains(out, "systemd") {
+				t.Fatalf("unexpected systemd output: %q", out)
+			}
+			if got, readErr := fsLayer.ReadFile(tt.path); readErr != nil || string(got) != "new" {
+				t.Fatalf("saved content = %q, %v", got, readErr)
 			}
 		})
 	}
 }
 
-type fstestMapFile struct {
-	Data []byte
-	Mode os.FileMode
+func TestCommitEditSaveFailureDoesNotReload(t *testing.T) {
+	fsLayer := &failingWriteFS{mockFS: newCommitTestFS()}
+	sm := &mockSystemdManager{isActive: true}
+	cfg := config.Config{FilePath: "/etc/fstab", BackupDir: "/backup", SystemdReload: config.SystemdReloadAuto}
+	err := commitEdit(cfg, []byte("new"), true, Dependencies{FS: fsLayer, Systemd: sm})
+	if err == nil || !strings.Contains(err.Error(), "rcs update failed") {
+		t.Fatalf("got error %v, want RCS failure", err)
+	}
+	if sm.reloadCount != 0 {
+		t.Fatalf("Reload called %d times after failed save", sm.reloadCount)
+	}
+}
+
+type failingWriteFS struct{ *mockFS }
+
+func (f *failingWriteFS) WriteFile(string, []byte, os.FileMode) error {
+	return errors.New("write failed")
+}
+
+func TestCommitEditSavesBeforeSystemdHandling(t *testing.T) {
+	fsLayer := newCommitTestFS()
+	sm := &mockSystemdManager{isActive: true}
+	sm.onReload = func() {
+		got, err := fsLayer.ReadFile("/etc/fstab")
+		if err != nil || string(got) != "new" {
+			t.Fatalf("Reload occurred before committed save: %q, %v", got, err)
+		}
+	}
+	cfg := config.Config{FilePath: "/etc/fstab", SystemdReload: config.SystemdReloadAuto}
+	if err := commitEdit(cfg, []byte("new"), true, Dependencies{FS: fsLayer, Systemd: sm}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCommitEditReloadFailureIsPostSaveError(t *testing.T) {
+	fsLayer := newCommitTestFS()
+	reloadErr := errors.New("access denied")
+	sm := &mockSystemdManager{isActive: true, reloadErr: reloadErr}
+	cfg := config.Config{FilePath: "/etc/fstab", SystemdReload: config.SystemdReloadAuto}
+	err := commitEdit(cfg, []byte("new"), true, Dependencies{FS: fsLayer, Systemd: sm})
+	if err == nil || !strings.Contains(err.Error(), "fstab saved, but systemd daemon-reload failed: access denied") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !errors.Is(err, reloadErr) {
+		t.Fatalf("error does not wrap reload failure: %v", err)
+	}
+	got, readErr := fsLayer.ReadFile("/etc/fstab")
+	if readErr != nil || string(got) != "new" {
+		t.Fatalf("saved fstab was rolled back: %q, %v", got, readErr)
+	}
+}
+
+type blockingWorkflowAPI struct{ mockAPI }
+
+func (blockingWorkflowAPI) CheckFileExists(string) rules.FileExistsResult {
+	return rules.FileDoesNotExist
+}
+
+func (blockingWorkflowAPI) CheckBlockDeviceExists(string) bool { return false }
+
+func TestEditAndLintContinueAfterBlockingValidationDoesNotReload(t *testing.T) {
+	fsLayer := newCommitTestFS()
+	sm := &mockSystemdManager{isActive: true}
+	deps := Dependencies{
+		FS:      fsLayer,
+		Systemd: sm,
+		Input:   strings.NewReader("c\n"),
+		Editor: func(path string) error {
+			return os.WriteFile(path, []byte("/dev/missing /definitely/missing ext4 defaults 0\n"), 0600)
+		},
+	}
+	cfg := config.Config{FilePath: "/etc/fstab", SystemdReload: config.SystemdReloadAuto}
+	if err := EditAndLint(cfg, &blockingWorkflowAPI{}, deps); err != nil {
+		t.Fatalf("EditAndLint: %v", err)
+	}
+	if sm.reloadCount != 0 {
+		t.Fatalf("Reload called %d times after blocking validation", sm.reloadCount)
+	}
+	got, err := fsLayer.ReadFile("/etc/fstab")
+	if err != nil || !bytes.Contains(got, []byte("/dev/missing")) {
+		t.Fatalf("explicit save did not commit edited file: %q, %v", got, err)
+	}
 }

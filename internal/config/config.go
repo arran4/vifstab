@@ -5,7 +5,7 @@ import "os"
 type SystemdReloadAction string
 
 const (
-	SystemdReloadAsk   SystemdReloadAction = "ask"
+	SystemdReloadWarn  SystemdReloadAction = "warn"
 	SystemdReloadAuto  SystemdReloadAction = "auto"
 	SystemdReloadNever SystemdReloadAction = "never"
 )
@@ -29,6 +29,6 @@ func GetDefaultConfig(filePath string) Config {
 	return Config{
 		BackupDir:     backupDir,
 		FilePath:      filePath,
-		SystemdReload: SystemdReloadAsk,
+		SystemdReload: SystemdReloadWarn,
 	}
 }
