@@ -133,11 +133,8 @@ func TestCommitEditDestinationFailureBeforeRCSSuccessDoesNotReload(t *testing.T)
 
 type failingWriteFS struct{ *mockFS }
 
-func (f *failingWriteFS) CreateTemp(dir, pattern string) (TempFile, error) {
-	if dir == "/etc" {
-		return nil, errors.New("failed to replace destination file")
-	}
-	return nil, errors.New("fallback error")
+func (f *failingWriteFS) WriteFile(string, []byte, os.FileMode) error {
+	return errors.New("write failed")
 }
 
 type destinationFailFS struct{ *mockFS }

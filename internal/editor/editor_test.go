@@ -25,10 +25,6 @@ type mockFS struct {
 	writeErr error
 }
 
-func (m *mockFS) CreateTemp(dir, pattern string) (TempFile, error) {
-	return nil, fmt.Errorf("mockFS CreateTemp not implemented")
-}
-
 func (m *mockFS) ReadFile(name string) ([]byte, error) {
 	name = strings.TrimPrefix(filepath.ToSlash(name), "/")
 	if f, ok := m.mfs[name]; ok {
