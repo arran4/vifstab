@@ -25,6 +25,10 @@ type mockFS struct {
 	writeErr error
 }
 
+func (m *mockFS) CreateTemp(dir, pattern string) (TempFile, error) {
+	return nil, fmt.Errorf("mockFS CreateTemp not implemented")
+}
+
 func (m *mockFS) ReadFile(name string) ([]byte, error) {
 	name = strings.TrimPrefix(filepath.ToSlash(name), "/")
 	if f, ok := m.mfs[name]; ok {
@@ -356,9 +360,9 @@ func TestSaveAndVersionFailure(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mfs := &mockFS{
-				mfs:       make(fstest.MapFS),
-				statErr:   tt.statErr,
-				writeErr:  tt.writeErr,
+				mfs:      make(fstest.MapFS),
+				statErr:  tt.statErr,
+				writeErr: tt.writeErr,
 			}
 
 			err := SaveAndVersion(cfg, content, mfs)

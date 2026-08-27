@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/rcs"
@@ -212,6 +211,11 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) error {
 	if fsLayer == nil {
 		fsLayer = DefaultFS
 	}
+	// First update RCS
+	rcsCfg := rcs.Config{Dir: cfg.BackupDir}
+	if err := rcs.Update(cfg.FilePath, content, rcsCfg, fsLayer); err != nil {
+		return fmt.Errorf("rcs update failed: %w", err)
+	}
 
 	var targetMode *os.FileMode
 	if info, err := fsLayer.Stat(cfg.FilePath); err == nil {
@@ -258,11 +262,6 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) error {
 		}
 	}
 
-	rcsCfg := rcs.Config{Dir: cfg.BackupDir}
-	if err := rcs.Update(cfg.FilePath, content, rcsCfg, fsLayer); err != nil {
-		return fmt.Errorf("rcs update failed: %w", err)
-	}
-
 	return nil
 }
 
@@ -272,13 +271,6 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) error {
 func commitEdit(cfg config.Config, content []byte, blockingValidationPassed bool, deps Dependencies) error {
 	deps = deps.withDefaults()
 	if err := SaveAndVersion(cfg, content, deps.FS); err != nil {
-		if !strings.Contains(err.Error(), "rcs update failed") {
-			return err
-		}
-		fmt.Printf("Saved successfully, but %v\n", err)
-		if sysErr := handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed); sysErr != nil {
-			return fmt.Errorf("%w; additionally %v", err, sysErr)
-		}
 		return err
 	}
 	fmt.Println("Saved successfully.")
