@@ -2,6 +2,7 @@ package editor
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -335,13 +336,7 @@ func commitEdit(cfg config.Config, content []byte, blockingValidationPassed bool
 		sysErr = handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed)
 	}
 
-	if res.Err != nil && sysErr != nil {
-		return fmt.Errorf("%v; additionally, systemd error: %v", res.Err, sysErr)
-	}
-	if res.Err != nil {
-		return res.Err
-	}
-	return sysErr
+	return errors.Join(res.Err, sysErr)
 }
 
 // SaveWithoutValidation saves content produced by a workflow that has not
@@ -356,13 +351,7 @@ func SaveWithoutValidation(cfg config.Config, content []byte, deps Dependencies)
 		sysErr = handlePostSaveSystemd(cfg, deps.Systemd, false)
 	}
 
-	if res.Err != nil && sysErr != nil {
-		return fmt.Errorf("%v; additionally, systemd error: %v", res.Err, sysErr)
-	}
-	if res.Err != nil {
-		return res.Err
-	}
-	return sysErr
+	return errors.Join(res.Err, sysErr)
 }
 
 // HandleSystemdReload performs the configured post-save action after

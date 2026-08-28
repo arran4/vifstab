@@ -1,0 +1,20 @@
+-- input/etc/fstab --
+old fstab content
+-- input/new_fstab --
+new fstab content
+-- env/XDG_CACHE_HOME --
+/var/backup
+-- fault/rcs.temp.chmod --
+rcs temp chmod error
+-- expected/etc/fstab --
+new fstab content
+-- expected/rcs_exists --
+false
+-- expected/Saved --
+true
+-- expected/VersioningEnabled --
+true
+-- expected/Versioned --
+false
+-- expected/Err --
+rcs update failed: failed to chmod temporary rcs file: rcs temp chmod error

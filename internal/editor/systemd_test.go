@@ -233,6 +233,29 @@ func TestCommitEditReloadFailureIsPostSaveError(t *testing.T) {
 	}
 }
 
+func TestCommitEditDualFailureCombinesErrors(t *testing.T) {
+	fsLayer := newCommitTestFS()
+	fsLayer.faults = map[string]error{
+		"rcs.mkdir": errors.New("rcs failure"),
+	}
+	systemdErr := errors.New("systemd failure")
+	sm := &mockSystemdManager{isActive: true, reloadErr: systemdErr}
+	cfg := config.Config{FilePath: "/etc/fstab", BackupDir: "/backup", SystemdReload: config.SystemdReloadAuto}
+
+	err := commitEdit(cfg, []byte("new"), true, Dependencies{FS: fsLayer, Systemd: sm})
+	if err == nil {
+		t.Fatal("expected combined error, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "rcs failure") {
+		t.Errorf("error missing RCS failure: %v", err)
+	}
+
+	if !errors.Is(err, systemdErr) {
+		t.Errorf("error does not wrap systemd failure: %v", err)
+	}
+}
+
 type blockingWorkflowAPI struct{ mockAPI }
 
 func (blockingWorkflowAPI) CheckFileExists(string) rules.FileExistsResult {

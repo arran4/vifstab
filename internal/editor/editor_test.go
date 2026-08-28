@@ -435,35 +435,48 @@ func TestSaveAndVersion(t *testing.T) {
 			}
 
 			if expectedRcsContent != "" && expectedRcsPath != "" {
-				// Don't assert full structure for error tests, just that it exists
-				if expectedErr == "" {
-					rcsBytes, err := mfs.ReadFile(expectedRcsPath)
-					if err != nil {
-						t.Fatalf("failed to read rcs file at expected path %s: %v", expectedRcsPath, err)
-					}
+				rcsBytes, err := mfs.ReadFile(expectedRcsPath)
+				if err != nil {
+					t.Fatalf("failed to read rcs file at expected path %s: %v", expectedRcsPath, err)
+				}
 
-					// Time and exact formatting might differ, so let's verify key parts
-					rcsStr := string(rcsBytes)
-
-					if !strings.Contains(rcsStr, "desc") {
-						t.Errorf("expected rcs file to contain 'desc', got:\n%s", rcsStr)
-					}
-
-					if len(updateContent) > 0 {
-						if !strings.Contains(rcsStr, "1.2") {
-							t.Errorf("expected rcs file to contain '1.2' revision, got:\n%s", rcsStr)
+				// Assert byte for byte regardless of error status
+				if string(rcsBytes) != expectedRcsContent {
+					// Time and exact formatting might differ for newly built files in success cases
+					if expectedErr == "" {
+						rcsStr := string(rcsBytes)
+						if !strings.Contains(rcsStr, "desc") {
+							t.Errorf("expected rcs file to contain 'desc', got:\n%s", rcsStr)
 						}
-						if !strings.Contains(rcsStr, "@even newer fstab content\n@") {
-							t.Errorf("expected rcs file to contain '@even newer fstab content\\n@', got:\n%s", rcsStr)
+
+						if len(updateContent) > 0 {
+							if !strings.Contains(rcsStr, "1.2") {
+								t.Errorf("expected rcs file to contain '1.2' revision, got:\n%s", rcsStr)
+							}
+							if !strings.Contains(rcsStr, "@even newer fstab content\n@") {
+								t.Errorf("expected rcs file to contain '@even newer fstab content\\n@', got:\n%s", rcsStr)
+							}
+						} else {
+							if !strings.Contains(rcsStr, "1.1") {
+								t.Errorf("expected rcs file to contain '1.1' revision, got:\n%s", rcsStr)
+							}
+							if !strings.Contains(rcsStr, "@new fstab content\n@") {
+								t.Errorf("expected rcs file to contain '@new fstab content\\n@', got:\n%s", rcsStr)
+							}
 						}
 					} else {
-						if !strings.Contains(rcsStr, "1.1") {
-							t.Errorf("expected rcs file to contain '1.1' revision, got:\n%s", rcsStr)
-						}
-						if !strings.Contains(rcsStr, "@new fstab content\n@") {
-							t.Errorf("expected rcs file to contain '@new fstab content\\n@', got:\n%s", rcsStr)
-						}
+						// For failure states with explicit expected content (e.g. testing atomic preservation)
+						// Check byte for byte to ensure preservation of exact original archive.
+						t.Errorf("expected RCS file to be exactly preserved, but it was modified.\nWanted:\n%s\nGot:\n%s", expectedRcsContent, string(rcsBytes))
 					}
+				}
+			}
+
+			// Add common transaction-temp cleanup verification.
+			for name := range mfs.mfs {
+				base := filepath.Base(name)
+				if strings.HasPrefix(base, "vifstab-tmp-") || strings.HasPrefix(base, "rcs-tmp-") {
+					t.Errorf("Temporary file %s was not cleaned up", name)
 				}
 			}
 
