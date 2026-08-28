@@ -235,8 +235,9 @@ func TestCommitEditReloadFailureIsPostSaveError(t *testing.T) {
 
 func TestCommitEditDualFailureCombinesErrors(t *testing.T) {
 	fsLayer := newCommitTestFS()
+	rcsErr := errors.New("rcs failure")
 	fsLayer.faults = map[string]error{
-		"rcs.mkdir": errors.New("rcs failure"),
+		"rcs.mkdir": rcsErr,
 	}
 	systemdErr := errors.New("systemd failure")
 	sm := &mockSystemdManager{isActive: true, reloadErr: systemdErr}
@@ -247,8 +248,8 @@ func TestCommitEditDualFailureCombinesErrors(t *testing.T) {
 		t.Fatal("expected combined error, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "rcs failure") {
-		t.Errorf("error missing RCS failure: %v", err)
+	if !errors.Is(err, rcsErr) {
+		t.Errorf("error does not wrap RCS failure: %v", err)
 	}
 
 	if !errors.Is(err, systemdErr) {
