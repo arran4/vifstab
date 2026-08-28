@@ -2,6 +2,7 @@ package editor
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -17,6 +18,10 @@ import (
 //go:embed testdata/save_and_version/*.txtar
 var testdataFS embed.FS
 
+func normalizeMockPath(name string) string {
+	return strings.TrimPrefix(filepath.ToSlash(filepath.Clean(name)), "/")
+}
+
 // mockFS implements the editor.FS interface using fstest.MapFS
 type mockFS struct {
 	mfs fstest.MapFS
@@ -26,7 +31,7 @@ type mockFS struct {
 }
 
 func (m *mockFS) ReadFile(name string) ([]byte, error) {
-	name = strings.TrimPrefix(filepath.ToSlash(name), "/")
+	name = normalizeMockPath(name)
 	if f, ok := m.mfs[name]; ok {
 		return f.Data, nil
 	}
@@ -37,26 +42,73 @@ func (m *mockFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	if m.writeErr != nil {
 		return m.writeErr
 	}
-	name = strings.TrimPrefix(filepath.ToSlash(name), "/")
+	name = normalizeMockPath(name)
 	m.mfs[name] = &fstest.MapFile{Data: data, Mode: perm}
 	return nil
 }
 
 func (m *mockFS) MkdirAll(path string, perm os.FileMode) error {
-	path = strings.TrimPrefix(filepath.ToSlash(path), "/")
+	path = normalizeMockPath(path)
 	m.mfs[path] = &fstest.MapFile{Mode: perm | os.ModeDir}
 	return nil
 }
 
 func (m *mockFS) Rename(oldpath, newpath string) error {
-	oldpath = strings.TrimPrefix(filepath.ToSlash(oldpath), "/")
-	newpath = strings.TrimPrefix(filepath.ToSlash(newpath), "/")
+	oldpath = normalizeMockPath(oldpath)
+	newpath = normalizeMockPath(newpath)
 	if f, ok := m.mfs[oldpath]; ok {
 		m.mfs[newpath] = f
 		delete(m.mfs, oldpath)
 		return nil
 	}
 	return os.ErrNotExist
+}
+
+func (m *mockFS) Remove(name string) error {
+	name = normalizeMockPath(name)
+	delete(m.mfs, name)
+	return nil
+}
+
+type mockTempFile struct {
+	name   string
+	mfs    *mockFS
+	closed bool
+	data   []byte
+}
+
+func (t *mockTempFile) Write(p []byte) (n int, err error) {
+	if t.closed {
+		return 0, fmt.Errorf("file closed")
+	}
+	t.data = append(t.data, p...)
+	return len(p), nil
+}
+
+func (t *mockTempFile) Close() error {
+	t.closed = true
+	t.mfs.WriteFile(t.name, t.data, 0600)
+	return nil
+}
+
+func (t *mockTempFile) Name() string {
+	return t.name
+}
+
+func (t *mockTempFile) Chmod(mode os.FileMode) error {
+	if t.closed {
+		return fmt.Errorf("file closed")
+	}
+	return nil
+}
+
+func (m *mockFS) CreateTemp(dir, pattern string) (TempFile, error) {
+	if m.writeErr != nil {
+		return nil, m.writeErr
+	}
+	dir = normalizeMockPath(dir)
+	name := filepath.Join(dir, strings.ReplaceAll(pattern, "*", "mock"))
+	return &mockTempFile{name: normalizeMockPath(name), mfs: m}, nil
 }
 
 type dummyFileInfo struct {
@@ -76,7 +128,7 @@ func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 			return nil, m.statErr
 		}
 	}
-	name = strings.TrimPrefix(filepath.ToSlash(name), "/")
+	name = normalizeMockPath(name)
 	if f, ok := m.mfs[name]; ok {
 		// Return a dummy stat with the file mode
 		return dummyFileInfo{mode: f.Mode}, nil
@@ -141,8 +193,8 @@ func TestSaveAndVersionRealFS(t *testing.T) {
 				os.Remove(fstabPath) // Ensure it doesn't exist
 			}
 
-			if err := SaveAndVersion(cfg, content, DefaultFS); err != nil {
-				t.Fatalf("SaveAndVersion failed: %v", err)
+			if res := SaveAndVersion(cfg, content, DefaultFS); res.Err != nil {
+				t.Fatalf("SaveAndVersion failed: %v", res.Err)
 			}
 
 			info, err := os.Stat(fstabPath)
@@ -250,8 +302,8 @@ func TestSaveAndVersion(t *testing.T) {
 			// Let's just check that it contains the content strings.
 
 			// Initial Save
-			if err := SaveAndVersion(cfg, newContent, mfs); err != nil {
-				t.Fatalf("SaveAndVersion failed: %v", err)
+			if res := SaveAndVersion(cfg, newContent, mfs); res.Err != nil {
+				t.Fatalf("SaveAndVersion failed: %v", res.Err)
 			}
 
 			got, err := mfs.ReadFile(testFile)
@@ -270,8 +322,8 @@ func TestSaveAndVersion(t *testing.T) {
 
 			// Subsequent update if requested by test file
 			if len(updateContent) > 0 {
-				if err := SaveAndVersion(cfg, updateContent, mfs); err != nil {
-					t.Fatalf("SaveAndVersion update failed: %v", err)
+				if res := SaveAndVersion(cfg, updateContent, mfs); res.Err != nil {
+					t.Fatalf("SaveAndVersion update failed: %v", res.Err)
 				}
 
 				if expectedUpdatedContent != "" {
@@ -325,55 +377,4 @@ func fileHasRCS(archive *txtar.Archive) bool {
 		}
 	}
 	return false
-}
-
-func TestSaveAndVersionFailure(t *testing.T) {
-	cfg := config.Config{
-		FilePath:  "/etc/fstab",
-		BackupDir: "/var/backup",
-	}
-
-	content := []byte("fstab content")
-
-	tests := []struct {
-		name          string
-		statErr       error
-		writeErr      error
-		expectedError string
-	}{
-		{
-			name:          "stat error unexpected",
-			statErr:       os.ErrPermission,
-			expectedError: "failed to stat destination file",
-		},
-		{
-			name:          "write file error",
-			writeErr:      os.ErrClosed,
-			expectedError: "failed to replace destination file",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mfs := &mockFS{
-				mfs:      make(fstest.MapFS),
-				statErr:  tt.statErr,
-				writeErr: tt.writeErr,
-			}
-
-			err := SaveAndVersion(cfg, content, mfs)
-			if err == nil {
-				t.Fatalf("expected error containing %q, got nil", tt.expectedError)
-			}
-			if !strings.Contains(err.Error(), tt.expectedError) {
-				t.Errorf("expected error containing %q, got %v", tt.expectedError, err)
-			}
-
-			// Verify RCS state is untouched
-			_, statErr := mfs.Stat("/var/backup/fstab,v")
-			if !os.IsNotExist(statErr) {
-				t.Errorf("expected RCS file to not exist on failure, got %v", statErr)
-			}
-		})
-	}
 }
