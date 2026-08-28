@@ -1,0 +1,12 @@
+-- input/new_fstab --
+new fstab content
+-- fault/destination.rename --
+rename failure
+-- expected/Saved --
+false
+-- expected/VersioningEnabled --
+false
+-- expected/Versioned --
+false
+-- expected/Err --
+failed to replace destination file: rename failure

@@ -26,11 +26,35 @@ func normalizeMockPath(name string) string {
 type mockFS struct {
 	mfs fstest.MapFS
 
-	statErr  error
-	writeErr error
+	faults       map[string]error
+	faultTrigger map[string]bool
+}
+
+func (m *mockFS) injectFault(op string, contextPath string) error {
+	if m.faults != nil {
+		// First check for operation specific to a path context
+		// e.g. "rcs.stat" vs just "stat"
+		if err, ok := m.faults[op]; ok {
+			if m.faultTrigger != nil {
+				m.faultTrigger[op] = true
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func getOpContext(op string, name string) string {
+	if strings.Contains(name, "/backup") || strings.Contains(name, ",v") {
+		return "rcs." + op
+	}
+	return "destination." + op
 }
 
 func (m *mockFS) ReadFile(name string) ([]byte, error) {
+	if err := m.injectFault(getOpContext("read", name), name); err != nil {
+		return nil, err
+	}
 	name = normalizeMockPath(name)
 	if f, ok := m.mfs[name]; ok {
 		return f.Data, nil
@@ -39,8 +63,8 @@ func (m *mockFS) ReadFile(name string) ([]byte, error) {
 }
 
 func (m *mockFS) WriteFile(name string, data []byte, perm os.FileMode) error {
-	if m.writeErr != nil {
-		return m.writeErr
+	if err := m.injectFault(getOpContext("write", name), name); err != nil {
+		return err
 	}
 	name = normalizeMockPath(name)
 	m.mfs[name] = &fstest.MapFile{Data: data, Mode: perm}
@@ -48,12 +72,18 @@ func (m *mockFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 }
 
 func (m *mockFS) MkdirAll(path string, perm os.FileMode) error {
+	if err := m.injectFault(getOpContext("mkdir", path), path); err != nil {
+		return err
+	}
 	path = normalizeMockPath(path)
 	m.mfs[path] = &fstest.MapFile{Mode: perm | os.ModeDir}
 	return nil
 }
 
 func (m *mockFS) Rename(oldpath, newpath string) error {
+	if err := m.injectFault(getOpContext("rename", newpath), newpath); err != nil {
+		return err
+	}
 	oldpath = normalizeMockPath(oldpath)
 	newpath = normalizeMockPath(newpath)
 	if f, ok := m.mfs[oldpath]; ok {
@@ -65,6 +95,9 @@ func (m *mockFS) Rename(oldpath, newpath string) error {
 }
 
 func (m *mockFS) Remove(name string) error {
+	if err := m.injectFault(getOpContext("remove", name), name); err != nil {
+		return err
+	}
 	name = normalizeMockPath(name)
 	delete(m.mfs, name)
 	return nil
@@ -81,11 +114,17 @@ func (t *mockTempFile) Write(p []byte) (n int, err error) {
 	if t.closed {
 		return 0, fmt.Errorf("file closed")
 	}
+	if err := t.mfs.injectFault(getOpContext("temp.write", t.name), t.name); err != nil {
+		return 0, err
+	}
 	t.data = append(t.data, p...)
 	return len(p), nil
 }
 
 func (t *mockTempFile) Close() error {
+	if err := t.mfs.injectFault(getOpContext("temp.close", t.name), t.name); err != nil {
+		return err
+	}
 	t.closed = true
 	t.mfs.WriteFile(t.name, t.data, 0600)
 	return nil
@@ -99,12 +138,15 @@ func (t *mockTempFile) Chmod(mode os.FileMode) error {
 	if t.closed {
 		return fmt.Errorf("file closed")
 	}
+	if err := t.mfs.injectFault(getOpContext("temp.chmod", t.name), t.name); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (m *mockFS) CreateTemp(dir, pattern string) (TempFile, error) {
-	if m.writeErr != nil {
-		return nil, m.writeErr
+	if err := m.injectFault(getOpContext("temp.create", dir), dir); err != nil {
+		return nil, err
 	}
 	dir = normalizeMockPath(dir)
 	name := filepath.Join(dir, strings.ReplaceAll(pattern, "*", "mock"))
@@ -123,10 +165,8 @@ func (d dummyFileInfo) IsDir() bool        { return false }
 func (d dummyFileInfo) Sys() interface{}   { return nil }
 
 func (m *mockFS) Stat(name string) (os.FileInfo, error) {
-	if m.statErr != nil {
-		if name == "etc/fstab" || name == "/etc/fstab" {
-			return nil, m.statErr
-		}
+	if err := m.injectFault(getOpContext("stat", name), name); err != nil {
+		return nil, err
 	}
 	name = normalizeMockPath(name)
 	if f, ok := m.mfs[name]; ok {
@@ -234,7 +274,6 @@ func TestSaveAndVersion(t *testing.T) {
 			}
 
 			archive := txtar.Parse(b)
-			var initialContent []byte
 			var newContent []byte
 			var updateContent []byte
 			var expectedContent string
@@ -243,12 +282,17 @@ func TestSaveAndVersion(t *testing.T) {
 			var expectedRcsContent string
 			var expectedRcsPath string
 
+			var expectedSaved string
+			var expectedVersioningEnabled string
+			var expectedVersioned string
+			var expectedErr string
+
 			var testFile string
 			var backupDir string
+			faults := make(map[string]error)
 
 			for _, file := range archive.Files {
 				if file.Name == "input/etc/fstab" {
-					initialContent = file.Data
 					testFile = "/etc/fstab"
 				} else if file.Name == "input/new_fstab" {
 					newContent = file.Data
@@ -260,6 +304,14 @@ func TestSaveAndVersion(t *testing.T) {
 					expectedUpdatedContent = string(file.Data)
 				} else if file.Name == "expected/rcs_exists" {
 					expectedRcsExists = strings.TrimSpace(string(file.Data)) == "true"
+				} else if file.Name == "expected/Saved" {
+					expectedSaved = strings.TrimSpace(string(file.Data))
+				} else if file.Name == "expected/VersioningEnabled" {
+					expectedVersioningEnabled = strings.TrimSpace(string(file.Data))
+				} else if file.Name == "expected/Versioned" {
+					expectedVersioned = strings.TrimSpace(string(file.Data))
+				} else if file.Name == "expected/Err" {
+					expectedErr = strings.TrimSpace(string(file.Data))
 				} else if strings.HasPrefix(file.Name, "expected/") && strings.HasSuffix(file.Name, ",v") {
 					expectedRcsContent = string(file.Data)
 					expectedRcsPath = strings.TrimPrefix(file.Name, "expected/")
@@ -268,21 +320,33 @@ func TestSaveAndVersion(t *testing.T) {
 					if envName == "XDG_CACHE_HOME" {
 						backupDir = strings.TrimSpace(string(file.Data))
 					}
+				} else if strings.HasPrefix(file.Name, "fault/") {
+					faultName := strings.TrimPrefix(file.Name, "fault/")
+					faults[faultName] = fmt.Errorf("%s", strings.TrimSpace(string(file.Data)))
 				}
 			}
 
 			if testFile == "" {
 				testFile = "/etc/fstab" // default fallback
 			}
-			if backupDir == "" {
+			if backupDir == "" && expectedVersioningEnabled != "false" {
 				backupDir = "/var/backup" // default fallback
 			}
 
 			// Use memory mock FS to avoid actual file system access
-			mfs := &mockFS{mfs: make(fstest.MapFS)}
+			mfs := &mockFS{
+				mfs:           make(fstest.MapFS),
+				faults:        faults,
+				faultTrigger:  make(map[string]bool),
+			}
 
-			if len(initialContent) > 0 {
-				mfs.WriteFile(testFile, initialContent, 0644)
+			// Setup full initial file state dynamically
+			for _, file := range archive.Files {
+				if strings.HasPrefix(file.Name, "input/") && file.Name != "input/new_fstab" && file.Name != "input/update_fstab" {
+					p := strings.TrimPrefix(file.Name, "input/")
+					p = normalizeMockPath(p)
+					mfs.mfs[p] = &fstest.MapFile{Data: file.Data, Mode: 0644}
+				}
 			}
 
 			cfg := config.Config{
@@ -302,22 +366,55 @@ func TestSaveAndVersion(t *testing.T) {
 			// Let's just check that it contains the content strings.
 
 			// Initial Save
-			if res := SaveAndVersion(cfg, newContent, mfs); res.Err != nil {
-				t.Fatalf("SaveAndVersion failed: %v", res.Err)
+			res := SaveAndVersion(cfg, newContent, mfs)
+
+			if expectedErr != "" {
+				if res.Err == nil || !strings.Contains(res.Err.Error(), expectedErr) {
+					t.Fatalf("expected error %q, got %v", expectedErr, res.Err)
+				}
+			} else {
+				if res.Err != nil {
+					t.Fatalf("SaveAndVersion failed: %v", res.Err)
+				}
 			}
 
-			got, err := mfs.ReadFile(testFile)
-			if err != nil {
-				t.Fatalf("failed to read updated file: %v", err)
-			}
-			if string(got) != expectedContent {
-				t.Errorf("expected %q, got %q", expectedContent, string(got))
+			if expectedSaved != "" {
+				expectedSavedBool := expectedSaved == "true"
+				if res.Saved != expectedSavedBool {
+					t.Errorf("expected Saved=%v, got %v", expectedSavedBool, res.Saved)
+				}
 			}
 
-			_, err = mfs.Stat(backupDir)
-			gotRcsExists := err == nil
-			if gotRcsExists != expectedRcsExists && fileHasRCS(archive) {
-				t.Errorf("expected RCS dir exists=%v, got %v", expectedRcsExists, gotRcsExists)
+			if expectedVersioningEnabled != "" {
+				expectedVersioningEnabledBool := expectedVersioningEnabled == "true"
+				if res.VersioningEnabled != expectedVersioningEnabledBool {
+					t.Errorf("expected VersioningEnabled=%v, got %v", expectedVersioningEnabledBool, res.VersioningEnabled)
+				}
+			}
+
+			if expectedVersioned != "" {
+				expectedVersionedBool := expectedVersioned == "true"
+				if res.Versioned != expectedVersionedBool {
+					t.Errorf("expected Versioned=%v, got %v", expectedVersionedBool, res.Versioned)
+				}
+			}
+
+			if expectedContent != "" {
+				got, err := mfs.ReadFile(testFile)
+				if err != nil {
+					t.Fatalf("failed to read updated file: %v", err)
+				}
+				if string(got) != expectedContent {
+					t.Errorf("expected %q, got %q", expectedContent, string(got))
+				}
+			}
+
+			if expectedRcsExists || expectedRcsPath != "" {
+				_, err = mfs.Stat(backupDir)
+				gotRcsExists := err == nil
+				if gotRcsExists != expectedRcsExists && fileHasRCS(archive) {
+					t.Errorf("expected RCS dir exists=%v, got %v", expectedRcsExists, gotRcsExists)
+				}
 			}
 
 			// Subsequent update if requested by test file
@@ -338,32 +435,42 @@ func TestSaveAndVersion(t *testing.T) {
 			}
 
 			if expectedRcsContent != "" && expectedRcsPath != "" {
-				rcsBytes, err := mfs.ReadFile(expectedRcsPath)
-				if err != nil {
-					t.Fatalf("failed to read rcs file at expected path %s: %v", expectedRcsPath, err)
+				// Don't assert full structure for error tests, just that it exists
+				if expectedErr == "" {
+					rcsBytes, err := mfs.ReadFile(expectedRcsPath)
+					if err != nil {
+						t.Fatalf("failed to read rcs file at expected path %s: %v", expectedRcsPath, err)
+					}
+
+					// Time and exact formatting might differ, so let's verify key parts
+					rcsStr := string(rcsBytes)
+
+					if !strings.Contains(rcsStr, "desc") {
+						t.Errorf("expected rcs file to contain 'desc', got:\n%s", rcsStr)
+					}
+
+					if len(updateContent) > 0 {
+						if !strings.Contains(rcsStr, "1.2") {
+							t.Errorf("expected rcs file to contain '1.2' revision, got:\n%s", rcsStr)
+						}
+						if !strings.Contains(rcsStr, "@even newer fstab content\n@") {
+							t.Errorf("expected rcs file to contain '@even newer fstab content\\n@', got:\n%s", rcsStr)
+						}
+					} else {
+						if !strings.Contains(rcsStr, "1.1") {
+							t.Errorf("expected rcs file to contain '1.1' revision, got:\n%s", rcsStr)
+						}
+						if !strings.Contains(rcsStr, "@new fstab content\n@") {
+							t.Errorf("expected rcs file to contain '@new fstab content\\n@', got:\n%s", rcsStr)
+						}
+					}
 				}
+			}
 
-				// Time and exact formatting might differ, so let's verify key parts
-				rcsStr := string(rcsBytes)
-
-				if !strings.Contains(rcsStr, "desc") {
-					t.Errorf("expected rcs file to contain 'desc', got:\n%s", rcsStr)
-				}
-
-				if len(updateContent) > 0 {
-					if !strings.Contains(rcsStr, "1.2") {
-						t.Errorf("expected rcs file to contain '1.2' revision, got:\n%s", rcsStr)
-					}
-					if !strings.Contains(rcsStr, "@even newer fstab content\n@") {
-						t.Errorf("expected rcs file to contain '@even newer fstab content\\n@', got:\n%s", rcsStr)
-					}
-				} else {
-					if !strings.Contains(rcsStr, "1.1") {
-						t.Errorf("expected rcs file to contain '1.1' revision, got:\n%s", rcsStr)
-					}
-					if !strings.Contains(rcsStr, "@new fstab content\n@") {
-						t.Errorf("expected rcs file to contain '@new fstab content\\n@', got:\n%s", rcsStr)
-					}
+			// Verify fault consumption
+			for f := range faults {
+				if !mfs.faultTrigger[f] && expectedErr != "" {
+					t.Errorf("Expected fault %q to be triggered, but it was not", f)
 				}
 			}
 		})

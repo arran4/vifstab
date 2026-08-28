@@ -253,9 +253,10 @@ func editorCommandFromEnvironment() ([]string, error) {
 
 // SaveResult captures the success or failure of distinct stages in the save pipeline.
 type SaveResult struct {
-	Saved     bool
-	Versioned bool
-	Err       error
+	Saved             bool
+	VersioningEnabled bool
+	Versioned         bool
+	Err               error
 }
 
 // SaveAndVersion saves the given content to the target file and versions it using RCS.
@@ -308,13 +309,15 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 
 	res.Saved = true
 
-	rcsCfg := rcs.Config{Dir: cfg.BackupDir}
-	if err := rcs.Update(cfg.FilePath, content, rcsCfg, rcsFSAdapter{fs: fsLayer}); err != nil {
-		res.Err = fmt.Errorf("rcs update failed: %w", err)
-		return res
+	if cfg.BackupDir != "" {
+		res.VersioningEnabled = true
+		rcsCfg := rcs.Config{Dir: cfg.BackupDir}
+		if err := rcs.Update(cfg.FilePath, content, rcsCfg, rcsFSAdapter{fs: fsLayer}); err != nil {
+			res.Err = fmt.Errorf("rcs update failed: %w", err)
+			return res
+		}
+		res.Versioned = true
 	}
-
-	res.Versioned = true
 
 	return res
 }

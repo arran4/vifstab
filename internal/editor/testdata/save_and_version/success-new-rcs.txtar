@@ -1,0 +1,14 @@
+-- input/new_fstab --
+new fstab content
+-- env/XDG_CACHE_HOME --
+/var/backup
+-- expected/etc/fstab --
+new fstab content
+-- expected/rcs_exists --
+true
+-- expected/Saved --
+true
+-- expected/VersioningEnabled --
+true
+-- expected/Versioned --
+true
