@@ -278,6 +278,7 @@ func TestSaveAndVersion(t *testing.T) {
 			var updateContent []byte
 			var expectedContent string
 			var expectedUpdatedContent string
+			var hasExpectedRcsExists bool
 			var expectedRcsExists bool
 			var expectedRcsContent string
 			var expectedRcsPath string
@@ -303,6 +304,7 @@ func TestSaveAndVersion(t *testing.T) {
 				} else if file.Name == "expected/fstab_updated" {
 					expectedUpdatedContent = string(file.Data)
 				} else if file.Name == "expected/rcs_exists" {
+					hasExpectedRcsExists = true
 					expectedRcsExists = strings.TrimSpace(string(file.Data)) == "true"
 				} else if file.Name == "expected/Saved" {
 					expectedSaved = strings.TrimSpace(string(file.Data))
@@ -409,11 +411,12 @@ func TestSaveAndVersion(t *testing.T) {
 				}
 			}
 
-			if expectedRcsExists || expectedRcsPath != "" {
-				_, err = mfs.Stat(backupDir)
-				gotRcsExists := err == nil
-				if gotRcsExists != expectedRcsExists && fileHasRCS(archive) {
-					t.Errorf("expected RCS dir exists=%v, got %v", expectedRcsExists, gotRcsExists)
+			if hasExpectedRcsExists {
+				rcsPath := filepath.Join(backupDir, filepath.Base(testFile)+",v")
+				_, err = mfs.Stat(rcsPath)
+				actualExists := err == nil
+				if actualExists != expectedRcsExists {
+					t.Errorf("expected RCS file exists=%v, got %v at %s", expectedRcsExists, actualExists, rcsPath)
 				}
 			}
 
