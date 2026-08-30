@@ -33,6 +33,82 @@ func TestStringOption(t *testing.T) {
 	})
 }
 
+func TestSELinuxContextOption(t *testing.T) {
+	ctx := context.Background()
+	api := &mockAPI{}
+	entry := &rules.FstabEntry{LineNum: 5, RawLine: "LABEL=root / ext4 context=system_u:object_r:tmpfs_t:s0 0 1"}
+	opt := options.SELinuxContextOption{}
+
+	tests := []struct {
+		name     string
+		val      string
+		hasVal   bool
+		wantErrs int
+		wantErrMsg string
+	}{
+		{
+			name:   "valid unquoted",
+			val:    "system_u:object_r:tmpfs_t:s0",
+			hasVal: true,
+		},
+		{
+			name:   "valid unquoted no mls",
+			val:    "system_u:object_r:tmpfs_t",
+			hasVal: true,
+		},
+		{
+			name:   "valid quoted",
+			val:    `"system_u:object_r:tmpfs_t:s0"`,
+			hasVal: true,
+		},
+		{
+			name:   "valid with complex mls",
+			val:    "system_u:object_r:svirt_image_t:s0:c123,c456",
+			hasVal: true,
+		},
+		{
+			name:   "valid with complex mls range",
+			val:    "system_u:object_r:svirt_image_t:s0-s0:c0.c1023",
+			hasVal: true,
+		},
+		{
+			name:       "missing value",
+			val:        "",
+			hasVal:     false,
+			wantErrs:   1,
+			wantErrMsg: "Missing value for ext4 mount option 'context' on line 5",
+		},
+		{
+			name:       "invalid context",
+			val:        "invalid_context",
+			hasVal:     true,
+			wantErrs:   1,
+			wantErrMsg: "Invalid SELinux context 'invalid_context' for ext4 mount option 'context' on line 5",
+		},
+		{
+			name:       "invalid context parts",
+			val:        "user:role",
+			hasVal:     true,
+			wantErrs:   1,
+			wantErrMsg: "Invalid SELinux context 'user:role' for ext4 mount option 'context' on line 5",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			issues := opt.ValidateOption(ctx, api, entry, "ext4", "context", tt.val, tt.hasVal, nil)
+			if len(issues) != tt.wantErrs {
+				t.Fatalf("expected %d issues, got %d", tt.wantErrs, len(issues))
+			}
+			if tt.wantErrs > 0 {
+				if issues[0].Message != tt.wantErrMsg {
+					t.Errorf("expected msg %q, got %q", tt.wantErrMsg, issues[0].Message)
+				}
+			}
+		})
+	}
+}
+
 func TestOptionalStringOption(t *testing.T) {
 	ctx := context.Background()
 	api := &mockAPI{}
