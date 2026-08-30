@@ -2,12 +2,16 @@
 old fstab content
 -- input/new_fstab --
 new fstab content
--- env/XDG_CACHE_HOME --
+-- config/BackupDir --
 /var/backup
 -- input/var/backup/fstab,v --
 malformed rcs file
 -- expected/etc/fstab --
 new fstab content
+-- expected/var/backup/fstab,v --
+malformed rcs file
+-- expected/rcs_exists --
+true
 -- expected/Saved --
 true
 -- expected/VersioningEnabled --

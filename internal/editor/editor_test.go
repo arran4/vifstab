@@ -337,6 +337,8 @@ func TestSaveAndVersion(t *testing.T) {
 					if envName == "XDG_CACHE_HOME" {
 						backupDir = strings.TrimSpace(string(file.Data))
 					}
+					} else if file.Name == "config/BackupDir" {
+						backupDir = strings.TrimSpace(string(file.Data))
 				} else if strings.HasPrefix(file.Name, "fault/") {
 					faultName := strings.TrimPrefix(file.Name, "fault/")
 					faults[faultName] = fmt.Errorf("%s", strings.TrimSpace(string(file.Data)))
@@ -345,9 +347,6 @@ func TestSaveAndVersion(t *testing.T) {
 
 			if testFile == "" {
 				testFile = "/etc/fstab" // default fallback
-			}
-			if backupDir == "" && expectedVersioningEnabled != "false" {
-				backupDir = "/var/backup" // default fallback
 			}
 
 			// Use memory mock FS to avoid actual file system access
