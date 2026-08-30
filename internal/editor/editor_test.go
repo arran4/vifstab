@@ -30,6 +30,21 @@ type mockFS struct {
 	faultTrigger map[string]bool
 }
 
+func (m *mockFS) rawReadFile(name string) ([]byte, error) {
+	name = normalizeMockPath(name)
+	f, ok := m.mfs[name]
+	if !ok {
+		return nil, os.ErrNotExist
+	}
+	return append([]byte(nil), f.Data...), nil
+}
+
+func (m *mockFS) rawExists(name string) bool {
+	name = normalizeMockPath(name)
+	_, ok := m.mfs[name]
+	return ok
+}
+
 func (m *mockFS) injectFault(op string, contextPath string) error {
 	if m.faults != nil {
 		// First check for operation specific to a path context
@@ -402,7 +417,7 @@ func TestSaveAndVersion(t *testing.T) {
 			}
 
 			if expectedContent != "" {
-				got, err := mfs.ReadFile(testFile)
+				got, err := mfs.rawReadFile(testFile)
 				if err != nil {
 					t.Fatalf("failed to read updated file: %v", err)
 				}
@@ -413,8 +428,7 @@ func TestSaveAndVersion(t *testing.T) {
 
 			if hasExpectedRcsExists {
 				rcsPath := filepath.Join(backupDir, filepath.Base(testFile)+",v")
-				_, err = mfs.Stat(rcsPath)
-				actualExists := err == nil
+				actualExists := mfs.rawExists(rcsPath)
 				if actualExists != expectedRcsExists {
 					t.Errorf("expected RCS file exists=%v, got %v at %s", expectedRcsExists, actualExists, rcsPath)
 				}
@@ -427,7 +441,7 @@ func TestSaveAndVersion(t *testing.T) {
 				}
 
 				if expectedUpdatedContent != "" {
-					gotUpdated, err := mfs.ReadFile(testFile)
+					gotUpdated, err := mfs.rawReadFile(testFile)
 					if err != nil {
 						t.Fatalf("failed to read updated file after update: %v", err)
 					}
@@ -438,7 +452,7 @@ func TestSaveAndVersion(t *testing.T) {
 			}
 
 			if expectedRcsContent != "" && expectedRcsPath != "" {
-				rcsBytes, err := mfs.ReadFile(expectedRcsPath)
+				rcsBytes, err := mfs.rawReadFile(expectedRcsPath)
 				if err != nil {
 					t.Fatalf("failed to read rcs file at expected path %s: %v", expectedRcsPath, err)
 				}
