@@ -293,7 +293,7 @@ func TestSaveAndVersion(t *testing.T) {
 			var updateContent []byte
 			var expectedContent string
 			var expectedUpdatedContent string
-				var hasExpectedRcsExists bool
+			var hasExpectedRcsExists bool
 			var expectedRcsExists bool
 			var expectedRcsContent string
 			var expectedRcsPath string
@@ -319,7 +319,7 @@ func TestSaveAndVersion(t *testing.T) {
 				} else if file.Name == "expected/fstab_updated" {
 					expectedUpdatedContent = string(file.Data)
 				} else if file.Name == "expected/rcs_exists" {
-						hasExpectedRcsExists = true
+					hasExpectedRcsExists = true
 					expectedRcsExists = strings.TrimSpace(string(file.Data)) == "true"
 				} else if file.Name == "expected/Saved" {
 					expectedSaved = strings.TrimSpace(string(file.Data))
@@ -337,8 +337,8 @@ func TestSaveAndVersion(t *testing.T) {
 					if envName == "XDG_CACHE_HOME" {
 						backupDir = strings.TrimSpace(string(file.Data))
 					}
-					} else if file.Name == "config/BackupDir" {
-						backupDir = strings.TrimSpace(string(file.Data))
+				} else if file.Name == "config/BackupDir" {
+					backupDir = strings.TrimSpace(string(file.Data))
 				} else if strings.HasPrefix(file.Name, "fault/") {
 					faultName := strings.TrimPrefix(file.Name, "fault/")
 					faults[faultName] = fmt.Errorf("%s", strings.TrimSpace(string(file.Data)))
@@ -351,9 +351,9 @@ func TestSaveAndVersion(t *testing.T) {
 
 			// Use memory mock FS to avoid actual file system access
 			mfs := &mockFS{
-				mfs:           make(fstest.MapFS),
-				faults:        faults,
-				faultTrigger:  make(map[string]bool),
+				mfs:          make(fstest.MapFS),
+				faults:       faults,
+				faultTrigger: make(map[string]bool),
 			}
 
 			// Setup full initial file state dynamically
