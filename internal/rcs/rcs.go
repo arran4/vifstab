@@ -21,6 +21,7 @@ type TempFile interface {
 	io.WriteCloser
 	Name() string
 	Chmod(mode os.FileMode) error
+	Sync() error
 }
 
 // FS abstracts filesystem operations to allow mocking during tests.
@@ -32,6 +33,7 @@ type FS interface {
 	CreateTemp(dir, pattern string) (TempFile, error)
 	Rename(oldpath, newpath string) error
 	Remove(name string) error
+	SyncDir(name string) error
 }
 
 type osFS struct{}
@@ -47,6 +49,14 @@ func (osFS) CreateTemp(dir, pattern string) (TempFile, error) {
 }
 func (osFS) Rename(oldpath, newpath string) error { return os.Rename(oldpath, newpath) }
 func (osFS) Remove(name string) error             { return os.Remove(name) }
+func (osFS) SyncDir(name string) error {
+	d, err := os.Open(name)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = d.Close() }()
+	return d.Sync()
+}
 
 var DefaultFS FS = osFS{}
 
@@ -150,12 +160,21 @@ func Update(filePath string, content []byte, config Config, opts ...any) error {
 		return fmt.Errorf("failed to chmod temporary rcs file: %w", err)
 	}
 
+	if err := tmpDest.Sync(); err != nil {
+		_ = tmpDest.Close()
+		return fmt.Errorf("failed to sync temporary rcs file: %w", err)
+	}
+
 	if err := tmpDest.Close(); err != nil {
 		return fmt.Errorf("failed to close temporary rcs file: %w", err)
 	}
 
 	if err := fsLayer.Rename(tmpDest.Name(), rcsFilepath); err != nil {
 		return fmt.Errorf("failed to replace rcs file: %w", err)
+	}
+
+	if err := fsLayer.SyncDir(dir); err != nil {
+		return fmt.Errorf("failed to sync directory after replacing rcs file: %w", err)
 	}
 
 	return nil

@@ -21,6 +21,7 @@ type TempFile interface {
 	io.WriteCloser
 	Name() string
 	Chmod(mode os.FileMode) error
+	Sync() error
 }
 
 // FS provides filesystem operations to allow mocking
@@ -32,6 +33,7 @@ type FS interface {
 	Stat(name string) (os.FileInfo, error)
 	CreateTemp(dir, pattern string) (TempFile, error)
 	Remove(name string) error
+	SyncDir(name string) error
 }
 
 type osFS struct{}
@@ -47,6 +49,14 @@ func (osFS) CreateTemp(dir, pattern string) (TempFile, error) {
 	return os.CreateTemp(dir, pattern)
 }
 func (osFS) Remove(name string) error { return os.Remove(name) }
+func (osFS) SyncDir(name string) error {
+	d, err := os.Open(name)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = d.Close() }()
+	return d.Sync()
+}
 
 var DefaultFS FS = osFS{}
 
@@ -80,6 +90,10 @@ func (a rcsFSAdapter) WriteFile(name string, data []byte, perm os.FileMode) erro
 
 func (a rcsFSAdapter) CreateTemp(dir, pattern string) (rcs.TempFile, error) {
 	return a.fs.CreateTemp(dir, pattern)
+}
+
+func (a rcsFSAdapter) SyncDir(name string) error {
+	return a.fs.SyncDir(name)
 }
 
 var _ rcs.FS = rcsFSAdapter{}
@@ -262,6 +276,12 @@ type SaveResult struct {
 
 // SaveAndVersion saves the given content to the target file and versions it using RCS.
 // It deliberately has no post-save systemd side effects.
+//
+// Durability guarantee:
+// On supported systems, this function provides crash durability against sudden power loss.
+// It writes to a temporary file, applies metadata, syncs the file data to disk, closes it,
+// atomically renames it over the target, and finally syncs the containing directory to
+// ensure the directory entry metadata is persisted.
 func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 	if fsLayer == nil {
 		fsLayer = DefaultFS
@@ -298,6 +318,13 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 			return res
 		}
 	}
+
+	if err := tmpDest.Sync(); err != nil {
+		_ = tmpDest.Close()
+		res.Err = fmt.Errorf("failed to sync temporary destination file: %w", err)
+		return res
+	}
+
 	if err := tmpDest.Close(); err != nil {
 		res.Err = fmt.Errorf("failed to close temporary destination file: %w", err)
 		return res
@@ -310,11 +337,15 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 
 	res.Saved = true
 
+	if err := fsLayer.SyncDir(dir); err != nil {
+		res.Err = errors.Join(res.Err, fmt.Errorf("failed to sync directory after rename: %w", err))
+	}
+
 	if cfg.BackupDir != "" {
 		res.VersioningEnabled = true
 		rcsCfg := rcs.Config{Dir: cfg.BackupDir}
 		if err := rcs.Update(cfg.FilePath, content, rcsCfg, rcsFSAdapter{fs: fsLayer}); err != nil {
-			res.Err = fmt.Errorf("rcs update failed: %w", err)
+			res.Err = errors.Join(res.Err, fmt.Errorf("rcs update failed: %w", err))
 			return res
 		}
 		res.Versioned = true

@@ -118,6 +118,13 @@ func (m *mockFS) Remove(name string) error {
 	return nil
 }
 
+func (m *mockFS) SyncDir(name string) error {
+	if err := m.injectFault(getOpContext("syncdir", name), name); err != nil {
+		return err
+	}
+	return nil
+}
+
 type mockTempFile struct {
 	name   string
 	mfs    *mockFS
@@ -154,6 +161,16 @@ func (t *mockTempFile) Chmod(mode os.FileMode) error {
 		return fmt.Errorf("file closed")
 	}
 	if err := t.mfs.injectFault(getOpContext("temp.chmod", t.name), t.name); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *mockTempFile) Sync() error {
+	if t.closed {
+		return fmt.Errorf("file closed")
+	}
+	if err := t.mfs.injectFault(getOpContext("temp.sync", t.name), t.name); err != nil {
 		return err
 	}
 	return nil
