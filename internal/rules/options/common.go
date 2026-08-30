@@ -44,7 +44,7 @@ func CommonOptions() map[string]OptionValidator {
 		"options-source": TODOOption{Comment: "validate options source path"},
 		"source":         TODOOption{Comment: "validate mount source path/device"},
 		"target":         TODOOption{Comment: "validate mount target directory"},
-		"target-prefix":  TODOOption{Comment: "validate target prefix path"},
+		"target-prefix":  PathOption{RequireAbsolute: true},
 		"test-opts":      TODOOption{Comment: "validate test options string"},
 		"types":          TODOOption{Comment: "validate filesystem types list"},
 		"uuid":           TODOOption{Comment: "validate UUID format"},
