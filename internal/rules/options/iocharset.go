@@ -16,7 +16,14 @@ var validCharsets map[string]bool
 
 func init() {
 	validCharsets = make(map[string]bool)
-	for _, line := range strings.Split(charsetsData, "\n") {
+	data := charsetsData
+	for len(data) > 0 {
+		var line string
+		if idx := strings.IndexByte(data, '\n'); idx >= 0 {
+			line, data = data[:idx], data[idx+1:]
+		} else {
+			line, data = data, ""
+		}
 		line = strings.TrimSpace(line)
 		if line != "" {
 			validCharsets[strings.ToLower(line)] = true
