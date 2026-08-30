@@ -47,7 +47,7 @@ func CommonOptions() map[string]OptionValidator {
 		"target-prefix":  TODOOption{Comment: "validate target prefix path"},
 		"test-opts":      TODOOption{Comment: "validate test options string"},
 		"types":          TODOOption{Comment: "validate filesystem types list"},
-		"uuid":           TODOOption{Comment: "validate UUID format"},
+		"uuid":           UUIDOption{},
 	}
 	return opts
 }
