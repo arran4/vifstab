@@ -28,10 +28,10 @@ func CommonOptions() map[string]OptionValidator {
 		"X-": NoValueOption{}, "x-": NoValueOption{},
 
 		// Valued generic options marked for future detailed validation
-		"context":        TODOOption{Comment: "validate SELinux context string"},
-		"defcontext":     TODOOption{Comment: "validate SELinux default context string"},
-		"rootcontext":    TODOOption{Comment: "validate SELinux root context string"},
-		"fscontext":      TODOOption{Comment: "validate SELinux fs context string"},
+		"context":        SELinuxContextOption{},
+		"defcontext":     SELinuxContextOption{},
+		"rootcontext":    SELinuxContextOption{},
+		"fscontext":      SELinuxContextOption{},
 		"fstab":          TODOOption{Comment: "validate fstab file path"},
 		"map-groups":     TODOOption{Comment: "validate group mapping file/string"},
 		"map-users":      TODOOption{Comment: "validate user mapping file/string"},
