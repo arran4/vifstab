@@ -1,0 +1,70 @@
+-- input/etc/fstab --
+old fstab content
+-- input/new_fstab --
+new fstab content
+-- config/BackupDir --
+/var/backup
+-- input/var/backup/fstab,v --
+head     1.1;
+access   ;
+symbols  ;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2023.10.10.12.00.00;  author user;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@old fstab content
+@
+-- fault/rcs.read --
+rcs read failure
+-- expected/etc/fstab --
+new fstab content
+-- expected/var/backup/fstab,v --
+head     1.1;
+access   ;
+symbols  ;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2023.10.10.12.00.00;  author user;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@old fstab content
+@
+-- expected/rcs_exists --
+true
+-- expected/Saved --
+true
+-- expected/VersioningEnabled --
+true
+-- expected/Versioned --
+false
+-- expected/Err --
+rcs update failed: failed to open rcs file: rcs read failure

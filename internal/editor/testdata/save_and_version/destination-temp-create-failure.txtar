@@ -1,0 +1,12 @@
+-- input/new_fstab --
+new fstab content
+-- fault/destination.temp.create --
+failed to create temp
+-- expected/Saved --
+false
+-- expected/VersioningEnabled --
+false
+-- expected/Versioned --
+false
+-- expected/Err --
+failed to create temporary destination file: failed to create temp
