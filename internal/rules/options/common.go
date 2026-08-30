@@ -43,7 +43,7 @@ func CommonOptions() map[string]OptionValidator {
 		"options-mode":   TODOOption{Comment: "validate options mode string"},
 		"options-source": TODOOption{Comment: "validate options source path"},
 		"source":         TODOOption{Comment: "validate mount source path/device"},
-		"target":         TODOOption{Comment: "validate mount target directory"},
+		"target":         DirOption{CheckExistence: true},
 		"target-prefix":  TODOOption{Comment: "validate target prefix path"},
 		"test-opts":      TODOOption{Comment: "validate test options string"},
 		"types":          TODOOption{Comment: "validate filesystem types list"},
