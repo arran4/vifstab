@@ -32,7 +32,7 @@ func CommonOptions() map[string]OptionValidator {
 		"defcontext":     TODOOption{Comment: "validate SELinux default context string"},
 		"rootcontext":    TODOOption{Comment: "validate SELinux root context string"},
 		"fscontext":      TODOOption{Comment: "validate SELinux fs context string"},
-		"fstab":          TODOOption{Comment: "validate fstab file path"},
+		"fstab":          FileOption{CheckExistence: true, IgnoreFailureIfNoPermission: true},
 		"map-groups":     TODOOption{Comment: "validate group mapping file/string"},
 		"map-users":      TODOOption{Comment: "validate user mapping file/string"},
 		"mkdir":          OptionalOctalOption{},
