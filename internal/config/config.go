@@ -23,7 +23,7 @@ func GetDefaultConfig(filePath string) Config {
 	} else if home, err := os.UserHomeDir(); err == nil {
 		backupDir = home + "/.cache/vifstab"
 	} else {
-		backupDir = "/tmp/.vifstab"
+		backupDir, _ = os.MkdirTemp("", "vifstab-*")
 	}
 
 	return Config{

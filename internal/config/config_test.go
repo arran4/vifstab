@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -33,7 +35,7 @@ func TestGetDefaultConfig(t *testing.T) {
 			homeEnv:       "",
 			userProfile:   "",
 			filePath:      "/etc/fstab",
-			expectedCache: "/tmp/.vifstab",
+			expectedCache: "", // Tested dynamically
 		},
 	}
 
@@ -44,8 +46,17 @@ func TestGetDefaultConfig(t *testing.T) {
 			t.Setenv("USERPROFILE", tt.userProfile)
 
 			cfg := GetDefaultConfig(tt.filePath)
-			if cfg.BackupDir != tt.expectedCache {
-				t.Errorf("expected BackupDir %q, got %q", tt.expectedCache, cfg.BackupDir)
+
+			if tt.expectedCache != "" {
+				if cfg.BackupDir != tt.expectedCache {
+					t.Errorf("expected BackupDir %q, got %q", tt.expectedCache, cfg.BackupDir)
+				}
+			} else {
+				if !strings.HasPrefix(cfg.BackupDir, os.TempDir()) {
+					t.Errorf("expected BackupDir to start with %q, got %q", os.TempDir(), cfg.BackupDir)
+				}
+				// Clean up the created temporary directory
+				os.RemoveAll(cfg.BackupDir)
 			}
 			if cfg.FilePath != tt.filePath {
 				t.Errorf("expected FilePath %q, got %q", tt.filePath, cfg.FilePath)
