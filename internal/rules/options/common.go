@@ -15,16 +15,15 @@ func CommonOptions() map[string]OptionValidator {
 		"dev": NoValueOption{}, "atime": NoValueOption{}, "diratime": NoValueOption{},
 		"noiversion": NoValueOption{}, "nolazytime": NoValueOption{}, "owner": NoValueOption{},
 		"group":   NoValueOption{},
-		"beneath": NoValueOption{}, "bind": NoValueOption{}, "exclusive": NoValueOption{},
-		"fake": NoValueOption{}, "fork": NoValueOption{}, "help": NoValueOption{},
-		"internal-only": NoValueOption{}, "loud": NoValueOption{}, "make-private": NoValueOption{},
-		"make-rprivate": NoValueOption{}, "make-rshared": NoValueOption{}, "make-rslave": NoValueOption{},
-		"make-runbindable": NoValueOption{}, "make-shared": NoValueOption{}, "make-slave": NoValueOption{},
-		"make-unbindable": NoValueOption{}, "no-canonicalize": NoValueOption{}, "no-mtab": NoValueOption{},
-		"nomand": NoValueOption{}, "nosymfollow": NoValueOption{}, "onlyonce": NoValueOption{},
-		"options-source-force": NoValueOption{}, "rbind": NoValueOption{}, "read-only": NoValueOption{},
-		"read-write": NoValueOption{}, "remount": NoValueOption{}, "show-labels": NoValueOption{},
-		"silent": NoValueOption{}, "verbose": NoValueOption{}, "version": NoValueOption{},
+		"beneath": NoValueOption{}, "bind": NoValueOption{}, "rbind": NoValueOption{}, "remount": NoValueOption{},
+		"nosymfollow": NoValueOption{}, "silent": NoValueOption{}, "loud": NoValueOption{},
+		"nomand": NoValueOption{},
+
+		"private": NoValueOption{}, "rprivate": NoValueOption{},
+		"slave": NoValueOption{}, "rslave": NoValueOption{},
+		"shared": NoValueOption{}, "rshared": NoValueOption{},
+		"unbindable": NoValueOption{}, "runbindable": NoValueOption{},
+
 		"X-": NoValueOption{}, "x-": NoValueOption{},
 
 		// Valued generic options marked for future detailed validation
@@ -32,22 +31,10 @@ func CommonOptions() map[string]OptionValidator {
 		"defcontext":     SELinuxContextOption{},
 		"rootcontext":    SELinuxContextOption{},
 		"fscontext":      SELinuxContextOption{},
-		"fstab":          TODOOption{Comment: "validate fstab file path"},
-		"map-groups":     TODOOption{Comment: "validate group mapping file/string"},
-		"map-users":      TODOOption{Comment: "validate user mapping file/string"},
-		"mkdir":          OptionalOctalOption{},
+
+		"comment":        OptionalStringOption{},
 		"X-mount.mkdir":  OptionalOctalOption{},
 		"x-mount.mkdir":  OptionalOctalOption{},
-		"namespace":      TODOOption{Comment: "validate namespace string"},
-		"options":        TODOOption{Comment: "validate nested mount options string"},
-		"options-mode":   TODOOption{Comment: "validate options mode string"},
-		"options-source": TODOOption{Comment: "validate options source path"},
-		"source":         TODOOption{Comment: "validate mount source path/device"},
-		"target":         TODOOption{Comment: "validate mount target directory"},
-		"target-prefix":  TODOOption{Comment: "validate target prefix path"},
-		"test-opts":      TODOOption{Comment: "validate test options string"},
-		"types":          TODOOption{Comment: "validate filesystem types list"},
-		"uuid":           TODOOption{Comment: "validate UUID format"},
 	}
 	return opts
 }
