@@ -34,8 +34,6 @@ func (OptionalStringOption) ValidateOption(ctx context.Context, api rules.API, e
 // SELinuxContextOption validates SELinux context strings.
 type SELinuxContextOption struct{}
 
-var selinuxContextRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+(:[a-zA-Z0-9_,.\-:]+)?$`)
-
 func (SELinuxContextOption) ValidateOption(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]OptionState) []rules.ValidationIssue {
 	if !hasVal || val == "" {
 		return []rules.ValidationIssue{
@@ -48,11 +46,36 @@ func (SELinuxContextOption) ValidateOption(ctx context.Context, api rules.API, e
 	}
 
 	unquotedVal := val
-	if len(val) >= 2 && val[0] == '"' && val[len(val)-1] == '"' {
-		unquotedVal = val[1 : len(val)-1]
+	if len(val) > 0 && (val[0] == '"' || val[len(val)-1] == '"') {
+		if len(val) >= 2 && val[0] == '"' && val[len(val)-1] == '"' {
+			unquotedVal = val[1 : len(val)-1]
+		} else {
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("Malformed or unbalanced quotes in %s mount option '%s' on line %d", fsName, key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelError,
+				},
+			}
+		}
 	}
 
-	if !selinuxContextRe.MatchString(unquotedVal) {
+	if key == "rootcontext" && unquotedVal == "@target" {
+		return nil
+	}
+
+	if unquotedVal == "@target" {
+		return []rules.ValidationIssue{
+			{
+				Message: fmt.Sprintf("Special value '@target' is only allowed for 'rootcontext', invalid in %s mount option '%s' on line %d", fsName, key, entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelError,
+			},
+		}
+	}
+
+	parts := regexp.MustCompile(`:`).Split(unquotedVal, 4)
+	if len(parts) < 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
 		return []rules.ValidationIssue{
 			{
 				Message: fmt.Sprintf("Invalid SELinux context '%s' for %s mount option '%s' on line %d", val, fsName, key, entry.LineNum),

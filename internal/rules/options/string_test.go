@@ -92,6 +92,20 @@ func TestSELinuxContextOption(t *testing.T) {
 			wantErrs:   1,
 			wantErrMsg: "Invalid SELinux context 'user:role' for ext4 mount option 'context' on line 5",
 		},
+		{
+			name:       "unbalanced quotes",
+			val:        `"system_u:object_r:tmpfs_t:s0`,
+			hasVal:     true,
+			wantErrs:   1,
+			wantErrMsg: "Malformed or unbalanced quotes in ext4 mount option 'context' on line 5",
+		},
+		{
+			name:       "context=@target rejected",
+			val:        `@target`,
+			hasVal:     true,
+			wantErrs:   1,
+			wantErrMsg: "Special value '@target' is only allowed for 'rootcontext', invalid in ext4 mount option 'context' on line 5",
+		},
 	}
 
 	for _, tt := range tests {
@@ -107,6 +121,20 @@ func TestSELinuxContextOption(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("rootcontext=@target allowed", func(t *testing.T) {
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "rootcontext", "@target", true, nil)
+		if len(issues) != 0 {
+			t.Fatalf("expected 0 issues, got %d", len(issues))
+		}
+	})
+
+	t.Run("rootcontext=normal allowed", func(t *testing.T) {
+		issues := opt.ValidateOption(ctx, api, entry, "ext4", "rootcontext", "system_u:object_r:tmpfs_t:s0", true, nil)
+		if len(issues) != 0 {
+			t.Fatalf("expected 0 issues, got %d", len(issues))
+		}
+	})
 }
 
 func TestOptionalStringOption(t *testing.T) {
