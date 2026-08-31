@@ -45,6 +45,10 @@ func (m *mockFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return m.writeFileErr
 }
 
+func (m *mockFS) SyncDir(name string) error {
+	return nil
+}
+
 type mockTempFile struct {
 	name string
 	mfs  *mockFS
@@ -66,6 +70,10 @@ func (t *mockTempFile) Name() string {
 
 func (t *mockTempFile) Chmod(mode os.FileMode) error {
 	t.mfs.writeFilePerm = mode
+	return nil
+}
+
+func (t *mockTempFile) Sync() error {
 	return nil
 }
 
