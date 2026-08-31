@@ -72,6 +72,7 @@ func main() {
 		formatCmd := flag.NewFlagSet("format", flag.ExitOnError)
 		fileFlag := formatCmd.String("file", "/etc/fstab", "File to format")
 		inPlaceFlag := formatCmd.Bool("i", false, "Write formatted output back to the file (in-place)")
+		backupDirFlag := formatCmd.String("backup-dir", "", "Directory to store RCS backups")
 		formatCmd.Usage = func() {
 			fmt.Fprintf(os.Stderr, "Usage: %s format [options]\n", os.Args[0])
 			formatCmd.PrintDefaults()
@@ -127,8 +128,11 @@ func main() {
 			}
 
 			cfg, err := config.GetDefaultConfig(*fileFlag)
-			if err != nil {
+			if err != nil && *backupDirFlag == "" {
 				handleError(err)
+			}
+			if *backupDirFlag != "" {
+				cfg.BackupDir = *backupDirFlag
 			}
 			if err := editor.SaveWithoutValidation(cfg, content, editor.DefaultDependencies()); err != nil {
 				handleError(err)
@@ -178,9 +182,7 @@ func main() {
 	}
 
 	cfg, err := config.GetDefaultConfig(file)
-	if err != nil && backupDir == "" {
-		handleError(err)
-	}
+
 	if backupDir != "" {
 		cfg.BackupDir = backupDir
 	}
@@ -223,6 +225,10 @@ func main() {
 		}
 
 		os.Exit(1)
+	}
+
+	if err != nil && backupDir == "" {
+		handleError(err)
 	}
 
 	err = editor.EditAndLint(cfg, rules.ActualFS{}, editor.DefaultDependencies())
