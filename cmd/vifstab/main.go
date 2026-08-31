@@ -126,7 +126,10 @@ func main() {
 				handleError(fmt.Errorf("failed to read formatted content: %w", err))
 			}
 
-			cfg := config.GetDefaultConfig(*fileFlag)
+			cfg, err := config.GetDefaultConfig(*fileFlag)
+			if err != nil {
+				handleError(err)
+			}
 			if err := editor.SaveWithoutValidation(cfg, content, editor.DefaultDependencies()); err != nil {
 				handleError(err)
 			}
@@ -174,7 +177,10 @@ func main() {
 		return
 	}
 
-	cfg := config.GetDefaultConfig(file)
+	cfg, err := config.GetDefaultConfig(file)
+	if err != nil && backupDir == "" {
+		handleError(err)
+	}
 	if backupDir != "" {
 		cfg.BackupDir = backupDir
 	}
@@ -219,7 +225,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err := editor.EditAndLint(cfg, rules.ActualFS{}, editor.DefaultDependencies())
+	err = editor.EditAndLint(cfg, rules.ActualFS{}, editor.DefaultDependencies())
 	if err != nil {
 		handleError(err)
 	}
