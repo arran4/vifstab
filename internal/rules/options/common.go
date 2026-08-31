@@ -15,7 +15,7 @@ func CommonOptions() map[string]OptionValidator {
 		"dev": NoValueOption{}, "atime": NoValueOption{}, "diratime": NoValueOption{},
 		"noiversion": NoValueOption{}, "nolazytime": NoValueOption{}, "owner": NoValueOption{},
 		"group":   NoValueOption{},
-		"beneath": NoValueOption{}, "bind": NoValueOption{}, "rbind": NoValueOption{}, "remount": NoValueOption{},
+		"bind": NoValueOption{}, "rbind": NoValueOption{}, "remount": NoValueOption{},
 		"nosymfollow": NoValueOption{}, "silent": NoValueOption{}, "loud": NoValueOption{},
 		"nomand": NoValueOption{},
 
@@ -32,7 +32,7 @@ func CommonOptions() map[string]OptionValidator {
 		"rootcontext":    SELinuxContextOption{},
 		"fscontext":      SELinuxContextOption{},
 
-		"comment":        OptionalStringOption{},
+		"comment":        StringOption{},
 		"X-mount.mkdir":  OptionalOctalOption{},
 		"x-mount.mkdir":  OptionalOctalOption{},
 	}
