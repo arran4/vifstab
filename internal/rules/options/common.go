@@ -25,6 +25,11 @@ func CommonOptions() map[string]OptionValidator {
 		"silent":  NoValueOption{},
 		"X-":      NoValueOption{}, "x-": NoValueOption{},
 
+		"private": NoValueOption{}, "slave": NoValueOption{}, "shared": NoValueOption{}, "unbindable": NoValueOption{},
+		"rprivate": NoValueOption{}, "rslave": NoValueOption{}, "rshared": NoValueOption{}, "runbindable": NoValueOption{},
+
+		"comment": StringOption{},
+
 		// Valued generic options marked for future detailed validation
 		"context":     TODOOption{Comment: "validate SELinux context string"},
 		"defcontext":  TODOOption{Comment: "validate SELinux default context string"},
