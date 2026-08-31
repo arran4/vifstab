@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 type SystemdReloadAction string
 
@@ -16,19 +19,22 @@ type Config struct {
 	SystemdReload SystemdReloadAction
 }
 
-func GetDefaultConfig(filePath string) Config {
+func GetDefaultConfig(filePath string) (Config, error) {
 	backupDir := ""
 	if xdgCache := os.Getenv("XDG_CACHE_HOME"); xdgCache != "" {
 		backupDir = xdgCache + "/vifstab"
-	} else if home, err := os.UserHomeDir(); err == nil {
-		backupDir = home + "/.cache/vifstab"
+	} else if userCache, err := os.UserCacheDir(); err == nil {
+		backupDir = userCache + "/vifstab"
 	} else {
-		backupDir = "/tmp/.vifstab"
+		return Config{
+			FilePath:      filePath,
+			SystemdReload: SystemdReloadWarn,
+		}, fmt.Errorf("could not determine user cache directory: %w. Please specify an explicit backup directory via --backup-dir", err)
 	}
 
 	return Config{
 		BackupDir:     backupDir,
 		FilePath:      filePath,
 		SystemdReload: SystemdReloadWarn,
-	}
+	}, nil
 }

@@ -3,17 +3,18 @@ package main
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/arran4/vifstab/internal/diagram"
 	"github.com/diskfs/go-diskfs"
 	"github.com/diskfs/go-diskfs/disk"
 	"github.com/diskfs/go-diskfs/partition/gpt"
 	"github.com/diskfs/go-diskfs/partition/mbr"
 	"golang.org/x/tools/txtar"
-	"github.com/arran4/vifstab/internal/diagram"
 )
 
 func TestDiagram(t *testing.T) {
@@ -127,5 +128,124 @@ func TestDiagram(t *testing.T) {
 				t.Errorf("expected:\n%sgot:\n%s", expectedOutput, buf.String())
 			}
 		})
+	}
+}
+
+// We also import os/exec for these tests. If it was already imported, it's fine,
+// but we just define buildBinary here. Since imports can't be appended easily,
+// we'll just write it and use goimports.
+func buildBinary(t *testing.T) string {
+	t.Helper()
+	tempDir := t.TempDir()
+	binPath := filepath.Join(tempDir, "vifstab")
+	cmd := exec.Command("go", "build", "-o", binPath, ".")
+	cmd.Dir = "."
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("failed to build: %v\n%s", err, out)
+	}
+	return binPath
+}
+
+func TestVerifyFallbackError(t *testing.T) {
+	binPath := buildBinary(t)
+
+	tempDir := t.TempDir()
+	fstabPath := filepath.Join(tempDir, "fstab")
+	err := os.WriteFile(fstabPath, []byte(""), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(binPath, "--verify", "--file", fstabPath)
+	cmd.Env = []string{
+		"XDG_CACHE_HOME=",
+		"HOME=",
+		"USERPROFILE=",
+		"PATH=" + os.Getenv("PATH"),
+	}
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		t.Fatalf("verify failed unexpectedly: %v\nStderr: %s", err, stderr.String())
+	}
+}
+
+func TestExplicitBackupDir(t *testing.T) {
+	binPath := buildBinary(t)
+
+	tempDir := t.TempDir()
+	fstabPath := filepath.Join(tempDir, "fstab")
+	backupDir := filepath.Join(tempDir, "backup")
+	err := os.WriteFile(fstabPath, []byte(""), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(binPath, "--verify", "--file", fstabPath, "--backup-dir", backupDir)
+	cmd.Env = []string{
+		"XDG_CACHE_HOME=",
+		"HOME=",
+		"USERPROFILE=",
+		"PATH=" + os.Getenv("PATH"),
+	}
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		t.Fatalf("verify with explicit backup dir failed: %v\nStderr: %s", err, stderr.String())
+	}
+}
+
+func TestFormatInPlaceNoCache(t *testing.T) {
+	binPath := buildBinary(t)
+
+	tempDir := t.TempDir()
+	fstabPath := filepath.Join(tempDir, "fstab")
+	backupDir := filepath.Join(tempDir, "backup")
+	err := os.WriteFile(fstabPath, []byte(""), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(binPath, "format", "-i", "--file", fstabPath)
+	cmd.Env = []string{
+		"XDG_CACHE_HOME=",
+		"HOME=",
+		"USERPROFILE=",
+		"PATH=" + os.Getenv("PATH"),
+	}
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err == nil {
+		t.Fatalf("format -i without cache dir should have failed, but it succeeded")
+	}
+	if !strings.Contains(stderr.String(), "could not determine user cache directory") {
+		t.Fatalf("expected error about cache dir, got: %s", stderr.String())
+	}
+
+	cmd2 := exec.Command(binPath, "format", "-i", "--file", fstabPath, "--backup-dir", backupDir)
+	cmd2.Env = []string{
+		"XDG_CACHE_HOME=",
+		"HOME=",
+		"USERPROFILE=",
+		"PATH=" + os.Getenv("PATH"),
+	}
+	var stderr2 bytes.Buffer
+	cmd2.Stderr = &stderr2
+	err = cmd2.Run()
+	if err != nil {
+		t.Fatalf("format -i with explicit backup dir failed: %v\nStderr: %s", err, stderr2.String())
 	}
 }

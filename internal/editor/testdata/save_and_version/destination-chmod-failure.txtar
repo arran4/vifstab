@@ -1,0 +1,14 @@
+-- input/etc/fstab --
+old fstab content
+-- input/new_fstab --
+new fstab content
+-- fault/destination.temp.chmod --
+chmod failure
+-- expected/Saved --
+false
+-- expected/VersioningEnabled --
+false
+-- expected/Versioned --
+false
+-- expected/Err --
+failed to chmod temporary destination file: chmod failure

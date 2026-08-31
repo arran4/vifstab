@@ -3,6 +3,7 @@ package rcs
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -16,12 +17,23 @@ type Config struct {
 	Dir string
 }
 
+type TempFile interface {
+	io.WriteCloser
+	Name() string
+	Chmod(mode os.FileMode) error
+	Sync() error
+}
+
 // FS abstracts filesystem operations to allow mocking during tests.
 type FS interface {
 	MkdirAll(path string, perm os.FileMode) error
 	Stat(name string) (os.FileInfo, error)
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte, perm os.FileMode) error
+	CreateTemp(dir, pattern string) (TempFile, error)
+	Rename(oldpath, newpath string) error
+	Remove(name string) error
+	SyncDir(name string) error
 }
 
 type osFS struct{}
@@ -31,6 +43,19 @@ func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name)
 func (osFS) ReadFile(name string) ([]byte, error)         { return os.ReadFile(name) }
 func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(name, data, perm)
+}
+func (osFS) CreateTemp(dir, pattern string) (TempFile, error) {
+	return os.CreateTemp(dir, pattern)
+}
+func (osFS) Rename(oldpath, newpath string) error { return os.Rename(oldpath, newpath) }
+func (osFS) Remove(name string) error             { return os.Remove(name) }
+func (osFS) SyncDir(name string) error {
+	d, err := os.Open(name)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = d.Close() }()
+	return d.Sync()
 }
 
 var DefaultFS FS = osFS{}
@@ -118,9 +143,38 @@ func Update(filePath string, content []byte, config Config, opts ...any) error {
 		}
 	}
 
-	writeErr := fsLayer.WriteFile(rcsFilepath, []byte(f.String()), 0600)
+	dir := filepath.Dir(rcsFilepath)
+	tmpDest, writeErr := fsLayer.CreateTemp(dir, "rcs-tmp-*")
 	if writeErr != nil {
-		return fmt.Errorf("failed to write rcs file: %w", writeErr)
+		return fmt.Errorf("failed to create temporary rcs file: %w", writeErr)
+	}
+	defer func() { _ = fsLayer.Remove(tmpDest.Name()) }()
+
+	if _, err := tmpDest.Write([]byte(f.String())); err != nil {
+		_ = tmpDest.Close()
+		return fmt.Errorf("failed to write to temporary rcs file: %w", err)
+	}
+
+	if err := tmpDest.Chmod(0600); err != nil {
+		_ = tmpDest.Close()
+		return fmt.Errorf("failed to chmod temporary rcs file: %w", err)
+	}
+
+	if err := tmpDest.Sync(); err != nil {
+		_ = tmpDest.Close()
+		return fmt.Errorf("failed to sync temporary rcs file: %w", err)
+	}
+
+	if err := tmpDest.Close(); err != nil {
+		return fmt.Errorf("failed to close temporary rcs file: %w", err)
+	}
+
+	if err := fsLayer.Rename(tmpDest.Name(), rcsFilepath); err != nil {
+		return fmt.Errorf("failed to replace rcs file: %w", err)
+	}
+
+	if err := fsLayer.SyncDir(dir); err != nil {
+		return fmt.Errorf("failed to sync directory after replacing rcs file: %w", err)
 	}
 
 	return nil

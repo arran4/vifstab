@@ -1,0 +1,22 @@
+-- input/etc/fstab --
+old fstab content
+-- input/new_fstab --
+new fstab content
+-- config/BackupDir --
+/var/backup
+-- input/var/backup/fstab,v --
+malformed rcs file
+-- expected/etc/fstab --
+new fstab content
+-- expected/var/backup/fstab,v --
+malformed rcs file
+-- expected/rcs_exists --
+true
+-- expected/Saved --
+true
+-- expected/VersioningEnabled --
+true
+-- expected/Versioned --
+false
+-- expected/Err --
+rcs update failed: failed to parse rcs file

@@ -45,6 +45,58 @@ func (m *mockFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return m.writeFileErr
 }
 
+func (m *mockFS) SyncDir(name string) error {
+	return nil
+}
+
+type mockTempFile struct {
+	name string
+	mfs  *mockFS
+}
+
+func (t *mockTempFile) Write(p []byte) (n int, err error) {
+	t.mfs.writeFileData = append(t.mfs.writeFileData, p...)
+	return len(p), nil
+}
+
+func (t *mockTempFile) Close() error {
+	t.mfs.writeFileCalls++
+	return nil
+}
+
+func (t *mockTempFile) Name() string {
+	return t.name
+}
+
+func (t *mockTempFile) Chmod(mode os.FileMode) error {
+	t.mfs.writeFilePerm = mode
+	return nil
+}
+
+func (t *mockTempFile) Sync() error {
+	return nil
+}
+
+func (m *mockFS) CreateTemp(dir, pattern string) (TempFile, error) {
+	if m.writeFileErr != nil {
+		return nil, m.writeFileErr
+	}
+	name := filepath.Join(dir, strings.ReplaceAll(pattern, "*", "mock"))
+	return &mockTempFile{name: name, mfs: m}, nil
+}
+
+func (m *mockFS) Rename(oldpath, newpath string) error {
+	if m.writeFileErr != nil {
+		return m.writeFileErr
+	}
+	m.writeFilePath = newpath
+	return nil
+}
+
+func (m *mockFS) Remove(name string) error {
+	return nil
+}
+
 func TestUpdate_Errors(t *testing.T) {
 	errGeneric := errors.New("generic error")
 	errPermission := os.ErrPermission
@@ -172,7 +224,7 @@ text
 				writeFileErr: errGeneric,
 			},
 			expectedErr: errGeneric,
-			expectedStr: "failed to write rcs file",
+			expectedStr: "failed to create temporary rcs file",
 		},
 	}
 
@@ -225,16 +277,16 @@ func TestUpdate_NewFileSuccess(t *testing.T) {
 	}
 
 	if fsMock.writeFileCalls != 1 {
-		t.Fatalf("expected WriteFile to be called exactly once, got %d", fsMock.writeFileCalls)
+		t.Fatalf("expected TempFile Close to be called exactly once (recording write), got %d", fsMock.writeFileCalls)
 	}
 
 	expectedPath := filepath.Join(config.Dir, "testfile.txt,v")
 	if fsMock.writeFilePath != expectedPath {
-		t.Errorf("expected WriteFile path %q, got %q", expectedPath, fsMock.writeFilePath)
+		t.Errorf("expected Rename to target path %q, got %q", expectedPath, fsMock.writeFilePath)
 	}
 
 	if fsMock.writeFilePerm != 0600 {
-		t.Errorf("expected WriteFile permissions 0600, got %v", fsMock.writeFilePerm)
+		t.Errorf("expected TempFile Chmod permissions 0600, got %v", fsMock.writeFilePerm)
 	}
 
 	// Parse the written data
@@ -307,16 +359,16 @@ text
 	}
 
 	if fsMock.writeFileCalls != 1 {
-		t.Fatalf("expected WriteFile to be called exactly once, got %d", fsMock.writeFileCalls)
+		t.Fatalf("expected TempFile Close to be called exactly once (recording write), got %d", fsMock.writeFileCalls)
 	}
 
 	expectedPath := filepath.Join(config.Dir, "testfile.txt,v")
 	if fsMock.writeFilePath != expectedPath {
-		t.Errorf("expected WriteFile path %q, got %q", expectedPath, fsMock.writeFilePath)
+		t.Errorf("expected Rename to target path %q, got %q", expectedPath, fsMock.writeFilePath)
 	}
 
 	if fsMock.writeFilePerm != 0600 {
-		t.Errorf("expected WriteFile permissions 0600, got %v", fsMock.writeFilePerm)
+		t.Errorf("expected TempFile Chmod permissions 0600, got %v", fsMock.writeFilePerm)
 	}
 
 	// Parse the written data

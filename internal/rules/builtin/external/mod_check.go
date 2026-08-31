@@ -42,6 +42,9 @@ func getUnameR(c *rules.Cache) string {
 	}
 	d, err := os.ReadFile("/proc/version")
 	if err == nil {
+		if c != nil {
+			c.Set(rules.CacheKey("proc_version"), d)
+		}
 		return parseUnameR(string(d))
 	}
 	return ""

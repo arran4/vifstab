@@ -14,27 +14,30 @@ func CommonOptions() map[string]OptionValidator {
 		"nodiratime": NoValueOption{}, "users": NoValueOption{}, "_netdev": NoValueOption{},
 		"dev": NoValueOption{}, "atime": NoValueOption{}, "diratime": NoValueOption{},
 		"noiversion": NoValueOption{}, "nolazytime": NoValueOption{}, "owner": NoValueOption{},
-		"group":   NoValueOption{},
-		"bind": NoValueOption{}, "rbind": NoValueOption{}, "remount": NoValueOption{},
-		"nosymfollow": NoValueOption{}, "silent": NoValueOption{}, "loud": NoValueOption{},
-		"nomand": NoValueOption{},
+		"group": NoValueOption{},
+		"bind":  NoValueOption{},
 
-		"private": NoValueOption{}, "rprivate": NoValueOption{},
-		"slave": NoValueOption{}, "rslave": NoValueOption{},
-		"shared": NoValueOption{}, "rshared": NoValueOption{},
-		"unbindable": NoValueOption{}, "runbindable": NoValueOption{},
+		"loud": NoValueOption{},
 
-		"X-": NoValueOption{}, "x-": NoValueOption{},
+		"nomand": NoValueOption{}, "nosymfollow": NoValueOption{},
+		"rbind":   NoValueOption{},
+		"remount": NoValueOption{},
+		"silent":  NoValueOption{},
+		"X-":      NoValueOption{}, "x-": NoValueOption{},
+
+		"private": NoValueOption{}, "slave": NoValueOption{}, "shared": NoValueOption{}, "unbindable": NoValueOption{},
+		"rprivate": NoValueOption{}, "rslave": NoValueOption{}, "rshared": NoValueOption{}, "runbindable": NoValueOption{},
+
+		"comment": StringOption{},
 
 		// Valued generic options marked for future detailed validation
-		"context":        SELinuxContextOption{},
-		"defcontext":     SELinuxContextOption{},
-		"rootcontext":    SELinuxContextOption{},
-		"fscontext":      SELinuxContextOption{},
+		"context":     SELinuxContextOption{},
+		"defcontext":  SELinuxContextOption{},
+		"rootcontext": SELinuxContextOption{},
+		"fscontext":   SELinuxContextOption{},
 
-		"comment":        StringOption{},
-		"X-mount.mkdir":  OptionalOctalOption{},
-		"x-mount.mkdir":  OptionalOctalOption{},
+		"X-mount.mkdir": OptionalOctalOption{},
+		"x-mount.mkdir": OptionalOctalOption{},
 	}
 	return opts
 }

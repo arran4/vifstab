@@ -1,0 +1,81 @@
+-- input --
+/dev/sda1 /mnt ext4 fake 0 0
+/dev/sda2 /mnt ext4 fork 0 0
+/dev/sda3 /mnt ext4 help 0 0
+/dev/sda4 /mnt ext4 no-mtab 0 0
+/dev/sda5 /mnt ext4 onlyonce 0 0
+/dev/sda6 /mnt ext4 verbose 0 0
+/dev/sda7 /mnt ext4 version 0 0
+/dev/sda8 /mnt ext4 read-only 0 0
+/dev/sda9 /mnt ext4 uuid 0 0
+/dev/sda10 /mnt ext4 fstab 0 0
+/dev/sda11 /mnt ext4 source 0 0
+/dev/sda12 /mnt ext4 target 0 0
+/dev/sda13 /mnt ext4 target-prefix 0 0
+/dev/sda14 /mnt ext4 options-source 0 0
+/dev/sda15 /mnt ext4 options-mode 0 0
+/dev/sda16 /mnt ext4 namespace 0 0
+/dev/sda17 /mnt ext4 test-opts 0 0
+/dev/sda18 /mnt ext4 types 0 0
+/dev/sda19 /mnt ext4 map-users 0 0
+/dev/sda20 /mnt ext4 map-groups 0 0
+/dev/sda21 /mnt ext4 options 0 0
+/dev/sda22 /mnt ext4 beneath 0 0
+/dev/sda23 /mnt ext4 exclusive 0 0
+/dev/sda24 /mnt ext4 internal-only 0 0
+/dev/sda25 /mnt ext4 make-private 0 0
+/dev/sda26 /mnt ext4 make-rprivate 0 0
+/dev/sda27 /mnt ext4 make-rshared 0 0
+/dev/sda28 /mnt ext4 make-rslave 0 0
+/dev/sda29 /mnt ext4 make-runbindable 0 0
+/dev/sda30 /mnt ext4 make-shared 0 0
+/dev/sda31 /mnt ext4 make-slave 0 0
+/dev/sda32 /mnt ext4 make-unbindable 0 0
+/dev/sda33 /mnt ext4 no-canonicalize 0 0
+/dev/sda34 /mnt ext4 options-source-force 0 0
+/dev/sda35 /mnt ext4 read-write 0 0
+/dev/sda36 /mnt ext4 show-labels 0 0
+/dev/sda37 /mnt ext4 mkdir 0 0
+-- cache --
+proc_filesystems=ext4
+-- input/etc/passwd --
+-- input/etc/group --
+-- expected/validationerrors.txt --
+Unknown ext4 mount option 'fake' on line 1
+Unknown ext4 mount option 'fork' on line 2
+Unknown ext4 mount option 'help' on line 3
+Unknown ext4 mount option 'no-mtab' on line 4
+Unknown ext4 mount option 'onlyonce' on line 5
+Unknown ext4 mount option 'verbose' on line 6
+Unknown ext4 mount option 'version' on line 7
+Unknown ext4 mount option 'read-only' on line 8
+Unknown ext4 mount option 'uuid' on line 9
+Unknown ext4 mount option 'fstab' on line 10
+Unknown ext4 mount option 'source' on line 11
+Unknown ext4 mount option 'target' on line 12
+Unknown ext4 mount option 'target-prefix' on line 13
+Unknown ext4 mount option 'options-source' on line 14
+Unknown ext4 mount option 'options-mode' on line 15
+Unknown ext4 mount option 'namespace' on line 16
+Unknown ext4 mount option 'test-opts' on line 17
+Unknown ext4 mount option 'types' on line 18
+Unknown ext4 mount option 'map-users' on line 19
+Unknown ext4 mount option 'map-groups' on line 20
+Unknown ext4 mount option 'options' on line 21
+Unknown ext4 mount option 'beneath' on line 22
+Unknown ext4 mount option 'exclusive' on line 23
+Unknown ext4 mount option 'internal-only' on line 24
+Unknown ext4 mount option 'make-private' on line 25
+Unknown ext4 mount option 'make-rprivate' on line 26
+Unknown ext4 mount option 'make-rshared' on line 27
+Unknown ext4 mount option 'make-rslave' on line 28
+Unknown ext4 mount option 'make-runbindable' on line 29
+Unknown ext4 mount option 'make-shared' on line 30
+Unknown ext4 mount option 'make-slave' on line 31
+Unknown ext4 mount option 'make-unbindable' on line 32
+Unknown ext4 mount option 'no-canonicalize' on line 33
+Unknown ext4 mount option 'options-source-force' on line 34
+Unknown ext4 mount option 'read-write' on line 35
+Unknown ext4 mount option 'show-labels' on line 36
+
+Unknown ext4 mount option 'mkdir' on line 37

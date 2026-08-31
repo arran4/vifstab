@@ -1,0 +1,12 @@
+-- input/new_fstab --
+new fstab content
+-- fault/destination.temp.write --
+write failure
+-- expected/Saved --
+false
+-- expected/VersioningEnabled --
+false
+-- expected/Versioned --
+false
+-- expected/Err --
+failed to write to temporary destination file: write failure

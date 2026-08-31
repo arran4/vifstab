@@ -1,0 +1,12 @@
+-- input/new_fstab --
+new fstab content
+-- fault/destination.stat --
+unexpected stat error
+-- expected/Saved --
+false
+-- expected/VersioningEnabled --
+false
+-- expected/Versioned --
+false
+-- expected/Err --
+failed to stat destination file: unexpected stat error

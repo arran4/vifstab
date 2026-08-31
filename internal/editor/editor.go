@@ -2,6 +2,7 @@ package editor
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,6 +17,13 @@ import (
 	"github.com/arran4/vifstab/internal/systemd"
 )
 
+type TempFile interface {
+	io.WriteCloser
+	Name() string
+	Chmod(mode os.FileMode) error
+	Sync() error
+}
+
 // FS provides filesystem operations to allow mocking
 type FS interface {
 	ReadFile(name string) ([]byte, error)
@@ -23,6 +31,9 @@ type FS interface {
 	MkdirAll(path string, perm os.FileMode) error
 	Rename(oldpath, newpath string) error
 	Stat(name string) (os.FileInfo, error)
+	CreateTemp(dir, pattern string) (TempFile, error)
+	Remove(name string) error
+	SyncDir(name string) error
 }
 
 type osFS struct{}
@@ -34,8 +45,58 @@ func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 func (osFS) MkdirAll(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
 func (osFS) Rename(oldpath, newpath string) error         { return os.Rename(oldpath, newpath) }
 func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name) }
+func (osFS) CreateTemp(dir, pattern string) (TempFile, error) {
+	return os.CreateTemp(dir, pattern)
+}
+func (osFS) Remove(name string) error { return os.Remove(name) }
+func (osFS) SyncDir(name string) error {
+	d, err := os.Open(name)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = d.Close() }()
+	return d.Sync()
+}
 
 var DefaultFS FS = osFS{}
+
+type rcsFSAdapter struct {
+	fs FS
+}
+
+func (a rcsFSAdapter) MkdirAll(path string, perm os.FileMode) error {
+	return a.fs.MkdirAll(path, perm)
+}
+
+func (a rcsFSAdapter) Stat(name string) (os.FileInfo, error) {
+	return a.fs.Stat(name)
+}
+
+func (a rcsFSAdapter) ReadFile(name string) ([]byte, error) {
+	return a.fs.ReadFile(name)
+}
+
+func (a rcsFSAdapter) Rename(oldpath, newpath string) error {
+	return a.fs.Rename(oldpath, newpath)
+}
+
+func (a rcsFSAdapter) Remove(name string) error {
+	return a.fs.Remove(name)
+}
+
+func (a rcsFSAdapter) WriteFile(name string, data []byte, perm os.FileMode) error {
+	return a.fs.WriteFile(name, data, perm)
+}
+
+func (a rcsFSAdapter) CreateTemp(dir, pattern string) (rcs.TempFile, error) {
+	return a.fs.CreateTemp(dir, pattern)
+}
+
+func (a rcsFSAdapter) SyncDir(name string) error {
+	return a.fs.SyncDir(name)
+}
+
+var _ rcs.FS = rcsFSAdapter{}
 
 // Dependencies contains the side-effecting services used by the edit workflow.
 // Supplying it explicitly keeps tests on the same production path as the CLI.
@@ -205,64 +266,92 @@ func editorCommandFromEnvironment() ([]string, error) {
 	return editorParts, nil
 }
 
+// SaveResult captures the success or failure of distinct stages in the save pipeline.
+type SaveResult struct {
+	Saved             bool
+	VersioningEnabled bool
+	Versioned         bool
+	Err               error
+}
+
 // SaveAndVersion saves the given content to the target file and versions it using RCS.
 // It deliberately has no post-save systemd side effects.
-func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) error {
+//
+// Durability guarantee:
+// On supported systems, this function provides crash durability against sudden power loss.
+// It writes to a temporary file, applies metadata, syncs the file data to disk, closes it,
+// atomically renames it over the target, and finally syncs the containing directory to
+// ensure the directory entry metadata is persisted.
+func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 	if fsLayer == nil {
 		fsLayer = DefaultFS
 	}
-	// First update RCS
-	rcsCfg := rcs.Config{Dir: cfg.BackupDir}
-	if err := rcs.Update(cfg.FilePath, content, rcsCfg, fsLayer); err != nil {
-		return fmt.Errorf("rcs update failed: %w", err)
-	}
+
+	var res SaveResult
 
 	var targetMode *os.FileMode
 	if info, err := fsLayer.Stat(cfg.FilePath); err == nil {
 		m := info.Mode().Perm()
 		targetMode = &m
 	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("failed to stat destination file: %w", err)
+		res.Err = fmt.Errorf("failed to stat destination file: %w", err)
+		return res
 	}
 
-	if _, isOSFS := fsLayer.(osFS); isOSFS {
-		// Then copy to dest atomically
-		dir := filepath.Dir(cfg.FilePath)
-		tmpDest, err := os.CreateTemp(dir, "vifstab-tmp-*")
-		if err != nil {
-			return fmt.Errorf("failed to create temporary destination file: %w", err)
-		}
-		defer func() { _ = os.Remove(tmpDest.Name()) }()
+	dir := filepath.Dir(cfg.FilePath)
+	tmpDest, err := fsLayer.CreateTemp(dir, "vifstab-tmp-*")
+	if err != nil {
+		res.Err = fmt.Errorf("failed to create temporary destination file: %w", err)
+		return res
+	}
+	defer func() { _ = fsLayer.Remove(tmpDest.Name()) }()
 
-		if _, err := tmpDest.Write(content); err != nil {
+	if _, err := tmpDest.Write(content); err != nil {
+		_ = tmpDest.Close()
+		res.Err = fmt.Errorf("failed to write to temporary destination file: %w", err)
+		return res
+	}
+	if targetMode != nil {
+		if err := tmpDest.Chmod(*targetMode); err != nil {
 			_ = tmpDest.Close()
-			return fmt.Errorf("failed to write to temporary destination file: %w", err)
-		}
-		if targetMode != nil {
-			if err := tmpDest.Chmod(*targetMode); err != nil {
-				_ = tmpDest.Close()
-				return fmt.Errorf("failed to chmod temporary destination file: %w", err)
-			}
-		}
-		if err := tmpDest.Close(); err != nil {
-			return fmt.Errorf("failed to close temporary destination file: %w", err)
-		}
-
-		if err := fsLayer.Rename(tmpDest.Name(), cfg.FilePath); err != nil {
-			return fmt.Errorf("failed to replace destination file: %w", err)
-		}
-	} else {
-		// Write the destination directly
-		perm := os.FileMode(0600)
-		if targetMode != nil {
-			perm = *targetMode
-		}
-		if err := fsLayer.WriteFile(cfg.FilePath, content, perm); err != nil {
-			return fmt.Errorf("failed to replace destination file: %w", err)
+			res.Err = fmt.Errorf("failed to chmod temporary destination file: %w", err)
+			return res
 		}
 	}
 
-	return nil
+	if err := tmpDest.Sync(); err != nil {
+		_ = tmpDest.Close()
+		res.Err = fmt.Errorf("failed to sync temporary destination file: %w", err)
+		return res
+	}
+
+	if err := tmpDest.Close(); err != nil {
+		res.Err = fmt.Errorf("failed to close temporary destination file: %w", err)
+		return res
+	}
+
+	if err := fsLayer.Rename(tmpDest.Name(), cfg.FilePath); err != nil {
+		res.Err = fmt.Errorf("failed to replace destination file: %w", err)
+		return res
+	}
+
+	res.Saved = true
+
+	if err := fsLayer.SyncDir(dir); err != nil {
+		res.Err = errors.Join(res.Err, fmt.Errorf("failed to sync directory after rename: %w", err))
+	}
+
+	if cfg.BackupDir != "" {
+		res.VersioningEnabled = true
+		rcsCfg := rcs.Config{Dir: cfg.BackupDir}
+		if err := rcs.Update(cfg.FilePath, content, rcsCfg, rcsFSAdapter{fs: fsLayer}); err != nil {
+			res.Err = errors.Join(res.Err, fmt.Errorf("rcs update failed: %w", err))
+			return res
+		}
+		res.Versioned = true
+	}
+
+	return res
 }
 
 // commitEdit commits an edited fstab before considering any systemd action.
@@ -270,11 +359,15 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) error {
 // eligible for an automatic reload and receives the conservative warning.
 func commitEdit(cfg config.Config, content []byte, blockingValidationPassed bool, deps Dependencies) error {
 	deps = deps.withDefaults()
-	if err := SaveAndVersion(cfg, content, deps.FS); err != nil {
-		return err
+	res := SaveAndVersion(cfg, content, deps.FS)
+
+	var sysErr error
+	if res.Saved {
+		fmt.Println("Saved successfully.")
+		sysErr = handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed)
 	}
-	fmt.Println("Saved successfully.")
-	return handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed)
+
+	return errors.Join(res.Err, sysErr)
 }
 
 // SaveWithoutValidation saves content produced by a workflow that has not
@@ -282,10 +375,14 @@ func commitEdit(cfg config.Config, content []byte, blockingValidationPassed bool
 // state. It never performs an automatic reload.
 func SaveWithoutValidation(cfg config.Config, content []byte, deps Dependencies) error {
 	deps = deps.withDefaults()
-	if err := SaveAndVersion(cfg, content, deps.FS); err != nil {
-		return err
+	res := SaveAndVersion(cfg, content, deps.FS)
+
+	var sysErr error
+	if res.Saved {
+		sysErr = handlePostSaveSystemd(cfg, deps.Systemd, false)
 	}
-	return handlePostSaveSystemd(cfg, deps.Systemd, false)
+
+	return errors.Join(res.Err, sysErr)
 }
 
 // HandleSystemdReload performs the configured post-save action after
