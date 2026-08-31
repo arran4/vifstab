@@ -50,6 +50,7 @@ var affsOptions = options.MergeOptions(options.CommonOptions(), map[string]optio
 	"quiet":              options.NoValueOption{},
 	"mufs":               options.NoValueOption{},
 	"usemp":              options.NoValueOption{},
+	"verbose":            options.NoValueOption{},
 	"prefix":             options.StringOption{},
 	"volume": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 		if !hasVal || val == "" {

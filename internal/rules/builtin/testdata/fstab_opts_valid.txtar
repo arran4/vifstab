@@ -1,0 +1,19 @@
+
+-- input --
+/dev/sda1 /mnt ext4 defaults 0 0
+/dev/sda2 /mnt ext4 private 0 0
+/dev/sda3 /mnt ext4 slave 0 0
+/dev/sda4 /mnt ext4 shared 0 0
+/dev/sda5 /mnt ext4 unbindable 0 0
+/dev/sda6 /mnt ext4 rprivate 0 0
+/dev/sda7 /mnt ext4 rslave 0 0
+/dev/sda8 /mnt ext4 rshared 0 0
+/dev/sda9 /mnt ext4 runbindable 0 0
+/dev/sda10 /mnt ext4 comment=test 0 0
+/dev/sda11 /mnt ext4 X-mount.mkdir=0755 0 0
+/dev/sda12 /mnt ext4 x-mount.mkdir 0 0
+-- cache --
+proc_filesystems=ext4
+-- input/etc/passwd --
+-- input/etc/group --
+-- expected/validationerrors.txt --
