@@ -3,7 +3,7 @@ package options
 import (
 	"context"
 	"fmt"
-	"regexp"
+	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
 )
@@ -74,8 +74,19 @@ func (SELinuxContextOption) ValidateOption(ctx context.Context, api rules.API, e
 		}
 	}
 
-	parts := regexp.MustCompile(`:`).Split(unquotedVal, 4)
+	parts := strings.SplitN(unquotedVal, ":", 4)
 	if len(parts) < 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		return []rules.ValidationIssue{
+			{
+				Message: fmt.Sprintf("Invalid SELinux context '%s' for %s mount option '%s' on line %d", val, fsName, key, entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelError,
+			},
+		}
+	}
+
+	// If the fourth part exists but is completely empty (e.g., ends in ':'), reject it.
+	if len(parts) == 4 && parts[3] == "" {
 		return []rules.ValidationIssue{
 			{
 				Message: fmt.Sprintf("Invalid SELinux context '%s' for %s mount option '%s' on line %d", val, fsName, key, entry.LineNum),

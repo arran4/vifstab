@@ -93,6 +93,13 @@ func TestSELinuxContextOption(t *testing.T) {
 			wantErrMsg: "Invalid SELinux context 'user:role' for ext4 mount option 'context' on line 5",
 		},
 		{
+			name:       "empty fourth part",
+			val:        "user:role:type:",
+			hasVal:     true,
+			wantErrs:   1,
+			wantErrMsg: "Invalid SELinux context 'user:role:type:' for ext4 mount option 'context' on line 5",
+		},
+		{
 			name:       "unbalanced quotes",
 			val:        `"system_u:object_r:tmpfs_t:s0`,
 			hasVal:     true,
