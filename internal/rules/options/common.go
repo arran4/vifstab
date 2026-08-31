@@ -31,7 +31,6 @@ func CommonOptions() map[string]OptionValidator {
 		"rootcontext": TODOOption{Comment: "validate SELinux root context string"},
 		"fscontext":   TODOOption{Comment: "validate SELinux fs context string"},
 
-		"mkdir":         OptionalOctalOption{},
 		"X-mount.mkdir": OptionalOctalOption{},
 		"x-mount.mkdir": OptionalOctalOption{},
 	}
