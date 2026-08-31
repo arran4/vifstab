@@ -1,5 +1,5 @@
 -- input --
-/dev/sda1 /mnt/affs affs uid=1000,gid=1000,setuid=1000,setgid=1000,mode=0755,protect,usemp,verbose,prefix=foo,volume=bar,reserved=2,root=100,bs=1024,grpquota 0 0
+/dev/sda1 /mnt/affs affs uid=1000,gid=1000,setuid=1000,setgid=1000,mode=0755,protect,usemp,prefix=foo,volume=bar,reserved=2,root=100,bs=1024,grpquota 0 0
 /dev/sda2 /mnt/affs2 affs uid,gid,setuid,setgid,nofilenametruncate,quiet,mufs 0 0
 -- cache --
 proc_filesystems=affs
