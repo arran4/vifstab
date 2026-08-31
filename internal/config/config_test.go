@@ -12,6 +12,7 @@ func TestGetDefaultConfig(t *testing.T) {
 		userProfile   string // for windows
 		filePath      string
 		expectedCache string
+		wantErr       bool
 	}{
 		{
 			name:          "XDG_CACHE_HOME is set",
@@ -33,7 +34,8 @@ func TestGetDefaultConfig(t *testing.T) {
 			homeEnv:       "",
 			userProfile:   "",
 			filePath:      "/etc/fstab",
-			expectedCache: "/tmp/.vifstab",
+			expectedCache: "",
+			wantErr:       true,
 		},
 	}
 
@@ -43,12 +45,19 @@ func TestGetDefaultConfig(t *testing.T) {
 			t.Setenv("HOME", tt.homeEnv)
 			t.Setenv("USERPROFILE", tt.userProfile)
 
-			cfg := GetDefaultConfig(tt.filePath)
-			if cfg.BackupDir != tt.expectedCache {
-				t.Errorf("expected BackupDir %q, got %q", tt.expectedCache, cfg.BackupDir)
+			cfg, err := GetDefaultConfig(tt.filePath)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetDefaultConfig() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
 			if cfg.FilePath != tt.filePath {
 				t.Errorf("expected FilePath %q, got %q", tt.filePath, cfg.FilePath)
+			}
+			if tt.wantErr {
+				return
+			}
+			if cfg.BackupDir != tt.expectedCache {
+				t.Errorf("expected BackupDir %q, got %q", tt.expectedCache, cfg.BackupDir)
 			}
 		})
 	}
