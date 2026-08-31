@@ -93,4 +93,62 @@ func TestValidateOptionsMap(t *testing.T) {
 			t.Errorf("expected custom OptionValidatorFunc to be invoked")
 		}
 	})
+
+	t.Run("ValidateOptionsMap integration tests", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			opt      string
+			wantErrs int
+		}{
+			{
+				name:     "context=system_u:object_r:tmp_t:s0",
+				opt:      `context=system_u:object_r:tmp_t:s0`,
+				wantErrs: 0,
+			},
+			{
+				name:     "context=\"system_u:object_r:tmp_t:s0:c1,c2\"",
+				opt:      `context="system_u:object_r:tmp_t:s0:c1,c2"`,
+				wantErrs: 0,
+			},
+			{
+				name:     "rootcontext=@target",
+				opt:      `rootcontext=@target`,
+				wantErrs: 0,
+			},
+			{
+				name:     "rootcontext=system_u:object_r:root_t:s0",
+				opt:      `rootcontext=system_u:object_r:root_t:s0`,
+				wantErrs: 0,
+			},
+			{
+				name:     "context=@target rejected",
+				opt:      `context=@target`,
+				wantErrs: 1,
+			},
+			{
+				name:     "malformed/unbalanced quotes rejected",
+				opt:      `context="system_u:object_r:tmpfs_t:s0`,
+				wantErrs: 1,
+			},
+			{
+				name:     "missing values rejected",
+				opt:      `context=`,
+				wantErrs: 1,
+			},
+		}
+
+		for i, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				entry := &rules.FstabEntry{
+					LineNum: i + 10,
+					RawLine: "LABEL=root / ext4 " + tt.opt + " 0 1",
+					Fields:  []string{"LABEL=root", "/", "ext4", tt.opt, "0", "1"},
+				}
+				issues := options.ValidateOptionsMap(ctx, api, entry, "ext4", optsMap)
+				if len(issues) != tt.wantErrs {
+					t.Fatalf("expected %d issues, got %d", tt.wantErrs, len(issues))
+				}
+			})
+		}
+	})
 }
