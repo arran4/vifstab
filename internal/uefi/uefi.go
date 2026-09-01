@@ -351,7 +351,7 @@ func FormatReport(info *EFIInfo, originalSource string) string {
 		sb.WriteString("    (none)\n")
 	} else {
 		for _, ref := range *info.NVRAMRefs {
-			sb.WriteString(fmt.Sprintf("    %-18s %s\n", ref.Name, ref.Path))
+			fmt.Fprintf(&sb, "    %-18s %s\n", ref.Name, ref.Path)
 		}
 	}
 
@@ -375,7 +375,7 @@ func isBootEntryVar(name string) bool {
 	}
 	for i := 4; i < 8; i++ {
 		c := name[i]
-		if !(c >= '0' && c <= '9') && !(c >= 'A' && c <= 'F') && !(c >= 'a' && c <= 'f') {
+		if (c < '0' || c > '9') && (c < 'A' || c > 'F') && (c < 'a' || c > 'f') {
 			return false
 		}
 	}
