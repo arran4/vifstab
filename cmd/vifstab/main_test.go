@@ -60,8 +60,8 @@ func TestDiagram(t *testing.T) {
 			}
 			tmpPath := tmpFile.Name()
 			_ = tmpFile.Truncate(diskSize)
-			tmpFile.Close()
-			defer os.Remove(tmpPath)
+			_ = tmpFile.Close()
+			defer func() { _ = os.Remove(tmpPath) }()
 
 			d, err := diskfs.Open(tmpPath)
 			if err != nil {
