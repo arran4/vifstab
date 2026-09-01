@@ -89,7 +89,7 @@ func (o OptionalOctalOption) ValidateOption(ctx context.Context, api rules.API, 
 	if !hasVal {
 		return nil
 	}
-	return (OctalOption{CustomErrFormat: o.CustomErrFormat}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
+	return (OctalOption(o)).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
 }
 
 // OctalOption validates octal permissions value.

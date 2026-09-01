@@ -65,7 +65,7 @@ func Update(filePath string, content []byte, config Config, opts ...any) error {
 		return nil
 	}
 
-	var fsLayer FS = DefaultFS
+	var fsLayer = DefaultFS
 	for _, opt := range opts {
 		if injection, ok := opt.(FS); ok {
 			fsLayer = injection

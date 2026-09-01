@@ -46,7 +46,7 @@ type mockDirEntry struct {
 func (m mockDirEntry) Name() string               { return m.name }
 func (m mockDirEntry) IsDir() bool                { return false }
 func (m mockDirEntry) Type() fs.FileMode          { return 0 }
-func (m mockDirEntry) Info() (fs.FileInfo, error) { return mockFileInfo{name: m.name}, nil }
+func (m mockDirEntry) Info() (fs.FileInfo, error) { return mockFileInfo(m), nil }
 
 type mockFileInfo struct {
 	name string
@@ -81,7 +81,7 @@ func buildLoadOption(desc string, filePath string, partUUID []byte, valid bool) 
 	// Fill the rest with 0s up to 42 bytes
 	hdPath := make([]byte, 38)
 	// Offset 20 within hdPath is offset 24 within the whole node.
-	if partUUID != nil && len(partUUID) == 16 {
+	if len(partUUID) == 16 {
 		copy(hdPath[20:], partUUID)
 	}
 	// Partition Format = 0x02, Signature Type = 0x02

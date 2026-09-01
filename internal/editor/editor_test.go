@@ -528,12 +528,3 @@ func TestSaveAndVersion(t *testing.T) {
 		})
 	}
 }
-
-func fileHasRCS(archive *txtar.Archive) bool {
-	for _, f := range archive.Files {
-		if f.Name == "expected/rcs_exists" {
-			return true
-		}
-	}
-	return false
-}

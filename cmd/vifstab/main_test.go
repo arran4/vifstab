@@ -68,7 +68,8 @@ func TestDiagram(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if tableType == "gpt" {
+			switch tableType {
+			case "gpt":
 				table := &gpt.Table{
 					LogicalSectorSize:  512,
 					PhysicalSectorSize: 512,
@@ -85,7 +86,7 @@ func TestDiagram(t *testing.T) {
 					})
 				}
 				d.Table = table
-			} else if tableType == "mbr" {
+			case "mbr":
 				table := &mbr.Table{
 					LogicalSectorSize:  512,
 					PhysicalSectorSize: 512,

@@ -326,9 +326,9 @@ func FormatReport(info *EFIInfo, originalSource string) string {
 
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("%s -> %s\n", originalSource, info.DevicePath))
-	sb.WriteString(fmt.Sprintf("  UUID:     %s\n", info.UUID))
-	sb.WriteString(fmt.Sprintf("  PARTUUID: %s\n", info.PartUUID))
+	fmt.Fprintf(&sb, "%s -> %s\n", originalSource, info.DevicePath)
+	fmt.Fprintf(&sb, "  UUID:     %s\n", info.UUID)
+	fmt.Fprintf(&sb, "  PARTUUID: %s\n", info.PartUUID)
 
 	if info.IsESP {
 		sb.WriteString("  GPT role: EFI System Partition\n")
@@ -375,7 +375,7 @@ func isBootEntryVar(name string) bool {
 	}
 	for i := 4; i < 8; i++ {
 		c := name[i]
-		if !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) {
+		if !(c >= '0' && c <= '9') && !(c >= 'A' && c <= 'F') && !(c >= 'a' && c <= 'f') {
 			return false
 		}
 	}
