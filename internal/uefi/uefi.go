@@ -13,15 +13,15 @@ import (
 )
 
 type EFIInfo struct {
-	DevicePath     string
-	UUID           string
-	PartUUID       string
-	MountPoint     string
-	IsFAT          bool
-	IsESP          bool
-	HasEFITree     *bool
-	NVRAMRefs      *[]NVRAMRef
-	BootedMatch    *bool
+	DevicePath  string
+	UUID        string
+	PartUUID    string
+	MountPoint  string
+	IsFAT       bool
+	IsESP       bool
+	HasEFITree  *bool
+	NVRAMRefs   *[]NVRAMRef
+	BootedMatch *bool
 }
 
 type NVRAMRef struct {
@@ -37,8 +37,8 @@ type EFIProvider interface {
 
 type ActualEFIProvider struct{}
 
-func (ActualEFIProvider) Stat(name string) (fs.FileInfo, error) { return os.Stat(name) }
-func (ActualEFIProvider) ReadFile(name string) ([]byte, error) { return os.ReadFile(name) }
+func (ActualEFIProvider) Stat(name string) (fs.FileInfo, error)      { return os.Stat(name) }
+func (ActualEFIProvider) ReadFile(name string) ([]byte, error)       { return os.ReadFile(name) }
 func (ActualEFIProvider) ReadDir(name string) ([]fs.DirEntry, error) { return os.ReadDir(name) }
 
 func Analyze(api rules.API, efiProv EFIProvider, dev string, mountPoint string) (*EFIInfo, error) {

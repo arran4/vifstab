@@ -121,7 +121,7 @@ type mockAPI struct {
 
 func (m mockAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
 	return rules.BlockDeviceInventory{
-		Devices: m.devices,
+		Devices:   m.devices,
 		Available: true,
 	}, nil
 }
@@ -296,8 +296,8 @@ func TestAnalyze_MismatchBootCurrent(t *testing.T) {
 	}
 }
 
+type customErr struct{ msg string }
 
-type customErr struct { msg string }
 func (e customErr) Error() string { return e.msg }
 
 func TestAnalyze_PermissionDeniedEFI(t *testing.T) {

@@ -40,13 +40,13 @@ func (r *TmpfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 }
 
 var tmpfsOptions = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
-	"size":      options.StringOption{},
-	"nr_blocks": options.StringOption{},
-	"nr_inodes": options.StringOption{},
-	"noswap":    options.NoValueOption{},
-	"mode":      options.OctalOption{},
-	"gid":       options.GIDOption{},
-	"uid":       options.UIDOption{},
+	"size":                     options.StringOption{},
+	"nr_blocks":                options.StringOption{},
+	"nr_inodes":                options.StringOption{},
+	"noswap":                   options.NoValueOption{},
+	"mode":                     options.OctalOption{},
+	"gid":                      options.GIDOption{},
+	"uid":                      options.UIDOption{},
 	"quota":                    options.NoValueOption{},
 	"usrquota":                 options.NoValueOption{},
 	"grpquota":                 options.NoValueOption{},
@@ -72,38 +72,37 @@ var tmpfsOptions = options.MergeOptions(options.CommonOptions(), map[string]opti
 			}
 		}
 
-
 		// Remove quotes if present
 		cleanVal := val
 		if len(cleanVal) >= 2 && cleanVal[0] == '"' && cleanVal[len(cleanVal)-1] == '"' {
-		    cleanVal = cleanVal[1:len(cleanVal)-1]
+			cleanVal = cleanVal[1 : len(cleanVal)-1]
 		}
 
 		// Remove optional flag prefixes before checking prefix logic
 		isFlagMatch := false
 		flagTrimmed := cleanVal
 		for _, prefix := range []string{"default=", "prefer=", "bind=", "interleave=", "local="} {
-		    if strings.HasPrefix(cleanVal, prefix) {
-		        remainder := strings.TrimPrefix(cleanVal, prefix)
-		        if strings.HasPrefix(remainder, "static:") {
-		            flagTrimmed = prefix[:len(prefix)-1] + ":" + strings.TrimPrefix(remainder, "static:")
-		            isFlagMatch = true
-		            break
-		        } else if strings.HasPrefix(remainder, "relative:") {
-		            flagTrimmed = prefix[:len(prefix)-1] + ":" + strings.TrimPrefix(remainder, "relative:")
-		            isFlagMatch = true
-		            break
-		        } else if remainder == "static" || remainder == "relative" {
-		            flagTrimmed = prefix[:len(prefix)-1]
-		            isFlagMatch = true
-		            break
-		        }
-		    }
+			if strings.HasPrefix(cleanVal, prefix) {
+				remainder := strings.TrimPrefix(cleanVal, prefix)
+				if strings.HasPrefix(remainder, "static:") {
+					flagTrimmed = prefix[:len(prefix)-1] + ":" + strings.TrimPrefix(remainder, "static:")
+					isFlagMatch = true
+					break
+				} else if strings.HasPrefix(remainder, "relative:") {
+					flagTrimmed = prefix[:len(prefix)-1] + ":" + strings.TrimPrefix(remainder, "relative:")
+					isFlagMatch = true
+					break
+				} else if remainder == "static" || remainder == "relative" {
+					flagTrimmed = prefix[:len(prefix)-1]
+					isFlagMatch = true
+					break
+				}
+			}
 		}
 
 		checkVal := cleanVal
 		if isFlagMatch {
-		    checkVal = flagTrimmed
+			checkVal = flagTrimmed
 		}
 
 		if !strings.HasPrefix(checkVal, "default") && !strings.HasPrefix(checkVal, "prefer:") && !strings.HasPrefix(checkVal, "bind:") && !strings.HasPrefix(checkVal, "interleave") && !strings.HasPrefix(checkVal, "local") {
