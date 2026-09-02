@@ -148,8 +148,7 @@ func (t *mockTempFile) Close() error {
 		return err
 	}
 	t.closed = true
-	_ = t.mfs.WriteFile(t.name, t.data, 0600)
-	return nil
+	return t.mfs.WriteFile(t.name, t.data, 0600)
 }
 
 func (t *mockTempFile) Name() string {
@@ -394,7 +393,7 @@ func TestSaveAndVersion(t *testing.T) {
 			cfg.BackupDir = backupDir
 
 			// Set a dummy user for RCS output consistency
-			_ = os.Setenv("USER", "testuser")
+			t.Setenv("USER", "testuser")
 			// And mock the time in RCS? the rcs package uses time.Now(). We can't easily mock time.Now in external package.
 			// Let's just check that it contains the content strings.
 
