@@ -34,5 +34,5 @@ Group with gid 9999 does not exist
 Invalid value 'notanumber' for 9p mount option 'msize' on line 9, must be an integer
 Unknown 9p mount option 'fake_option' on line 10
 9p mount option 'directio' does not take a value on line 11
-Invalid value '9999' for 9p mount option 'access' on line 15, must be an allowed string or a valid UID
+User with uid 9999 does not exist, and '9999' is not an allowed string
 Invalid value 'invalid_access' for 9p mount option 'access' on line 16, must be an allowed string or a valid UID

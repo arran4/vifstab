@@ -75,7 +75,7 @@ func TestUIDOrEnumOption(t *testing.T) {
 		if len(issues) != 1 {
 			t.Fatalf("expected 1 issue, got %d", len(issues))
 		}
-		expectedMsg := "Invalid value '9999' for 9p mount option 'access' on line 4, must be an allowed string or a valid UID"
+		expectedMsg := "User with uid 9999 does not exist, and '9999' is not an allowed string"
 		if issues[0].Message != expectedMsg {
 			t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
 		}
@@ -139,4 +139,111 @@ func TestOptionalUIDOption(t *testing.T) {
 			t.Errorf("expected 0 issues, got %d", len(issues))
 		}
 	})
+}
+
+func TestUIDOption_UnknownState(t *testing.T) {
+	ctx := context.Background()
+	api := &mockAPI{
+		userState: rules.Unknown,
+	}
+	entry := &rules.FstabEntry{LineNum: 4}
+	opt := options.UIDOption{}
+
+	issues := opt.ValidateOption(ctx, api, entry, "ext4", "uid", "9999", true, nil)
+	if len(issues) != 1 {
+		t.Fatalf("expected 1 issue, got %d", len(issues))
+	}
+	if issues[0].Level != rules.IssueLevelInfo {
+		t.Errorf("expected level Info, got %v", issues[0].Level)
+	}
+	expectedMsg := "Unable to determine if user 9999 exists"
+	if issues[0].Message != expectedMsg {
+		t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
+	}
+}
+
+func TestUIDOrEnumOption_UnknownState(t *testing.T) {
+	ctx := context.Background()
+	api := &mockAPI{
+		userState: rules.Unknown,
+	}
+	entry := &rules.FstabEntry{LineNum: 4}
+	opt := options.UIDOrEnumOption{
+		AllowedEnum: map[string]bool{"any": true, "user": true},
+	}
+
+	issues := opt.ValidateOption(ctx, api, entry, "9p", "access", "9999", true, nil)
+	if len(issues) != 1 {
+		t.Fatalf("expected 1 issue, got %d", len(issues))
+	}
+	if issues[0].Level != rules.IssueLevelInfo {
+		t.Errorf("expected level Info, got %v", issues[0].Level)
+	}
+	expectedMsg := "Unable to determine if user 9999 exists"
+	if issues[0].Message != expectedMsg {
+		t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
+	}
+}
+
+func TestGIDOption_UnknownState(t *testing.T) {
+	ctx := context.Background()
+	api := &mockAPI{
+		groupState: rules.Unknown,
+	}
+	entry := &rules.FstabEntry{LineNum: 4}
+	opt := options.GIDOption{}
+
+	issues := opt.ValidateOption(ctx, api, entry, "ext4", "gid", "9999", true, nil)
+	if len(issues) != 1 {
+		t.Fatalf("expected 1 issue, got %d", len(issues))
+	}
+	if issues[0].Level != rules.IssueLevelInfo {
+		t.Errorf("expected level Info, got %v", issues[0].Level)
+	}
+	expectedMsg := "Unable to determine if group 9999 exists"
+	if issues[0].Message != expectedMsg {
+		t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
+	}
+}
+
+func TestUIDOption_PermissionDenied(t *testing.T) {
+	ctx := context.Background()
+	api := &mockAPI{
+		userState: rules.PermissionDenied,
+	}
+	entry := &rules.FstabEntry{LineNum: 4}
+	opt := options.UIDOption{}
+
+	issues := opt.ValidateOption(ctx, api, entry, "ext4", "uid", "9999", true, nil)
+	if len(issues) != 1 {
+		t.Fatalf("expected 1 issue, got %d", len(issues))
+	}
+	if issues[0].Level != rules.IssueLevelInfo {
+		t.Errorf("expected level Warning, got %v", issues[0].Level)
+	}
+	expectedMsg := "Permission denied while checking if user 9999 exists"
+	if issues[0].Message != expectedMsg {
+		t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
+	}
+}
+
+func TestGIDOption_PermissionDenied(t *testing.T) {
+	ctx := context.Background()
+	api := &mockAPI{
+		groupState: rules.PermissionDenied,
+	}
+	entry := &rules.FstabEntry{LineNum: 4}
+	opt := options.GIDOption{}
+
+	issues := opt.ValidateOption(ctx, api, entry, "ext4", "gid", "9999", true, nil)
+	if len(issues) != 1 {
+		t.Fatalf("expected 1 issue, got %d", len(issues))
+	}
+	if issues[0].Level != rules.IssueLevelInfo {
+		t.Errorf("expected level Warning, got %v", issues[0].Level)
+	}
+	expectedMsg := "Permission denied while checking if group 9999 exists"
+	if issues[0].Message != expectedMsg {
+		t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
+	}
 }

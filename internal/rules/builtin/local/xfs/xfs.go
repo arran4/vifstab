@@ -212,7 +212,7 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 				})
 			} else {
 				decodedVal := unescapeFstab(val)
-				if !api.CheckBlockDeviceExists(decodedVal) {
+				if api.CheckBlockDeviceExists(decodedVal) == rules.DoesNotExist {
 					issues = append(issues, rules.ValidationIssue{
 						Message: fmt.Sprintf("Device '%s' specified in XFS mount option %s does not exist on line %d", decodedVal, key, entry.LineNum),
 						Line:    entry.RawLine,

@@ -19,20 +19,20 @@ func (m mockAPIPartition) CheckFileExists(path string) rules.FileExistsResult {
 	return rules.FileExists
 }
 
-func (m mockAPIPartition) CheckBlockDeviceExists(dev string) bool {
-	return true
-}
-
 func (m mockAPIPartition) GetHostKernelVersion() string {
 	return ""
 }
 
-func (m mockAPIPartition) CheckUserExists(uid int) bool {
-	return true
+func (m mockAPIPartition) CheckBlockDeviceExists(dev string) rules.ExistState {
+	return rules.Exists
 }
 
-func (m mockAPIPartition) CheckGroupExists(gid int) bool {
-	return true
+func (m mockAPIPartition) CheckUserExists(uid int) rules.ExistState {
+	return rules.Exists
+}
+
+func (m mockAPIPartition) CheckGroupExists(gid int) rules.ExistState {
+	return rules.Exists
 }
 
 func (m mockAPIPartition) GetBlockDevices() (rules.BlockDeviceInventory, error) {

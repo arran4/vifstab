@@ -263,7 +263,7 @@ func (blockingWorkflowAPI) CheckFileExists(string) rules.FileExistsResult {
 	return rules.FileDoesNotExist
 }
 
-func (blockingWorkflowAPI) CheckBlockDeviceExists(string) bool { return false }
+func (blockingWorkflowAPI) CheckBlockDeviceExists(string) rules.ExistState { return rules.DoesNotExist }
 
 func TestEditAndLintContinueAfterBlockingValidationDoesNotReload(t *testing.T) {
 	fsLayer := newCommitTestFS()

@@ -27,20 +27,20 @@ func (c *countingAPI) CheckFileExists(path string) rules.FileExistsResult {
 	return rules.FileExists
 }
 
-func (c *countingAPI) CheckBlockDeviceExists(dev string) bool {
-	return true
+func (c *countingAPI) CheckBlockDeviceExists(dev string) rules.ExistState {
+	return rules.Exists
 }
 
 func (c *countingAPI) GetHostKernelVersion() string {
 	return "6.6.0"
 }
 
-func (c *countingAPI) CheckUserExists(uid int) bool {
-	return true
+func (c *countingAPI) CheckUserExists(uid int) rules.ExistState {
+	return rules.Exists
 }
 
-func (c *countingAPI) CheckGroupExists(gid int) bool {
-	return true
+func (c *countingAPI) CheckGroupExists(gid int) rules.ExistState {
+	return rules.Exists
 }
 
 func (c *countingAPI) ResolveDevicePath(dev string) string {
@@ -98,7 +98,7 @@ func TestMemoizedAPI_Delegation(t *testing.T) {
 		t.Errorf("GetHostKernelVersion did not delegate properly")
 	}
 
-	if !memoized.CheckUserExists(1000) || !memoized.CheckGroupExists(1000) || !memoized.CheckBlockDeviceExists("/dev/sda1") {
+	if memoized.CheckUserExists(1000) != rules.Exists || memoized.CheckGroupExists(1000) != rules.Exists || memoized.CheckBlockDeviceExists("/dev/sda1") != rules.Exists {
 		t.Errorf("delegated methods failed")
 	}
 

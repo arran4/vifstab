@@ -34,7 +34,8 @@ func (u UIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rul
 			},
 		}
 	}
-	if !api.CheckUserExists(int(num)) {
+	switch api.CheckUserExists(int(num)) {
+	case rules.DoesNotExist:
 		msg := fmt.Sprintf("User with uid %d does not exist", num)
 		if u.CustomUserNotFound != "" {
 			msg = fmt.Sprintf(u.CustomUserNotFound, val, entry.LineNum)
@@ -48,6 +49,22 @@ func (u UIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rul
 				Message: msg,
 				Line:    entry.RawLine,
 				Level:   level,
+			},
+		}
+	case rules.PermissionDenied:
+		return []rules.ValidationIssue{
+			{
+				Message: fmt.Sprintf("Permission denied while checking if user %d exists", num),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelInfo,
+			},
+		}
+	case rules.Unknown:
+		return []rules.ValidationIssue{
+			{
+				Message: fmt.Sprintf("Unable to determine if user %d exists", num),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelInfo,
 			},
 		}
 	}
@@ -80,7 +97,8 @@ func (g GIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rul
 			},
 		}
 	}
-	if !api.CheckGroupExists(int(num)) {
+	switch api.CheckGroupExists(int(num)) {
+	case rules.DoesNotExist:
 		msg := fmt.Sprintf("Group with gid %d does not exist", num)
 		if g.CustomGroupNotFound != "" {
 			msg = fmt.Sprintf(g.CustomGroupNotFound, val, entry.LineNum)
@@ -94,6 +112,22 @@ func (g GIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rul
 				Message: msg,
 				Line:    entry.RawLine,
 				Level:   level,
+			},
+		}
+	case rules.PermissionDenied:
+		return []rules.ValidationIssue{
+			{
+				Message: fmt.Sprintf("Permission denied while checking if group %d exists", num),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelInfo,
+			},
+		}
+	case rules.Unknown:
+		return []rules.ValidationIssue{
+			{
+				Message: fmt.Sprintf("Unable to determine if group %d exists", num),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelInfo,
 			},
 		}
 	}
@@ -141,13 +175,40 @@ func (o UIDOrEnumOption) ValidateOption(ctx context.Context, api rules.API, entr
 	}
 
 	// Try validating as UID
-	issues := (UIDOption{}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
-	if len(issues) > 0 {
+	num, err := strconv.ParseInt(val, 10, 64)
+	if err != nil {
 		return []rules.ValidationIssue{
 			{
 				Message: fmt.Sprintf("Invalid value '%s' for %s mount option '%s' on line %d, must be an allowed string or a valid UID", val, fsName, key, entry.LineNum),
 				Line:    entry.RawLine,
 				Level:   rules.IssueLevelError,
+			},
+		}
+	}
+
+	switch api.CheckUserExists(int(num)) {
+	case rules.DoesNotExist:
+		return []rules.ValidationIssue{
+			{
+				Message: fmt.Sprintf("User with uid %d does not exist, and '%s' is not an allowed string", num, val),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelError,
+			},
+		}
+	case rules.PermissionDenied:
+		return []rules.ValidationIssue{
+			{
+				Message: fmt.Sprintf("Permission denied while checking if user %d exists", num),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelInfo,
+			},
+		}
+	case rules.Unknown:
+		return []rules.ValidationIssue{
+			{
+				Message: fmt.Sprintf("Unable to determine if user %d exists", num),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelInfo,
 			},
 		}
 	}
