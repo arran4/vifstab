@@ -36,9 +36,10 @@ func TestFormat_Txtar(t *testing.T) {
 			var expected string
 
 			for _, file := range archive.Files {
-				if file.Name == "input/etc/fstab" {
+				switch file.Name {
+				case "input/etc/fstab":
 					input = string(file.Data)
-				} else if file.Name == "expected/format.txt" {
+				case "expected/format.txt":
 					expected = string(file.Data)
 				}
 			}
