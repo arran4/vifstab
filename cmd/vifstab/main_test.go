@@ -59,16 +59,21 @@ func TestDiagram(t *testing.T) {
 				t.Fatal(err)
 			}
 			tmpPath := tmpFile.Name()
-			_ = tmpFile.Truncate(diskSize)
-			tmpFile.Close()
-			defer os.Remove(tmpPath)
+			if err := tmpFile.Truncate(diskSize); err != nil {
+				t.Fatalf("failed to truncate temp file: %v", err)
+			}
+			if err := tmpFile.Close(); err != nil {
+				t.Fatalf("failed to close temp file: %v", err)
+			}
+			defer func() { _ = os.Remove(tmpPath) }()
 
 			d, err := diskfs.Open(tmpPath)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			if tableType == "gpt" {
+			switch tableType {
+			case "gpt":
 				table := &gpt.Table{
 					LogicalSectorSize:  512,
 					PhysicalSectorSize: 512,
@@ -85,7 +90,7 @@ func TestDiagram(t *testing.T) {
 					})
 				}
 				d.Table = table
-			} else if tableType == "mbr" {
+			case "mbr":
 				table := &mbr.Table{
 					LogicalSectorSize:  512,
 					PhysicalSectorSize: 512,

@@ -100,7 +100,7 @@ func main() {
 			if err != nil {
 				handleError(fmt.Errorf("failed to open file %s: %w", *fileFlag, err))
 			}
-			defer in.Close()
+			defer func() { _ = in.Close() }()
 		}
 
 		if *inPlaceFlag {
@@ -109,8 +109,8 @@ func main() {
 			if err != nil {
 				handleError(fmt.Errorf("failed to create temp file: %w", err))
 			}
-			defer os.Remove(tempFile.Name())
-			defer tempFile.Close()
+			defer func() { _ = os.Remove(tempFile.Name()) }()
+			defer func() { _ = tempFile.Close() }()
 
 			err = format.Format(in, tempFile)
 			if err != nil {

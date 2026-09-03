@@ -3,6 +3,7 @@ package format
 import (
 	"bytes"
 	"embed"
+	"errors"
 	"io/fs"
 	"strings"
 	"testing"
@@ -35,9 +36,10 @@ func TestFormat_Txtar(t *testing.T) {
 			var expected string
 
 			for _, file := range archive.Files {
-				if file.Name == "input/etc/fstab" {
+				switch file.Name {
+				case "input/etc/fstab":
 					input = string(file.Data)
-				} else if file.Name == "expected/format.txt" {
+				case "expected/format.txt":
 					expected = string(file.Data)
 				}
 			}
@@ -63,5 +65,19 @@ func TestFormat_Txtar(t *testing.T) {
 				t.Errorf("Format result incorrect.\nGot:\n%s\nExpected:\n%s", gotStr, expectedStr)
 			}
 		})
+	}
+}
+
+type errorWriter struct{}
+
+func (w errorWriter) Write(p []byte) (n int, err error) {
+	return 0, errors.New("injected write error")
+}
+
+func TestFormat_WriteError(t *testing.T) {
+	input := "proc /proc proc defaults 0 0\n"
+	err := Format(strings.NewReader(input), errorWriter{})
+	if err == nil || !strings.Contains(err.Error(), "injected write error") {
+		t.Fatalf("expected injected write error, got %v", err)
 	}
 }

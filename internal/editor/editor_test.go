@@ -148,8 +148,7 @@ func (t *mockTempFile) Close() error {
 		return err
 	}
 	t.closed = true
-	t.mfs.WriteFile(t.name, t.data, 0600)
-	return nil
+	return t.mfs.WriteFile(t.name, t.data, 0600)
 }
 
 func (t *mockTempFile) Name() string {
@@ -262,7 +261,7 @@ func TestSaveAndVersionRealFS(t *testing.T) {
 					t.Fatalf("setup chmod failed: %v", err)
 				}
 			} else {
-				os.Remove(fstabPath) // Ensure it doesn't exist
+				_ = os.Remove(fstabPath) // Ensure it doesn't exist
 			}
 
 			if res := SaveAndVersion(cfg, content, DefaultFS); res.Err != nil {
@@ -394,7 +393,7 @@ func TestSaveAndVersion(t *testing.T) {
 			cfg.BackupDir = backupDir
 
 			// Set a dummy user for RCS output consistency
-			os.Setenv("USER", "testuser")
+			t.Setenv("USER", "testuser")
 			// And mock the time in RCS? the rcs package uses time.Now(). We can't easily mock time.Now in external package.
 			// Let's just check that it contains the content strings.
 
@@ -527,13 +526,4 @@ func TestSaveAndVersion(t *testing.T) {
 			}
 		})
 	}
-}
-
-func fileHasRCS(archive *txtar.Archive) bool {
-	for _, f := range archive.Files {
-		if f.Name == "expected/rcs_exists" {
-			return true
-		}
-	}
-	return false
 }
