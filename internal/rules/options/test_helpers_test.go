@@ -23,29 +23,41 @@ func (m *mockAPI) CheckFileExists(path string) rules.FileExistsResult {
 	return rules.FileDoesNotExist
 }
 
-func (m *mockAPI) CheckUserExists(uid int) bool {
+func (m *mockAPI) CheckUserExists(uid int) rules.ExistState {
 	if m.existingUsers == nil {
-		return false
+		return rules.DoesNotExist
 	}
-	return m.existingUsers[uid]
+	if m.existingUsers[uid] {
+		return rules.Exists
+	} else {
+		return rules.DoesNotExist
+	}
 }
 
-func (m *mockAPI) CheckGroupExists(gid int) bool {
+func (m *mockAPI) CheckGroupExists(gid int) rules.ExistState {
 	if m.existingGroups == nil {
-		return false
+		return rules.DoesNotExist
 	}
-	return m.existingGroups[gid]
+	if m.existingGroups[gid] {
+		return rules.Exists
+	} else {
+		return rules.DoesNotExist
+	}
 }
 
-func (m *mockAPI) CheckBlockDeviceExists(dev string) bool {
+func (m *mockAPI) CheckBlockDeviceExists(dev string) rules.ExistState {
 	if m.existingDevs == nil {
-		return false
+		return rules.DoesNotExist
 	}
 	if m.existingDevs[dev] {
-		return true
+		return rules.Exists
 	}
 	resolved := rules.ResolveDevicePath(dev)
-	return m.existingDevs[resolved]
+	if m.existingDevs[resolved] {
+		return rules.Exists
+	} else {
+		return rules.DoesNotExist
+	}
 }
 
 func (m *mockAPI) GetHostKernelVersion() string {

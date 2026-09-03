@@ -33,10 +33,10 @@ func (m *mockAPI) GetFstabEntries() []*rules.FstabEntry                        {
 func (m *mockAPI) HasOption(entry *rules.FstabEntry, opt string) bool          { return false }
 func (m *mockAPI) IsOptionValue(entry *rules.FstabEntry, opt, val string) bool { return false }
 func (m *mockAPI) CheckFileExists(path string) rules.FileExistsResult          { return rules.FileExists }
-func (m *mockAPI) CheckBlockDeviceExists(dev string) bool                      { return true }
+func (m *mockAPI) CheckBlockDeviceExists(dev string) rules.ExistState          { return rules.Exists }
 func (m *mockAPI) GetHostKernelVersion() string                                { return "5.15.0" }
-func (m *mockAPI) CheckUserExists(uid int) bool                                { return true }
-func (m *mockAPI) CheckGroupExists(gid int) bool                               { return true }
+func (m *mockAPI) CheckUserExists(uid int) rules.ExistState                    { return rules.Exists }
+func (m *mockAPI) CheckGroupExists(gid int) rules.ExistState                   { return rules.Exists }
 func (m *mockAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
 	return rules.BlockDeviceInventory{}, nil
 }

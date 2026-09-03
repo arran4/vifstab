@@ -33,12 +33,29 @@ func (b BlockDeviceOption) ValidateOption(ctx context.Context, api rules.API, en
 	}
 	if b.CheckExistence {
 		decodedVal := unescapeFstab(val)
-		if !api.CheckBlockDeviceExists(decodedVal) {
+		switch api.CheckBlockDeviceExists(decodedVal) {
+		case rules.DoesNotExist:
 			return []rules.ValidationIssue{
 				{
 					Message: fmt.Sprintf("Device '%s' specified in %s mount option %s does not exist on line %d", decodedVal, fsName, key, entry.LineNum),
 					Line:    entry.RawLine,
 					Level:   rules.IssueLevelError,
+				},
+			}
+		case rules.PermissionDenied:
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("Permission denied while checking device '%s' for %s mount option %s on line %d", decodedVal, fsName, key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelWarning,
+				},
+			}
+		case rules.Unknown:
+			return []rules.ValidationIssue{
+				{
+					Message: fmt.Sprintf("Unable to determine existence of device '%s' for %s mount option %s on line %d", decodedVal, fsName, key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelInfo,
 				},
 			}
 		}

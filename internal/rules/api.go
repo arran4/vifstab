@@ -10,12 +10,21 @@ import (
 	"strings"
 )
 
-type FileExistsResult int
+type ExistState int
 
 const (
-	FileExists FileExistsResult = iota
-	FileDoesNotExist
-	FilePermissionDenied
+	Exists ExistState = iota
+	DoesNotExist
+	PermissionDenied
+	Unknown
+)
+
+type FileExistsResult = ExistState
+
+const (
+	FileExists           FileExistsResult = Exists
+	FileDoesNotExist     FileExistsResult = DoesNotExist
+	FilePermissionDenied FileExistsResult = PermissionDenied
 )
 
 type BlockDevice struct {
@@ -48,10 +57,10 @@ func (inv BlockDeviceInventory) Resolve(ref string) *BlockDevice {
 
 type API interface {
 	CheckFileExists(path string) FileExistsResult
-	CheckBlockDeviceExists(dev string) bool
+	CheckBlockDeviceExists(dev string) ExistState
 	GetHostKernelVersion() string
-	CheckUserExists(uid int) bool
-	CheckGroupExists(gid int) bool
+	CheckUserExists(uid int) ExistState
+	CheckGroupExists(gid int) ExistState
 	GetBlockDevices() (BlockDeviceInventory, error)
 	ResolveDevicePath(dev string) string
 }
@@ -84,10 +93,16 @@ func (a ActualFS) getOS() OSProvider {
 	return a.OS
 }
 
-func (a ActualFS) CheckUserExists(uid int) bool {
+func (a ActualFS) CheckUserExists(uid int) ExistState {
 	f, err := a.getOS().Open("/etc/passwd")
 	if err != nil {
-		return false
+		if os.IsPermission(err) {
+			return PermissionDenied
+		}
+		if os.IsNotExist(err) {
+			return DoesNotExist
+		}
+		return Unknown
 	}
 	defer func() {
 		_ = f.Close()
@@ -99,17 +114,26 @@ func (a ActualFS) CheckUserExists(uid int) bool {
 		parts := strings.Split(line, ":")
 		if len(parts) >= 3 {
 			if id, err := strconv.Atoi(parts[2]); err == nil && id == uid {
-				return true
+				return Exists
 			}
 		}
 	}
-	return false
+	if err := scanner.Err(); err != nil {
+		return Unknown
+	}
+	return DoesNotExist
 }
 
-func (a ActualFS) CheckGroupExists(gid int) bool {
+func (a ActualFS) CheckGroupExists(gid int) ExistState {
 	f, err := a.getOS().Open("/etc/group")
 	if err != nil {
-		return false
+		if os.IsPermission(err) {
+			return PermissionDenied
+		}
+		if os.IsNotExist(err) {
+			return DoesNotExist
+		}
+		return Unknown
 	}
 	defer func() {
 		_ = f.Close()
@@ -121,11 +145,14 @@ func (a ActualFS) CheckGroupExists(gid int) bool {
 		parts := strings.Split(line, ":")
 		if len(parts) >= 3 {
 			if id, err := strconv.Atoi(parts[2]); err == nil && id == gid {
-				return true
+				return Exists
 			}
 		}
 	}
-	return false
+	if err := scanner.Err(); err != nil {
+		return Unknown
+	}
+	return DoesNotExist
 }
 
 func (a ActualFS) CheckFileExists(path string) FileExistsResult {
@@ -136,16 +163,31 @@ func (a ActualFS) CheckFileExists(path string) FileExistsResult {
 	if os.IsPermission(err) {
 		return FilePermissionDenied
 	}
-	return FileDoesNotExist
+	if os.IsNotExist(err) {
+		if os.IsNotExist(err) {
+			return FileDoesNotExist
+		}
+		return Unknown
+	}
+	return Unknown
 }
 
-func (a ActualFS) CheckBlockDeviceExists(dev string) bool {
+func (a ActualFS) CheckBlockDeviceExists(dev string) ExistState {
 	if strings.HasPrefix(dev, "/dev/ubd") || strings.HasPrefix(dev, "mtd:") {
-		return true
+		return Exists
 	}
 	resolvedPath := a.ResolveDevicePath(dev)
 	_, err := a.getOS().Stat(resolvedPath)
-	return err == nil
+	if err == nil {
+		return Exists
+	}
+	if os.IsPermission(err) {
+		return PermissionDenied
+	}
+	if os.IsNotExist(err) {
+		return DoesNotExist
+	}
+	return Unknown
 }
 
 func (a ActualFS) ResolveDevicePath(dev string) string {
@@ -474,24 +516,39 @@ func (c *CacheFS) CheckFileExists(path string) FileExistsResult {
 		if os.IsPermission(err) {
 			return FilePermissionDenied
 		}
-		return FileDoesNotExist
+		if os.IsNotExist(err) {
+			return FileDoesNotExist
+		}
+		return Unknown
 	}
 	panic("CacheFS must be initialized with a valid fs.FS")
 }
 
-func (c *CacheFS) CheckUserExists(uid int) bool {
+func (c *CacheFS) CheckUserExists(uid int) ExistState {
 	if c.Cache != nil {
 		cacheKey := CacheKey("user_exists:" + strconv.Itoa(uid))
 		if v, ok := c.Cache.Get(cacheKey); ok {
 			if exists, ok := v.(bool); ok {
-				return exists
+				if exists {
+					return Exists
+				}
+				return DoesNotExist
+			}
+			if result, ok := v.(ExistState); ok {
+				return result
 			}
 		}
 	}
 	if c.FS != nil {
 		f, err := c.FS.Open("etc/passwd")
 		if err != nil {
-			return false
+			if os.IsPermission(err) {
+				return PermissionDenied
+			}
+			if os.IsNotExist(err) {
+				return DoesNotExist
+			}
+			return Unknown
 		}
 		defer func() {
 			_ = f.Close()
@@ -504,32 +561,48 @@ func (c *CacheFS) CheckUserExists(uid int) bool {
 			if len(parts) >= 3 {
 				if id, err := strconv.Atoi(parts[2]); err == nil && id == uid {
 					if c.Cache != nil {
-						c.Cache.Set(CacheKey("user_exists:"+strconv.Itoa(uid)), true)
+						c.Cache.Set(CacheKey("user_exists:"+strconv.Itoa(uid)), Exists)
 					}
-					return true
+					return Exists
 				}
 			}
 		}
-		if c.Cache != nil {
-			c.Cache.Set(CacheKey("user_exists:"+strconv.Itoa(uid)), false)
+		if err := scanner.Err(); err != nil {
+			return Unknown
 		}
+		if c.Cache != nil {
+			c.Cache.Set(CacheKey("user_exists:"+strconv.Itoa(uid)), DoesNotExist)
+		}
+		return DoesNotExist
 	}
-	return false
+	return Unknown
 }
 
-func (c *CacheFS) CheckGroupExists(gid int) bool {
+func (c *CacheFS) CheckGroupExists(gid int) ExistState {
 	if c.Cache != nil {
 		cacheKey := CacheKey("group_exists:" + strconv.Itoa(gid))
 		if v, ok := c.Cache.Get(cacheKey); ok {
 			if exists, ok := v.(bool); ok {
-				return exists
+				if exists {
+					return Exists
+				}
+				return DoesNotExist
+			}
+			if result, ok := v.(ExistState); ok {
+				return result
 			}
 		}
 	}
 	if c.FS != nil {
 		f, err := c.FS.Open("etc/group")
 		if err != nil {
-			return false
+			if os.IsPermission(err) {
+				return PermissionDenied
+			}
+			if os.IsNotExist(err) {
+				return DoesNotExist
+			}
+			return Unknown
 		}
 		defer func() {
 			_ = f.Close()
@@ -542,17 +615,21 @@ func (c *CacheFS) CheckGroupExists(gid int) bool {
 			if len(parts) >= 3 {
 				if id, err := strconv.Atoi(parts[2]); err == nil && id == gid {
 					if c.Cache != nil {
-						c.Cache.Set(CacheKey("group_exists:"+strconv.Itoa(gid)), true)
+						c.Cache.Set(CacheKey("group_exists:"+strconv.Itoa(gid)), Exists)
 					}
-					return true
+					return Exists
 				}
 			}
 		}
-		if c.Cache != nil {
-			c.Cache.Set(CacheKey("group_exists:"+strconv.Itoa(gid)), false)
+		if err := scanner.Err(); err != nil {
+			return Unknown
 		}
+		if c.Cache != nil {
+			c.Cache.Set(CacheKey("group_exists:"+strconv.Itoa(gid)), DoesNotExist)
+		}
+		return DoesNotExist
 	}
-	return false
+	return Unknown
 }
 
 func (c *CacheFS) GetBlockDevices() (BlockDeviceInventory, error) {
@@ -569,22 +646,34 @@ func (c *CacheFS) GetBlockDevices() (BlockDeviceInventory, error) {
 	return BlockDeviceInventory{Available: false}, nil
 }
 
-func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
+func (c *CacheFS) CheckBlockDeviceExists(dev string) ExistState {
 	if strings.HasPrefix(dev, "/dev/ubd") || strings.HasPrefix(dev, "mtd:") {
-		return true
+		return Exists
 	}
 	resolvedPath := c.ResolveDevicePath(dev)
 
 	if c.Cache != nil {
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + resolvedPath)); ok {
 			if exists, ok := v.(bool); ok {
-				return exists
+				if exists {
+					return Exists
+				}
+				return DoesNotExist
+			}
+			if result, ok := v.(ExistState); ok {
+				return result
 			}
 		}
 		// Also check if they cached the raw path for some reason
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + dev)); ok {
 			if exists, ok := v.(bool); ok {
-				return exists
+				if exists {
+					return Exists
+				}
+				return DoesNotExist
+			}
+			if result, ok := v.(ExistState); ok {
+				return result
 			}
 		}
 	}
@@ -594,7 +683,16 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) bool {
 			checkPath = checkPath[1:]
 		}
 		_, err := fs.Stat(c.FS, checkPath)
-		return err == nil
+		if err == nil {
+			return Exists
+		}
+		if os.IsPermission(err) {
+			return PermissionDenied
+		}
+		if os.IsNotExist(err) {
+			return DoesNotExist
+		}
+		return Unknown
 	}
 	panic("CacheFS must be initialized with a valid fs.FS")
 }

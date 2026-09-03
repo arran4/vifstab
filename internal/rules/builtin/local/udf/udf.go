@@ -58,7 +58,7 @@ var udfOptions = options.MergeOptions(options.CommonOptions(), map[string]option
 				},
 			}
 		}
-		if !api.CheckUserExists(int(num)) {
+		if api.CheckUserExists(int(num)) == rules.DoesNotExist {
 			return []rules.ValidationIssue{
 				{
 					Message: fmt.Sprintf("User with uid %d does not exist", num),
@@ -86,7 +86,7 @@ var udfOptions = options.MergeOptions(options.CommonOptions(), map[string]option
 				},
 			}
 		}
-		if !api.CheckGroupExists(int(num)) {
+		if api.CheckGroupExists(int(num)) == rules.DoesNotExist {
 			return []rules.ValidationIssue{
 				{
 					Message: fmt.Sprintf("Group with gid %d does not exist", num),

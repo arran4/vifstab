@@ -8,16 +8,16 @@ import (
 
 type mockAPI struct{}
 
-func (m mockAPI) Register(rule rules.Rule)                           {}
-func (m mockAPI) Rules() []rules.Rule                                { return nil }
-func (m mockAPI) CheckBlockDeviceExists(path string) bool            { return true }
-func (m mockAPI) CheckFileExists(path string) rules.FileExistsResult { return rules.FileExists }
-func (m mockAPI) CheckUserExists(username int) bool                  { return true }
-func (m mockAPI) CheckGroupExists(groupname int) bool                { return true }
-func (m mockAPI) GetHostKernelVersion() string                       { return "5.10.0" }
-func (m mockAPI) IsVirtualMachine() bool                             { return false }
-func (m mockAPI) IsContainer() bool                                  { return false }
-func (m mockAPI) GetKernelModuleInfo(name string) (bool, error)      { return true, nil }
+func (m mockAPI) Register(rule rules.Rule)                            {}
+func (m mockAPI) Rules() []rules.Rule                                 { return nil }
+func (m mockAPI) CheckBlockDeviceExists(path string) rules.ExistState { return rules.Exists }
+func (m mockAPI) CheckFileExists(path string) rules.FileExistsResult  { return rules.FileExists }
+func (m mockAPI) CheckUserExists(username int) rules.ExistState       { return rules.Exists }
+func (m mockAPI) CheckGroupExists(groupname int) rules.ExistState     { return rules.Exists }
+func (m mockAPI) GetHostKernelVersion() string                        { return "5.10.0" }
+func (m mockAPI) IsVirtualMachine() bool                              { return false }
+func (m mockAPI) IsContainer() bool                                   { return false }
+func (m mockAPI) GetKernelModuleInfo(name string) (bool, error)       { return true, nil }
 func (m mockAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
 	return rules.BlockDeviceInventory{}, nil
 }

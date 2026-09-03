@@ -45,7 +45,7 @@ func (f ForceOwnerOption) ValidateOption(ctx context.Context, api rules.API, ent
 			Line:    entry.RawLine,
 			Level:   rules.IssueLevelError,
 		})
-	} else if !api.CheckUserExists(int(uidNum)) {
+	} else if api.CheckUserExists(int(uidNum)) == rules.DoesNotExist {
 		issues = append(issues, rules.ValidationIssue{
 			Message: fmt.Sprintf("User with uid %d does not exist", uidNum),
 			Line:    entry.RawLine,
@@ -60,7 +60,7 @@ func (f ForceOwnerOption) ValidateOption(ctx context.Context, api rules.API, ent
 			Line:    entry.RawLine,
 			Level:   rules.IssueLevelError,
 		})
-	} else if !api.CheckGroupExists(int(gidNum)) {
+	} else if api.CheckGroupExists(int(gidNum)) == rules.DoesNotExist {
 		issues = append(issues, rules.ValidationIssue{
 			Message: fmt.Sprintf("Group with gid %d does not exist", gidNum),
 			Line:    entry.RawLine,
