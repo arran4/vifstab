@@ -75,7 +75,7 @@ func TestUIDOrEnumOption(t *testing.T) {
 		if len(issues) != 1 {
 			t.Fatalf("expected 1 issue, got %d", len(issues))
 		}
-		expectedMsg := "Invalid value '9999' for 9p mount option 'access' on line 4, must be an allowed string or a valid UID"
+		expectedMsg := "User with uid 9999 does not exist, and '9999' is not an allowed string"
 		if issues[0].Message != expectedMsg {
 			t.Errorf("expected %q, got %q", expectedMsg, issues[0].Message)
 		}

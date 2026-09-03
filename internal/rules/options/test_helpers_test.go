@@ -15,12 +15,12 @@ type mockAPI struct {
 
 func (m *mockAPI) CheckFileExists(path string) rules.FileExistsResult {
 	if m.existingFiles == nil {
-		return rules.FileDoesNotExist
+		return rules.DoesNotExist
 	}
 	if m.existingFiles[path] {
-		return rules.FileExists
+		return rules.Exists
 	}
-	return rules.FileDoesNotExist
+	return rules.DoesNotExist
 }
 
 func (m *mockAPI) CheckUserExists(uid int) rules.ExistState {

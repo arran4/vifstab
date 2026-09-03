@@ -47,7 +47,7 @@ func (b BlockDeviceOption) ValidateOption(ctx context.Context, api rules.API, en
 				{
 					Message: fmt.Sprintf("Permission denied while checking device '%s' for %s mount option %s on line %d", decodedVal, fsName, key, entry.LineNum),
 					Line:    entry.RawLine,
-					Level:   rules.IssueLevelWarning,
+					Level:   rules.IssueLevelInfo,
 				},
 			}
 		case rules.Unknown:

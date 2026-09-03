@@ -22,8 +22,8 @@ const (
 type FileExistsResult = ExistState
 
 const (
-	FileExists           FileExistsResult = Exists
-	FileDoesNotExist     FileExistsResult = DoesNotExist
+	FileExists FileExistsResult = Exists
+	FileDoesNotExist FileExistsResult = DoesNotExist
 	FilePermissionDenied FileExistsResult = PermissionDenied
 )
 
@@ -100,7 +100,7 @@ func (a ActualFS) CheckUserExists(uid int) ExistState {
 			return PermissionDenied
 		}
 		if os.IsNotExist(err) {
-			return DoesNotExist
+			return Unknown
 		}
 		return Unknown
 	}
@@ -131,7 +131,7 @@ func (a ActualFS) CheckGroupExists(gid int) ExistState {
 			return PermissionDenied
 		}
 		if os.IsNotExist(err) {
-			return DoesNotExist
+			return Unknown
 		}
 		return Unknown
 	}
@@ -164,10 +164,7 @@ func (a ActualFS) CheckFileExists(path string) FileExistsResult {
 		return FilePermissionDenied
 	}
 	if os.IsNotExist(err) {
-		if os.IsNotExist(err) {
-			return FileDoesNotExist
-		}
-		return Unknown
+		return FileDoesNotExist
 	}
 	return Unknown
 }
@@ -546,7 +543,7 @@ func (c *CacheFS) CheckUserExists(uid int) ExistState {
 				return PermissionDenied
 			}
 			if os.IsNotExist(err) {
-				return DoesNotExist
+				return Unknown
 			}
 			return Unknown
 		}
@@ -600,7 +597,7 @@ func (c *CacheFS) CheckGroupExists(gid int) ExistState {
 				return PermissionDenied
 			}
 			if os.IsNotExist(err) {
-				return DoesNotExist
+				return Unknown
 			}
 			return Unknown
 		}
