@@ -19,12 +19,12 @@ func (m mockAPIPartition) CheckFileExists(path string) rules.FileExistsResult {
 	return rules.FileExists
 }
 
-func (m mockAPIPartition) CheckBlockDeviceExists(dev string) rules.ExistState {
-	return rules.Exists
-}
-
 func (m mockAPIPartition) GetHostKernelVersion() string {
 	return ""
+}
+
+func (m mockAPIPartition) CheckBlockDeviceExists(dev string) rules.ExistState {
+	return rules.Exists
 }
 
 func (m mockAPIPartition) CheckUserExists(uid int) rules.ExistState {

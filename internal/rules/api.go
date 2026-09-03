@@ -22,8 +22,8 @@ const (
 type FileExistsResult = ExistState
 
 const (
-	FileExists FileExistsResult = Exists
-	FileDoesNotExist FileExistsResult = DoesNotExist
+	FileExists           FileExistsResult = Exists
+	FileDoesNotExist     FileExistsResult = DoesNotExist
 	FilePermissionDenied FileExistsResult = PermissionDenied
 )
 

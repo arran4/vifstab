@@ -8,6 +8,8 @@ type mockAPI struct {
 	rules.API
 	existingUsers  map[int]bool
 	existingGroups map[int]bool
+	userState      rules.ExistState
+	groupState     rules.ExistState
 	existingDevs   map[string]bool
 	existingFiles  map[string]bool
 	kernelVerStr   string
@@ -24,6 +26,9 @@ func (m *mockAPI) CheckFileExists(path string) rules.FileExistsResult {
 }
 
 func (m *mockAPI) CheckUserExists(uid int) rules.ExistState {
+	if m.userState != 0 {
+		return m.userState
+	}
 	if m.existingUsers == nil {
 		return rules.DoesNotExist
 	}
@@ -35,6 +40,9 @@ func (m *mockAPI) CheckUserExists(uid int) rules.ExistState {
 }
 
 func (m *mockAPI) CheckGroupExists(gid int) rules.ExistState {
+	if m.groupState != 0 {
+		return m.groupState
+	}
 	if m.existingGroups == nil {
 		return rules.DoesNotExist
 	}

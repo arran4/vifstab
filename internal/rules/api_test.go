@@ -419,3 +419,143 @@ func TestCacheFS_GetBlockDevices(t *testing.T) {
 		}
 	})
 }
+
+// Add ActualFS tests overriding the getOS function
+type mockErrorOS struct {
+	statFunc     func(name string) (fs.FileInfo, error)
+	readFileFunc func(name string) ([]byte, error)
+	openFunc     func(name string) (fs.File, error)
+}
+
+func (m mockErrorOS) Stat(name string) (fs.FileInfo, error) {
+	if m.statFunc != nil {
+		return m.statFunc(name)
+	}
+	return nil, os.ErrNotExist
+}
+
+func (m mockErrorOS) ReadFile(name string) ([]byte, error) {
+	if m.readFileFunc != nil {
+		return m.readFileFunc(name)
+	}
+	return nil, os.ErrNotExist
+}
+
+func (m mockErrorOS) Open(name string) (fs.File, error) {
+	if m.openFunc != nil {
+		return m.openFunc(name)
+	}
+	return nil, os.ErrNotExist
+}
+
+func (m mockErrorOS) ReadDir(name string) ([]fs.DirEntry, error) {
+	return nil, os.ErrNotExist
+}
+
+func (m mockErrorOS) Readlink(name string) (string, error) {
+	return "", os.ErrNotExist
+}
+
+func TestActualFS_CheckFileExists(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected rules.ExistState
+	}{
+		{"Exists", nil, rules.FileExists},
+		{"DoesNotExist", os.ErrNotExist, rules.FileDoesNotExist},
+		{"PermissionDenied", os.ErrPermission, rules.FilePermissionDenied},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			a := rules.ActualFS{
+				OS: mockErrorOS{
+					statFunc: func(name string) (fs.FileInfo, error) {
+						return nil, tc.err
+					},
+				},
+			}
+			result := a.CheckFileExists("somefile")
+			if result != tc.expected {
+				t.Errorf("expected %v, got %v", tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestActualFS_CheckUserExists(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected rules.ExistState
+	}{
+		{"Passwd missing", os.ErrNotExist, rules.Unknown},
+		{"PermissionDenied", os.ErrPermission, rules.PermissionDenied},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			a := rules.ActualFS{
+				OS: mockErrorOS{
+					openFunc: func(name string) (fs.File, error) {
+						return nil, tc.err
+					},
+				},
+			}
+			result := a.CheckUserExists(1000)
+			if result != tc.expected {
+				t.Errorf("expected %v, got %v", tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestActualFS_CheckGroupExists(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected rules.ExistState
+	}{
+		{"Group missing", os.ErrNotExist, rules.Unknown},
+		{"PermissionDenied", os.ErrPermission, rules.PermissionDenied},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			a := rules.ActualFS{
+				OS: mockErrorOS{
+					openFunc: func(name string) (fs.File, error) {
+						return nil, tc.err
+					},
+				},
+			}
+			result := a.CheckGroupExists(1000)
+			if result != tc.expected {
+				t.Errorf("expected %v, got %v", tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestCacheFS_PreservesExistState(t *testing.T) {
+	cache := rules.NewCache()
+	// Set explicit ExistState values, overriding boolean collapse
+	cache.Set("file_exists:restricted", rules.PermissionDenied)
+	cache.Set("user_exists:999", rules.PermissionDenied)
+	cache.Set("group_exists:999", rules.Unknown)
+
+	c := rules.NewCacheFS(cache, fstest.MapFS{}) // mapFS shouldn't be consulted for cached values
+
+	if st := c.CheckFileExists("restricted"); st != rules.PermissionDenied {
+		t.Errorf("Expected cache to preserve PermissionDenied for file, got %v", st)
+	}
+
+	if st := c.CheckUserExists(999); st != rules.PermissionDenied {
+		t.Errorf("Expected cache to preserve PermissionDenied for user, got %v", st)
+	}
+
+	if st := c.CheckGroupExists(999); st != rules.Unknown {
+		t.Errorf("Expected cache to preserve Unknown for group, got %v", st)
+	}
+}
