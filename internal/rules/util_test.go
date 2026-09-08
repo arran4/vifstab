@@ -45,6 +45,14 @@ func TestSplitOptions(t *testing.T) {
 		{"multiple", "ro,noatime", []string{"ro", "noatime"}},
 		{"quotes", "context=\"system_u:object_r:tmpfs_t:s0\",ro", []string{"context=\"system_u:object_r:tmpfs_t:s0\"", "ro"}},
 		{"quotes_with_comma", "context=\"a,b\",ro", []string{"context=\"a,b\"", "ro"}},
+		{"consecutive_commas", "ro,,noatime", []string{"ro", "", "noatime"}},
+		{"leading_comma", ",ro,noatime", []string{"", "ro", "noatime"}},
+		{"trailing_comma", "ro,noatime,", []string{"ro", "noatime"}},
+		{"unclosed_quote", "context=\"a,b,ro", []string{"context=\"a,b,ro"}},
+		{"single_quotes_ignored_for_split", "context='a,b',ro", []string{"context='a", "b'", "ro"}},
+		{"spaces", " ro , noatime ", []string{" ro ", " noatime "}},
+		{"key_value", "uid=1000,gid=1000", []string{"uid=1000", "gid=1000"}},
+		{"multiple_quoted_with_commas", "a=\"1,2\",b=\"3,4\",c", []string{"a=\"1,2\"", "b=\"3,4\"", "c"}},
 	}
 
 	for _, tt := range tests {
