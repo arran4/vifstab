@@ -2,6 +2,6 @@ test: ext4 journal mode remains a warning while removal kernel is unknown
 -- kernel --
 7.4.0
 -- input --
-/dev/sda1 /mnt/ext4 ext4 data=journal,data=ordered 0 0
+/dev/sda1 /mnt/ext4 ext4 data=journal 0 0
 -- issues --
 Warning: ext4 mount option 'data=journal' is deprecated since kernel 7.3 on line 1; removal is planned for January 2028 (removal kernel version not yet confirmed). Consider the default 'data=ordered' after reviewing its different data-integrity guarantees
