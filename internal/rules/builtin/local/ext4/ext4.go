@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/rules/kernel"
 	"github.com/arran4/vifstab/internal/rules/options"
 )
 
@@ -70,7 +71,25 @@ var ext4Options = options.MergeOptions(options.CommonOptions(), map[string]optio
 	"journal_path": options.TODOOption{Comment: "validate journal device path"},
 	"norecovery":   options.NoValueOption{},
 	"noload":       options.NoValueOption{},
-	"data":         options.EnumOption{Allowed: map[string]bool{"journal": true, "ordered": true, "writeback": true}},
+	"data": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
+		issues := (options.EnumOption{Allowed: map[string]bool{"journal": true, "ordered": true, "writeback": true}}).
+			ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
+		if len(issues) != 0 || val != "journal" {
+			return issues
+		}
+
+		// Linux 7.3 deprecates data=journal; upstream plans to remove it in
+		// January 2028, but has not specified a kernel release for removal.
+		// Do not turn that calendar target into a guessed kernel cutoff.
+		if kernel.GetHostKernelVersion(api).AtLeast(7, 3, 0) {
+			return []rules.ValidationIssue{{
+				Message: fmt.Sprintf("ext4 mount option 'data=journal' is deprecated since kernel 7.3 on line %d; removal is planned for January 2028 (removal kernel version not yet confirmed). Consider the default 'data=ordered' after reviewing its different data-integrity guarantees", entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelWarning,
+			}}
+		}
+		return nil
+	}),
 	"data_err":     options.EnumOption{Allowed: map[string]bool{"abort": true, "ignore": true}},
 	"barrier":      options.EnumOption{Allowed: map[string]bool{"0": true, "1": true}},
 	"commit":       options.IntOption{},
