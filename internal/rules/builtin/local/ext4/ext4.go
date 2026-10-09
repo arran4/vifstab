@@ -77,6 +77,11 @@ var ext4Options = options.MergeOptions(options.CommonOptions(), map[string]optio
 		if len(issues) != 0 || val != "journal" {
 			return issues
 		}
+		// Only warn when data=journal is the effective (last) mode. Earlier
+		// occurrences can be overridden by a later data=ordered/writeback.
+		if last, ok := allOpts[key]; ok && last.Value != "journal" {
+			return nil
+		}
 
 		// Linux 7.3 deprecates data=journal; upstream plans to remove it in
 		// January 2028, but has not specified a kernel release for removal.
