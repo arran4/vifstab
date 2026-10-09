@@ -41,6 +41,31 @@ func (r *Ext4Rule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 	return options.ValidateOptionsMap(ctx, api, entry, "ext4", ext4Options), nil
 }
 
+// validateExt4DataMode keeps enum validation independent of the kernel
+// deprecation warning, so invalid values always remain errors.
+func validateExt4DataMode(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
+	issues := (options.EnumOption{Allowed: map[string]bool{"journal": true, "ordered": true, "writeback": true}}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
+	if len(issues) != 0 || val != "journal" {
+		return issues
+	}
+
+	// Earlier data=journal entries may be overridden by later data=ordered/writeback.
+	if last, ok := allOpts[key]; ok && last.Value != "journal" {
+		return nil
+	}
+
+	// Deprecation begins at Linux 7.3. Removal is planned for January 2028,
+	// but no precise kernel release has been confirmed; don't invent a cutoff.
+	if kernel.GetHostKernelVersion(api).AtLeast(7, 3, 0) {
+		return []rules.ValidationIssue{{
+			Message: fmt.Sprintf("ext4 mount option 'data=journal' is deprecated since kernel 7.3 on line %d; removal is planned for January 2028 (removal kernel version not yet confirmed). Consider the default 'data=ordered' after reviewing its different data-integrity guarantees", entry.LineNum),
+			Line:    entry.RawLine,
+			Level:   rules.IssueLevelWarning,
+		}}
+	}
+	return nil
+}
+
 var ext4Options = options.MergeOptions(options.CommonOptions(), map[string]options.OptionValidator{
 	"acl":          options.NoValueOption{},
 	"noacl":        options.NoValueOption{},
@@ -71,30 +96,7 @@ var ext4Options = options.MergeOptions(options.CommonOptions(), map[string]optio
 	"journal_path": options.TODOOption{Comment: "validate journal device path"},
 	"norecovery":   options.NoValueOption{},
 	"noload":       options.NoValueOption{},
-	"data": options.OptionValidatorFunc(func(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
-		issues := (options.EnumOption{Allowed: map[string]bool{"journal": true, "ordered": true, "writeback": true}}).
-			ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
-		if len(issues) != 0 || val != "journal" {
-			return issues
-		}
-		// Only warn when data=journal is the effective (last) mode. Earlier
-		// occurrences can be overridden by a later data=ordered/writeback.
-		if last, ok := allOpts[key]; ok && last.Value != "journal" {
-			return nil
-		}
-
-		// Linux 7.3 deprecates data=journal; upstream plans to remove it in
-		// January 2028, but has not specified a kernel release for removal.
-		// Do not turn that calendar target into a guessed kernel cutoff.
-		if kernel.GetHostKernelVersion(api).AtLeast(7, 3, 0) {
-			return []rules.ValidationIssue{{
-				Message: fmt.Sprintf("ext4 mount option 'data=journal' is deprecated since kernel 7.3 on line %d; removal is planned for January 2028 (removal kernel version not yet confirmed). Consider the default 'data=ordered' after reviewing its different data-integrity guarantees", entry.LineNum),
-				Line:    entry.RawLine,
-				Level:   rules.IssueLevelWarning,
-			}}
-		}
-		return nil
-	}),
+	"data":         options.OptionValidatorFunc(validateExt4DataMode),
 	"data_err":     options.EnumOption{Allowed: map[string]bool{"abort": true, "ignore": true}},
 	"barrier":      options.EnumOption{Allowed: map[string]bool{"0": true, "1": true}},
 	"commit":       options.IntOption{},
