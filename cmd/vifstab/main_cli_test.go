@@ -49,7 +49,7 @@ func TestReplayCommand(t *testing.T) {
 	cmd.Stderr = &stderr
 	cmd.Run() // will fail, we just want to ensure it read the file
 	if !strings.Contains(stderr.String(), "Validation successful.") && !strings.Contains(stderr.String(), "Validation issues found") && !strings.Contains(stderr.String(), "failed to read txtar") {
-	    // It actually won't fail to parse since TXTAR ignores malformed text sometimes, it will just be empty.
+		// It actually won't fail to parse since TXTAR ignores malformed text sometimes, it will just be empty.
 	}
 }
 
@@ -71,10 +71,10 @@ func TestCaptureCommand(t *testing.T) {
 
 	info, err := os.Stat(outPath)
 	if err != nil {
-	    t.Fatalf("expected output file to exist")
+		t.Fatalf("expected output file to exist")
 	}
 
 	if info.Mode().Perm() != 0600 {
-	    t.Errorf("expected 0600 permissions on captured archive, got %v", info.Mode().Perm())
+		t.Errorf("expected 0600 permissions on captured archive, got %v", info.Mode().Perm())
 	}
 }

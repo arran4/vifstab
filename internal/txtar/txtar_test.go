@@ -36,17 +36,17 @@ func (m mockAPI) GetHostKernelVersion() string {
 	return "Linux version 5.15.0-100-generic"
 }
 
-func (m mockAPI) CheckUserExists(uid int) rules.ExistState { return rules.Unknown }
+func (m mockAPI) CheckUserExists(uid int) rules.ExistState  { return rules.Unknown }
 func (m mockAPI) CheckGroupExists(gid int) rules.ExistState { return rules.Unknown }
 
 func (m mockAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
 	return rules.BlockDeviceInventory{
 		Devices: []rules.BlockDevice{
 			{
-				Path:     "/dev/sda1",
-				UUID:     "1234-5678",
-				Label:    "MY_LABEL",
-				Aliases:  []string{"/dev/disk/by-uuid/1234-5678", "/dev/disk/by-label/MY_LABEL"},
+				Path:    "/dev/sda1",
+				UUID:    "1234-5678",
+				Label:   "MY_LABEL",
+				Aliases: []string{"/dev/disk/by-uuid/1234-5678", "/dev/disk/by-label/MY_LABEL"},
 			},
 		},
 		Available: true,
@@ -85,7 +85,7 @@ func TestCaptureAndReplay(t *testing.T) {
 	}
 
 	if snapshot.KernelVer != "Linux version 5.15.0-100-generic" {
-	    t.Errorf("expected kernel %q, got %q", "Linux version 5.15.0-100-generic", snapshot.KernelVer)
+		t.Errorf("expected kernel %q, got %q", "Linux version 5.15.0-100-generic", snapshot.KernelVer)
 	}
 
 	blockDevicesData := snapshot.Cache["block_devices"]
@@ -104,18 +104,18 @@ func TestCaptureAndReplay(t *testing.T) {
 	}
 
 	if replayAPI.CheckFileExists("/tmp/test") != rules.FileExists {
-	    t.Errorf("replay CheckFileExists returned incorrect result")
+		t.Errorf("replay CheckFileExists returned incorrect result")
 	}
 
 	// Test offline isolation
 	if replayAPI.CheckFileExists("/unmocked/path") != rules.Unknown {
-	    t.Errorf("expected unmocked path to return Unknown offline, got %v", replayAPI.CheckFileExists("/unmocked/path"))
+		t.Errorf("expected unmocked path to return Unknown offline, got %v", replayAPI.CheckFileExists("/unmocked/path"))
 	}
 }
 
 func TestParseTXTARLimits(t *testing.T) {
 	// Size limit test
-	largeData := make([]byte, 10 * 1024 * 1024+1)
+	largeData := make([]byte, 10*1024*1024+1)
 	_, err := ParseTXTAR(largeData)
 	if err == nil || !strings.Contains(err.Error(), "exceeds limit") {
 		t.Errorf("expected size limit error, got %v", err)
