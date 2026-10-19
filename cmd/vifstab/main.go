@@ -179,6 +179,7 @@ func main() {
 	flag.BoolVar(&verifyOnly, "verify", false, "Verify the file without opening an editor")
 	var txtarFile string
 	flag.StringVar(&txtarFile, "txtar", "", "Run validation against a captured TXTAR snapshot instead of live system")
+
 	flag.StringVar(&systemdReload, "systemd-reload", "warn", "Post-save systemd handling for /etc/fstab (auto|warn|never)")
 
 	flag.Usage = func() {
@@ -187,6 +188,7 @@ func main() {
 	}
 
 	flag.Parse()
+
 	if txtarFile != "" && !verifyOnly {
 		handleError(fmt.Errorf("--txtar requires --verify; use 'vifstab replay' for offline validation"))
 	}
@@ -279,7 +281,6 @@ func handleError(err error) {
 	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	os.Exit(1)
 }
-
 func runCapture(args []string) error {
 	captureCmd := flag.NewFlagSet("capture", flag.ExitOnError)
 	fileFlag := captureCmd.String("file", "/etc/fstab", "File to capture")
