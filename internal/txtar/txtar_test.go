@@ -88,8 +88,10 @@ func TestCaptureAndReplay(t *testing.T) {
 		t.Errorf("expected kernel %q, got %q", "Linux version 5.15.0-100-generic", snapshot.KernelVer)
 	}
 
-	blockDevicesData := snapshot.Cache["block_devices"]
-	if !strings.Contains(blockDevicesData, "sanitized") && !strings.Contains(blockDevicesData, "[") {
+	// Check sanitized inside inventory
+	invBytes := snapshot.MockFS["provider/inventory.json"].Data
+	blockDevicesData := string(invBytes)
+	if !strings.Contains(blockDevicesData, "sanitized") {
 		t.Errorf("expected block devices to be sanitized, got %q", blockDevicesData)
 	}
 
