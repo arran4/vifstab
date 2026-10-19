@@ -454,8 +454,9 @@ func (a ActualFS) GetHostKernelVersion() string {
 }
 
 type CacheFS struct {
-	Cache *Cache
-	FS    fs.FS
+	Cache         *Cache
+	FS            fs.FS
+	OfflineReplay bool
 }
 
 func NewCacheFS(cache *Cache, mockFS fs.FS) *CacheFS {
@@ -503,12 +504,19 @@ func (c *CacheFS) CheckFileExists(path string) FileExistsResult {
 		}
 	}
 	if c.FS != nil {
-		if path != "" && path[0] == '/' {
-			path = path[1:]
+		checkPath := path
+		if checkPath != "" && checkPath[0] == '/' {
+			checkPath = checkPath[1:]
 		}
-		_, err := fs.Stat(c.FS, path)
+		_, err := fs.Stat(c.FS, checkPath)
 		if err == nil {
 			return FileExists
+		}
+		if c.OfflineReplay {
+			if os.IsPermission(err) {
+				return FilePermissionDenied
+			}
+			return Unknown
 		}
 		if os.IsPermission(err) {
 			return FilePermissionDenied
