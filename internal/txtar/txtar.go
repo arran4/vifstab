@@ -99,10 +99,18 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 			Diagnostics: inv.Diagnostics,
 			Devices:     make([]rules.BlockDevice, len(inv.Devices)),
 		}
+		if !unredacted {
+		    clonedInv.Diagnostics = nil // clear diagnostics to prevent leaks
+		}
 		copy(clonedInv.Devices, inv.Devices)
 
 		if !unredacted {
 			for i := range clonedInv.Devices {
+			    // Clear identifying device details
+			    clonedInv.Devices[i].DeviceID = ""
+			    clonedInv.Devices[i].SysfsName = ""
+			    clonedInv.Devices[i].Path = ""
+			    clonedInv.Devices[i].MountPoints = nil
 				sanitizeDevice(&clonedInv.Devices[i], redactedMap)
 			}
 		}
@@ -114,21 +122,97 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 				Data: b,
 			})
 		} else {
-			// Fail explicitly if marshal fails
-			return nil, fmt.Errorf("failed to marshal block devices: %w", err)
+		    return nil, fmt.Errorf("failed to marshal block devices: %w", err)
 		}
 	}
 
+	var outStr string
+
 	for _, e := range entries {
-		if len(e.Fields) < 2 || strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") || e.Fields[1] == "" {
+		if strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") || len(e.Fields) < 2 {
+			line := e.RawLine
+			if !unredacted {
+			    if strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") {
+			        line = "# <sanitized-comment>"
+			    } else if len(e.Fields) == 1 {
+			        line = "<sanitized-malformed-line>"
+			    }
+			}
+			outStr += line + "\n"
 			continue
 		}
-		target := e.Fields[1]
-		spec := e.Fields[0]
 
-		// Check file existence
-		if strings.HasPrefix(target, "/") {
-			st := api.CheckFileExists(target)
+		origSpec := e.Fields[0]
+		origTarget := e.Fields[1]
+
+		outSpec := origSpec
+		outTarget := origTarget
+		outLineFields := make([]string, len(e.Fields))
+		copy(outLineFields, e.Fields)
+
+		if !unredacted {
+			// Redact spec safely maintaining structure
+			if strings.HasPrefix(origSpec, "UUID=") {
+				val := strings.TrimPrefix(origSpec, "UUID=")
+				newVal := sanitizeStr(val, "uuid", redactedMap)
+				outSpec = "UUID=" + newVal
+			} else if strings.HasPrefix(origSpec, "LABEL=") {
+				val := strings.TrimPrefix(origSpec, "LABEL=")
+				newVal := sanitizeStr(val, "label", redactedMap)
+				outSpec = "LABEL=" + newVal
+			} else if strings.HasPrefix(origSpec, "PARTUUID=") {
+				val := strings.TrimPrefix(origSpec, "PARTUUID=")
+				newVal := sanitizeStr(val, "partuuid", redactedMap)
+				outSpec = "PARTUUID=" + newVal
+			} else if strings.HasPrefix(origSpec, "//") {
+			    // CIFS
+			    val := sanitizeStr(origSpec, "net", redactedMap)
+			    outSpec = "//" + strings.Trim(val, "<>")
+			} else if strings.Contains(origSpec, ":/") {
+			    // NFS
+			    val := sanitizeStr(origSpec, "net", redactedMap)
+			    outSpec = strings.Trim(val, "<>") + ":/export"
+			} else if strings.HasPrefix(origSpec, "/") {
+			    if !strings.HasPrefix(origSpec, "/dev/") {
+				    val := sanitizeStr(origSpec, "path", redactedMap)
+				    outSpec = "/" + strings.Trim(val, "<>")
+				}
+			}
+
+			// Redact target safely
+			if strings.HasPrefix(origTarget, "/") {
+				val := sanitizeStr(origTarget, "path", redactedMap)
+				// val is already <sanitized-path-N>, so Trim removes <> making it sanitized-path-N
+				outTarget = "/" + strings.Trim(val, "<>")
+			}
+
+			outLineFields[0] = outSpec
+			outLineFields[1] = outTarget
+
+			// Redact options if any
+			if len(outLineFields) >= 4 {
+			    opts := outLineFields[3]
+			    var newOpts []string
+			    for _, opt := range strings.Split(opts, ",") {
+			        if strings.HasPrefix(opt, "password=") || strings.HasPrefix(opt, "username=") || strings.HasPrefix(opt, "credentials=") || strings.HasPrefix(opt, "secret=") {
+			            parts := strings.SplitN(opt, "=", 2)
+			            if len(parts) == 2 {
+			                sanitizedVal := sanitizeStr(parts[1], "secret", redactedMap)
+			                newOpts = append(newOpts, parts[0] + "=" + sanitizedVal)
+			            } else {
+			                newOpts = append(newOpts, opt)
+			            }
+			        } else {
+			            newOpts = append(newOpts, opt)
+			        }
+			    }
+			    outLineFields[3] = strings.Join(newOpts, ",")
+			}
+		}
+
+		// Build cache using original queries but recording under outSpec/outTarget keys
+		if strings.HasPrefix(origTarget, "/") {
+			st := api.CheckFileExists(origTarget)
 			var stateStr string
 			switch st {
 			case rules.FileExists:
@@ -140,19 +224,10 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 			default:
 				stateStr = "unknown"
 			}
-			if !unredacted {
-				if mapped, ok := redactedMap[target]; ok {
-					target = mapped
-				} else {
-					for old, new := range redactedMap {
-						target = strings.ReplaceAll(target, old, new)
-					}
-				}
-			}
-			cacheLines = append(cacheLines, fmt.Sprintf("file_exists:%s=%s", target, stateStr))
+			cacheLines = append(cacheLines, fmt.Sprintf("file_exists:%s=%s", outTarget, stateStr))
 		}
 
-		st := api.CheckBlockDeviceExists(spec)
+		st := api.CheckBlockDeviceExists(origSpec)
 		var stateStr string
 		switch st {
 		case rules.Exists:
@@ -165,143 +240,55 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 			stateStr = "unknown"
 		}
 
-		resolved := api.ResolveDevicePath(spec)
-		if !unredacted {
-			if mapped, ok := redactedMap[spec]; ok {
-				spec = mapped
-			} else {
-				for old, new := range redactedMap {
-					spec = strings.ReplaceAll(spec, old, new)
-				}
-			}
-			if mapped, ok := redactedMap[resolved]; ok {
-				resolved = mapped
-			} else {
-				for old, new := range redactedMap {
-					resolved = strings.ReplaceAll(resolved, old, new)
-				}
-			}
+		origResolved := api.ResolveDevicePath(origSpec)
+		outResolved := origResolved
+
+		if !unredacted && origSpec != origResolved {
+		    if strings.HasPrefix(origResolved, "/dev/disk/by-uuid/") {
+		        outResolved = "/dev/disk/by-uuid/" + sanitizeStr(strings.TrimPrefix(origResolved, "/dev/disk/by-uuid/"), "uuid", redactedMap)
+		    } else if strings.HasPrefix(origResolved, "/dev/disk/by-partuuid/") {
+		        outResolved = "/dev/disk/by-partuuid/" + sanitizeStr(strings.TrimPrefix(origResolved, "/dev/disk/by-partuuid/"), "partuuid", redactedMap)
+		    } else if strings.HasPrefix(origResolved, "/dev/disk/by-label/") {
+		        outResolved = "/dev/disk/by-label/" + sanitizeStr(strings.TrimPrefix(origResolved, "/dev/disk/by-label/"), "label", redactedMap)
+		    } else if strings.HasPrefix(origResolved, "/") && !strings.HasPrefix(origResolved, "/dev/") {
+		        outResolved = "/sanitized-" + sanitizeStr(origResolved, "path", redactedMap)
+		    } else {
+		        // We might need to map it if it's already mapped
+		        if mapped, ok := redactedMap[origResolved]; ok {
+		            outResolved = mapped
+		        }
+		    }
 		}
 
-		cacheLines = append(cacheLines, fmt.Sprintf("block_exists:%s=%s", resolved, stateStr))
-		if spec != resolved {
-			cacheLines = append(cacheLines, fmt.Sprintf("block_exists:%s=%s", spec, stateStr))
+		cacheLines = append(cacheLines, fmt.Sprintf("block_exists:%s=%s", outResolved, stateStr))
+		if outSpec != outResolved {
+			cacheLines = append(cacheLines, fmt.Sprintf("block_exists:%s=%s", outSpec, stateStr))
 		}
-	}
 
-	var outFstab []byte
-	if unredacted {
-		outFstab = []byte(fstabStr)
-	} else {
-		var outStr string
-		for _, e := range entries {
-			if strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") || len(e.Fields) < 2 {
-				// Sanitize comments and short lines as well if they contain mapped sensitive data
-				line := e.RawLine
-				if !unredacted {
-					// Since comments could have completely unknown secrets, if it's not unredacted we shouldn't leak them.
-					// However replacing the whole comment with a placeholder is better.
-					if strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") {
-						line = "# <sanitized-comment>"
-					} else if len(e.Fields) == 1 {
-						line = "<sanitized-malformed-line>"
-					}
-				}
-				outStr += line + "\n"
-				continue
-			}
-
-			// Extract field 0 and 1 safely, then break them down if they contain specific syntax (like UUID=)
-			spec := e.Fields[0]
-			target := e.Fields[1]
-
-			// Only sanitize if they are path-like or explicit ID-like, don't blindly replace whole fields
-			// if they weren't mapped from block devices.
-			if !unredacted {
-				if strings.HasPrefix(spec, "UUID=") {
-					val := strings.TrimPrefix(spec, "UUID=")
-					newVal := sanitizeStr(val, "uuid", redactedMap)
-					redactedMap[spec] = "UUID=" + newVal
-				} else if strings.HasPrefix(spec, "LABEL=") {
-					val := strings.TrimPrefix(spec, "LABEL=")
-					newVal := sanitizeStr(val, "label", redactedMap)
-					redactedMap[spec] = "LABEL=" + newVal
-				} else if strings.HasPrefix(spec, "PARTUUID=") {
-					val := strings.TrimPrefix(spec, "PARTUUID=")
-					newVal := sanitizeStr(val, "partuuid", redactedMap)
-					redactedMap[spec] = "PARTUUID=" + newVal
-				} else if strings.HasPrefix(spec, "/") {
-					if !strings.HasPrefix(spec, "/dev/") {
-						// Map path to a safe pseudonym that looks like a path.
-						val := sanitizeStr(spec, "path", redactedMap)
-						redactedMap[spec] = "/" + strings.Trim(val, "<>")
-					}
-				} else if strings.Contains(spec, ":/") || strings.HasPrefix(spec, "//") {
-					// Network source
-					val := sanitizeStr(spec, "net", redactedMap)
-					redactedMap[spec] = "//" + strings.Trim(val, "<>")
-				}
-				if strings.HasPrefix(target, "/") {
-					val := sanitizeStr(target, "path", redactedMap)
-					redactedMap[target] = "/" + strings.Trim(val, "<>")
-				}
-			}
-
-			// We reconstruct the line instead of doing substring replacements to preserve exact fields safely.
+		// Render fstab line deterministically
+		if unredacted {
+		    outStr += e.RawLine + "\n"
+		} else {
 			var outFields []string
-
-			// Try to sanitize mount options fields if they contain secrets
-			optsStr := ""
-			if len(e.Fields) >= 4 {
-				optsStr = e.Fields[3]
-				if !unredacted {
-					var safeOpts []string
-					for _, opt := range strings.Split(optsStr, ",") {
-						if strings.HasPrefix(opt, "password=") || strings.HasPrefix(opt, "username=") || strings.HasPrefix(opt, "credentials=") || strings.HasPrefix(opt, "secret=") {
-							parts := strings.SplitN(opt, "=", 2)
-							if len(parts) == 2 {
-								sanitizedVal := sanitizeStr(parts[1], "secret", redactedMap)
-								safeOpts = append(safeOpts, parts[0]+"="+sanitizedVal)
-							} else {
-								safeOpts = append(safeOpts, opt)
-							}
-						} else {
-							safeOpts = append(safeOpts, opt)
-						}
-					}
-					optsStr = strings.Join(safeOpts, ",")
-				}
+			for i, f := range e.Fields {
+			    if i < len(outLineFields) {
+			        outFields = append(outFields, outLineFields[i])
+			    } else {
+			        outFields = append(outFields, f)
+			    }
 			}
-
-			if unredacted {
-				outStr += e.RawLine + "\n"
-			} else {
-				for i, f := range e.Fields {
-					if i == 3 {
-						outFields = append(outFields, optsStr)
-						continue
-					}
-
-					repl, ok := redactedMap[f]
-					if !ok {
-						// Check if parts of f (like UUID inside /dev/disk/by-uuid/...) map
-						mappedF := f
-						for oldVal, newVal := range redactedMap {
-							if len(oldVal) > 5 && strings.Contains(mappedF, oldVal) {
-								mappedF = strings.Replace(mappedF, oldVal, newVal, 1)
-							}
-						}
-						outFields = append(outFields, mappedF)
-					} else {
-						outFields = append(outFields, repl)
-					}
-				}
-				outStr += strings.Join(outFields, " ") + "\n"
-			}
+			outStr += strings.Join(outFields, " ") + "\n"
 		}
-		outFstab = []byte(outStr)
 	}
-	ar.Files = append(ar.Files, x_txtar.File{Name: "input/etc/fstab", Data: outFstab})
+
+	manifestJSON := `{"version": "1.0", "type": "system", "redacted": `
+	if unredacted {
+	    manifestJSON += "false}\n"
+	} else {
+	    manifestJSON += "true}\n"
+	}
+	ar.Files = append(ar.Files, x_txtar.File{Name: "manifest.json", Data: []byte(manifestJSON)})
+	ar.Files = append(ar.Files, x_txtar.File{Name: "input/etc/fstab", Data: []byte(outStr)})
 
 	kv := api.GetHostKernelVersion()
 	if kv != "" {
@@ -324,7 +311,6 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 	return x_txtar.Format(ar), nil
 }
 
-// ReplaySnapshot wraps the snapshot with a mocked rules.API implementation.
 func ReplaySnapshot(snapshot *Snapshot) (rules.API, error) {
 	c := rules.NewCache()
 	if snapshot.KernelVer != "" {
@@ -449,9 +435,16 @@ func ParseTXTAR(data []byte) (*Snapshot, error) {
 
 		switch {
 		case name == "manifest.json":
-			if !strings.Contains(string(file.Data), "\"version\": \"1.0\"") {
-				return nil, fmt.Errorf("unsupported manifest version: %s", string(file.Data))
-			}
+		    var manifest struct {
+		        Version string `json:"version"`
+		        Type    string `json:"type"`
+		    }
+		    if err := json.Unmarshal(file.Data, &manifest); err != nil {
+		        return nil, fmt.Errorf("malformed manifest.json: %w", err)
+		    }
+		    if manifest.Version != "1.0" {
+		        return nil, fmt.Errorf("unsupported manifest version: %v", manifest.Version)
+		    }
 		case name == "provider/inventory.json":
 			s.MockFS["provider/inventory.json"] = &fstest.MapFile{Data: file.Data}
 		case name == "input/etc/fstab":

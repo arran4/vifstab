@@ -116,8 +116,28 @@ malformed-only
 		t.Errorf("replay kernel version mismatch: %v", replayAPI.GetHostKernelVersion())
 	}
 
-	if replayAPI.CheckFileExists("/tmp/test") != rules.FileExists {
-		t.Errorf("replay CheckFileExists returned incorrect result")
+	// The original path "/tmp/test" was renamed to something like "/sanitized-path-N"
+	// So asking CheckFileExists for original path in replay should return Unknown or DoesNotExist,
+	// while the *sanitized* path should return FileExists.
+	// Since we don't know the exact N, we can just extract it from the fstab output.
+	redactedTarget := ""
+	lines := strings.Split(string(snapshot.Fstab), "\n")
+	for _, l := range lines {
+	    if strings.Contains(l, "/sanitized-path-") {
+	        parts := strings.Fields(l)
+	        if len(parts) >= 2 {
+	            redactedTarget = parts[1]
+	        }
+	        break
+	    }
+	}
+
+	if redactedTarget != "" {
+	    if replayAPI.CheckFileExists(redactedTarget) != rules.FileExists {
+		    t.Errorf("replay CheckFileExists returned incorrect result for sanitized target: %s", redactedTarget)
+	    }
+	} else {
+	    t.Errorf("could not find sanitized path in fstab")
 	}
 
 	// Test offline isolation
@@ -162,5 +182,17 @@ func TestParseTXTARLimits(t *testing.T) {
 	}
 	if snapshot2.Fstab == nil {
 		t.Errorf("expected fstab to be present but empty")
+	}
+
+	malformedManifest := []byte("-- manifest.json --\n{\"version: 1.0\"}\n-- input/etc/fstab --\n")
+	_, err = ParseTXTAR(malformedManifest)
+	if err == nil {
+	    t.Errorf("expected malformed manifest error")
+	}
+
+	invalidVersion := []byte("-- manifest.json --\n{\"version\": \"2.0\"}\n-- input/etc/fstab --\n")
+	_, err = ParseTXTAR(invalidVersion)
+	if err == nil {
+	    t.Errorf("expected unsupported manifest version error")
 	}
 }
