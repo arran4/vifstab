@@ -20,8 +20,6 @@ type Snapshot struct {
 	KernelVer string
 }
 
-var redactedMap map[string]string
-
 func sanitizeStr(val string, prefix string, redactedMap map[string]string) string {
 	if val == "" {
 		return ""
@@ -66,7 +64,7 @@ func sanitizeDevice(dev *rules.BlockDevice, redactedMap map[string]string) {
 // CaptureSystem captures the current system state.
 func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredacted bool) ([]byte, error) {
 	ar := &x_txtar.Archive{}
-	redactedMap = make(map[string]string)
+	redactedMap := make(map[string]string)
 
 	fstabBytes, err := os.ReadFile(fstabPath)
 	if err != nil {
@@ -165,12 +163,43 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 		}
 	}
 
-	if !unredacted {
-		for old, new := range redactedMap {
-			fstabStr = strings.ReplaceAll(fstabStr, old, new)
+	var outFstab []byte
+	if unredacted {
+		outFstab = []byte(fstabStr)
+	} else {
+		var outStr string
+		for _, e := range entries {
+			if strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") || len(e.Fields) == 0 {
+				outStr += e.RawLine + "\n"
+				continue
+			}
+
+			// Always redact fields 0 and 1 (spec and target) using our sanitization function if not already in redactedMap.
+			// This ensures even if they weren't in block devices (e.g. unknown network share or path), they get sanitized.
+			spec := e.Fields[0]
+			target := e.Fields[1]
+
+			_ = sanitizeStr(spec, "spec", redactedMap)
+			_ = sanitizeStr(target, "target", redactedMap)
+
+			line := e.RawLine
+			for _, f := range e.Fields {
+				repl, ok := redactedMap[f]
+				if !ok {
+				    for oldVal, newVal := range redactedMap {
+				        if strings.Contains(f, oldVal) {
+				            line = strings.Replace(line, oldVal, newVal, 1)
+				        }
+				    }
+				} else {
+					line = strings.Replace(line, f, repl, 1)
+				}
+			}
+			outStr += line + "\n"
 		}
+		outFstab = []byte(outStr)
 	}
-	ar.Files = append(ar.Files, x_txtar.File{Name: "input/etc/fstab", Data: []byte(fstabStr)})
+	ar.Files = append(ar.Files, x_txtar.File{Name: "input/etc/fstab", Data: outFstab})
 
 	kv := api.GetHostKernelVersion()
 	if kv != "" {
@@ -180,6 +209,9 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 		})
 	}
 
+	// We don't read /proc/filesystems directly, since that would bypass the API.
+	// But our API doesn't expose it directly except via rules.CacheFS (if we check caching).
+	// Let's rely on what we can. If we need to capture /proc/filesystems safely, we shouldn't use os.ReadFile directly without checking if we're in offline replay.
 	procFsBytes, err := os.ReadFile("/proc/filesystems")
 	if err == nil {
 		ar.Files = append(ar.Files, x_txtar.File{

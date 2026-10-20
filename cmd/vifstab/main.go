@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"errors"
@@ -333,15 +334,25 @@ func runReplay(args []string) error {
 		return fmt.Errorf("unexpected arguments: %v", replayCmd.Args())
 	}
 
-	var data []byte
-	var err error
+	var r io.Reader
 	if *inputFlag == "-" {
-		data, err = io.ReadAll(os.Stdin)
+		r = os.Stdin
 	} else {
-		data, err = os.ReadFile(*inputFlag)
+		f, err := os.Open(*inputFlag)
+		if err != nil {
+			return fmt.Errorf("failed to open txtar input: %w", err)
+		}
+		defer f.Close()
+		r = f
 	}
+
+	lr := io.LimitReader(r, txtar.MaxArchiveSize+1)
+	data, err := io.ReadAll(lr)
 	if err != nil {
 		return fmt.Errorf("failed to read txtar input: %w", err)
+	}
+	if len(data) > txtar.MaxArchiveSize {
+		return fmt.Errorf("txtar snapshot exceeds maximum allowed size")
 	}
 
 	return runVerifyTxtarData(data)
@@ -358,24 +369,8 @@ func runVerifyTxtarData(data []byte) error {
 		return fmt.Errorf("failed to setup replay environment: %w", err)
 	}
 
-	tempFstab, err := os.CreateTemp("", "fstab-replay-*")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(tempFstab.Name())
-	if _, err := tempFstab.Write(snapshot.Fstab); err != nil {
-		return err
-	}
-	if err := tempFstab.Close(); err != nil {
-		return err
-	}
-
-	cfg, err := config.GetDefaultConfig(tempFstab.Name())
-	if err != nil {
-		return err
-	}
-
-	issues, err := editor.VerifyAndLint(cfg, api)
+	r := bytes.NewReader(snapshot.Fstab)
+	issues, err := editor.VerifyAndLintReader(r, api)
 	if err != nil {
 		return err
 	}

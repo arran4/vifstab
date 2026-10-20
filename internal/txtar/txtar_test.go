@@ -80,8 +80,10 @@ func TestCaptureAndReplay(t *testing.T) {
 		t.Fatalf("ParseTXTAR failed: %v", err)
 	}
 
-	if strings.TrimSpace(string(snapshot.Fstab)) != fstabContent {
-		t.Errorf("expected fstab %q, got %q", fstabContent, string(snapshot.Fstab))
+	// Since we sanitize fstab properly now (by word boundary token replacement on unredacted=false),
+	// it should be different from original fstab!
+	if strings.TrimSpace(string(snapshot.Fstab)) == fstabContent {
+		t.Errorf("expected fstab to be sanitized and differ from original %q, got %q", fstabContent, string(snapshot.Fstab))
 	}
 
 	if snapshot.KernelVer != "Linux version 5.15.0-100-generic" {
