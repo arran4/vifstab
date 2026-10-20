@@ -27,7 +27,13 @@ func sanitizeStr(val string, prefix string, redactedMap map[string]string) strin
 	if mapped, ok := redactedMap[val]; ok {
 		return mapped
 	}
-	newVal := fmt.Sprintf("<sanitized-%s-%d>", prefix, len(redactedMap))
+	var newVal string
+	if prefix == "uuid" || prefix == "partuuid" {
+		// Keep it looking like a UUID so parsing doesn't break
+		newVal = fmt.Sprintf("00000000-0000-0000-0000-%012d", len(redactedMap))
+	} else {
+		newVal = fmt.Sprintf("<sanitized-%s-%d>", prefix, len(redactedMap))
+	}
 	redactedMap[val] = newVal
 	return newVal
 }
@@ -108,8 +114,8 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 				Data: b,
 			})
 		} else {
-		    // Fail explicitly if marshal fails
-		    return nil, fmt.Errorf("failed to marshal block devices: %w", err)
+			// Fail explicitly if marshal fails
+			return nil, fmt.Errorf("failed to marshal block devices: %w", err)
 		}
 	}
 
@@ -135,8 +141,12 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 				stateStr = "unknown"
 			}
 			if !unredacted {
-				for old, new := range redactedMap {
-					target = strings.ReplaceAll(target, old, new)
+				if mapped, ok := redactedMap[target]; ok {
+					target = mapped
+				} else {
+					for old, new := range redactedMap {
+						target = strings.ReplaceAll(target, old, new)
+					}
 				}
 			}
 			cacheLines = append(cacheLines, fmt.Sprintf("file_exists:%s=%s", target, stateStr))
@@ -157,9 +167,19 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 
 		resolved := api.ResolveDevicePath(spec)
 		if !unredacted {
-			for old, new := range redactedMap {
-				spec = strings.ReplaceAll(spec, old, new)
-				resolved = strings.ReplaceAll(resolved, old, new)
+			if mapped, ok := redactedMap[spec]; ok {
+				spec = mapped
+			} else {
+				for old, new := range redactedMap {
+					spec = strings.ReplaceAll(spec, old, new)
+				}
+			}
+			if mapped, ok := redactedMap[resolved]; ok {
+				resolved = mapped
+			} else {
+				for old, new := range redactedMap {
+					resolved = strings.ReplaceAll(resolved, old, new)
+				}
 			}
 		}
 
@@ -179,13 +199,13 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 				// Sanitize comments and short lines as well if they contain mapped sensitive data
 				line := e.RawLine
 				if !unredacted {
-				    // Since comments could have completely unknown secrets, if it's not unredacted we shouldn't leak them.
-				    // However replacing the whole comment with a placeholder is better.
-				    if strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") {
-				        line = "# <sanitized-comment>"
-				    } else if len(e.Fields) == 1 {
-				        line = "<sanitized-malformed-line>"
-				    }
+					// Since comments could have completely unknown secrets, if it's not unredacted we shouldn't leak them.
+					// However replacing the whole comment with a placeholder is better.
+					if strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") {
+						line = "# <sanitized-comment>"
+					} else if len(e.Fields) == 1 {
+						line = "<sanitized-malformed-line>"
+					}
 				}
 				outStr += line + "\n"
 				continue
@@ -211,45 +231,73 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 					newVal := sanitizeStr(val, "partuuid", redactedMap)
 					redactedMap[spec] = "PARTUUID=" + newVal
 				} else if strings.HasPrefix(spec, "/") {
-					_ = sanitizeStr(spec, "path", redactedMap)
+					if !strings.HasPrefix(spec, "/dev/") {
+						// Map path to a safe pseudonym that looks like a path.
+						val := sanitizeStr(spec, "path", redactedMap)
+						redactedMap[spec] = "/" + strings.Trim(val, "<>")
+					}
 				} else if strings.Contains(spec, ":/") || strings.HasPrefix(spec, "//") {
-				    // Network source
-				    _ = sanitizeStr(spec, "net", redactedMap)
+					// Network source
+					val := sanitizeStr(spec, "net", redactedMap)
+					redactedMap[spec] = "//" + strings.Trim(val, "<>")
 				}
 				if strings.HasPrefix(target, "/") {
-					_ = sanitizeStr(target, "path", redactedMap)
+					val := sanitizeStr(target, "path", redactedMap)
+					redactedMap[target] = "/" + strings.Trim(val, "<>")
 				}
 			}
 
-			line := e.RawLine
+			// We reconstruct the line instead of doing substring replacements to preserve exact fields safely.
+			var outFields []string
 
 			// Try to sanitize mount options fields if they contain secrets
+			optsStr := ""
 			if len(e.Fields) >= 4 {
-			    opts := e.Fields[3]
-			    for _, opt := range strings.Split(opts, ",") {
-			        if strings.HasPrefix(opt, "password=") || strings.HasPrefix(opt, "username=") || strings.HasPrefix(opt, "credentials=") || strings.HasPrefix(opt, "secret=") {
-			            parts := strings.SplitN(opt, "=", 2)
-			            if len(parts) == 2 {
-			                sanitizedVal := sanitizeStr(parts[1], "secret", redactedMap)
-			                redactedMap[opt] = parts[0] + "=" + sanitizedVal
-			            }
-			        }
-			    }
-			}
-
-			for _, f := range e.Fields {
-				repl, ok := redactedMap[f]
-				if !ok {
-				    for oldVal, newVal := range redactedMap {
-				        if strings.Contains(f, oldVal) {
-				            line = strings.Replace(line, oldVal, newVal, 1)
-				        }
-				    }
-				} else {
-					line = strings.Replace(line, f, repl, 1)
+				optsStr = e.Fields[3]
+				if !unredacted {
+					var safeOpts []string
+					for _, opt := range strings.Split(optsStr, ",") {
+						if strings.HasPrefix(opt, "password=") || strings.HasPrefix(opt, "username=") || strings.HasPrefix(opt, "credentials=") || strings.HasPrefix(opt, "secret=") {
+							parts := strings.SplitN(opt, "=", 2)
+							if len(parts) == 2 {
+								sanitizedVal := sanitizeStr(parts[1], "secret", redactedMap)
+								safeOpts = append(safeOpts, parts[0]+"="+sanitizedVal)
+							} else {
+								safeOpts = append(safeOpts, opt)
+							}
+						} else {
+							safeOpts = append(safeOpts, opt)
+						}
+					}
+					optsStr = strings.Join(safeOpts, ",")
 				}
 			}
-			outStr += line + "\n"
+
+			if unredacted {
+				outStr += e.RawLine + "\n"
+			} else {
+				for i, f := range e.Fields {
+					if i == 3 {
+						outFields = append(outFields, optsStr)
+						continue
+					}
+
+					repl, ok := redactedMap[f]
+					if !ok {
+						// Check if parts of f (like UUID inside /dev/disk/by-uuid/...) map
+						mappedF := f
+						for oldVal, newVal := range redactedMap {
+							if len(oldVal) > 5 && strings.Contains(mappedF, oldVal) {
+								mappedF = strings.Replace(mappedF, oldVal, newVal, 1)
+							}
+						}
+						outFields = append(outFields, mappedF)
+					} else {
+						outFields = append(outFields, repl)
+					}
+				}
+				outStr += strings.Join(outFields, " ") + "\n"
+			}
 		}
 		outFstab = []byte(outStr)
 	}
@@ -393,17 +441,23 @@ func ParseTXTAR(data []byte) (*Snapshot, error) {
 			return nil, fmt.Errorf("unsafe path in archive: %s", name)
 		}
 		if len(name) > MaxNameLength {
-		    return nil, fmt.Errorf("archive file name exceeds maximum length")
+			return nil, fmt.Errorf("archive file name exceeds maximum length")
 		}
 		if len(file.Data) > MaxSectionSize {
-		    return nil, fmt.Errorf("archive file %s exceeds maximum section size", name)
+			return nil, fmt.Errorf("archive file %s exceeds maximum section size", name)
 		}
 
 		switch {
+		case name == "manifest.json":
+			if !strings.Contains(string(file.Data), "\"version\": \"1.0\"") {
+				return nil, fmt.Errorf("unsupported manifest version: %s", string(file.Data))
+			}
 		case name == "provider/inventory.json":
 			s.MockFS["provider/inventory.json"] = &fstest.MapFile{Data: file.Data}
-		case name == "input" || name == "input/etc/fstab":
-
+		case name == "input/etc/fstab":
+			if s.Fstab != nil {
+				return nil, fmt.Errorf("duplicate fstab section in archive")
+			}
 			s.Fstab = file.Data
 		case name == "kernel":
 			s.KernelVer = "Linux version " + strings.TrimSpace(string(file.Data))
@@ -425,8 +479,11 @@ func ParseTXTAR(data []byte) (*Snapshot, error) {
 		}
 	}
 
-	if len(s.Fstab) == 0 {
-	    return nil, fmt.Errorf("invalid archive: missing fstab data")
+	if s.Fstab == nil {
+		return nil, fmt.Errorf("invalid archive: missing fstab data")
+	}
+	if !seenFiles["manifest.json"] && !seenFiles["input"] && !seenFiles["input/etc/fstab"] {
+		// Allow old legacy fixtures which might miss manifest, but if it has fstab it must have manifest if it's new
 	}
 	return s, nil
 }

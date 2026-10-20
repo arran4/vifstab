@@ -314,8 +314,8 @@ func runCapture(args []string) error {
 			return fmt.Errorf("write capture output: %w", err)
 		}
 		if err := f.Close(); err != nil {
-		    _ = os.Remove(*outFlag)
-		    return fmt.Errorf("close capture output: %w", err)
+			_ = os.Remove(*outFlag)
+			return fmt.Errorf("close capture output: %w", err)
 		}
 	} else {
 		if _, err := os.Stdout.Write(outData); err != nil {

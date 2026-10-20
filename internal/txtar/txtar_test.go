@@ -89,10 +89,10 @@ malformed-only
 		t.Errorf("expected fstab to be sanitized and differ from original %q, got %q", fstabContent, string(snapshot.Fstab))
 	}
 	if strings.Contains(string(snapshot.Fstab), "TOP_SECRET") {
-	    t.Errorf("fstab leaked secret TOP_SECRET: %q", string(snapshot.Fstab))
+		t.Errorf("fstab leaked secret TOP_SECRET: %q", string(snapshot.Fstab))
 	}
 	if strings.Contains(string(snapshot.Fstab), "private-host") {
-	    t.Errorf("fstab leaked private-host: %q", string(snapshot.Fstab))
+		t.Errorf("fstab leaked private-host: %q", string(snapshot.Fstab))
 	}
 
 	if snapshot.KernelVer != "Linux version 5.15.0-100-generic" {
@@ -152,5 +152,15 @@ func TestParseTXTARLimits(t *testing.T) {
 	_, err = ParseTXTAR(missingData)
 	if err == nil || !strings.Contains(err.Error(), "missing fstab data") {
 		t.Errorf("expected missing fstab error, got %v", err)
+	}
+
+	// Empty fstab test (should be valid)
+	emptyFstabData := []byte("-- manifest.json --\n{\"version\": \"1.0\"}\n-- input/etc/fstab --\n-- kernel --\n123\n")
+	snapshot2, err := ParseTXTAR(emptyFstabData)
+	if err != nil {
+		t.Errorf("expected empty fstab to be valid, got %v", err)
+	}
+	if snapshot2.Fstab == nil {
+		t.Errorf("expected fstab to be present but empty")
 	}
 }
