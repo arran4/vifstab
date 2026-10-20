@@ -72,14 +72,17 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 	}
 	fstabStr := string(fstabBytes)
 
-	entries, _ := core.ParseFstab(strings.NewReader(fstabStr))
+	entries, err := core.ParseFstab(strings.NewReader(fstabStr))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse fstab for capture: %w", err)
+	}
 
 	var cacheLines []string
 
 	// Capture block devices
 	inv, err := api.GetBlockDevices()
 	if err != nil {
-		b, _ := json.Marshal(rules.BlockDeviceInventory{Available: false})
+		b, _ := json.Marshal(rules.BlockDeviceInventory{Available: false, Diagnostics: []rules.BlockDeviceDiagnostic{{Error: err.Error()}}})
 		ar.Files = append(ar.Files, x_txtar.File{
 			Name: "provider/inventory.json",
 			Data: b,
@@ -104,6 +107,9 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 				Name: "provider/inventory.json",
 				Data: b,
 			})
+		} else {
+		    // Fail explicitly if marshal fails
+		    return nil, fmt.Errorf("failed to marshal block devices: %w", err)
 		}
 	}
 
@@ -169,20 +175,68 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 	} else {
 		var outStr string
 		for _, e := range entries {
-			if strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") || len(e.Fields) == 0 {
-				outStr += e.RawLine + "\n"
+			if strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") || len(e.Fields) < 2 {
+				// Sanitize comments and short lines as well if they contain mapped sensitive data
+				line := e.RawLine
+				if !unredacted {
+				    // Since comments could have completely unknown secrets, if it's not unredacted we shouldn't leak them.
+				    // However replacing the whole comment with a placeholder is better.
+				    if strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") {
+				        line = "# <sanitized-comment>"
+				    } else if len(e.Fields) == 1 {
+				        line = "<sanitized-malformed-line>"
+				    }
+				}
+				outStr += line + "\n"
 				continue
 			}
 
-			// Always redact fields 0 and 1 (spec and target) using our sanitization function if not already in redactedMap.
-			// This ensures even if they weren't in block devices (e.g. unknown network share or path), they get sanitized.
+			// Extract field 0 and 1 safely, then break them down if they contain specific syntax (like UUID=)
 			spec := e.Fields[0]
 			target := e.Fields[1]
 
-			_ = sanitizeStr(spec, "spec", redactedMap)
-			_ = sanitizeStr(target, "target", redactedMap)
+			// Only sanitize if they are path-like or explicit ID-like, don't blindly replace whole fields
+			// if they weren't mapped from block devices.
+			if !unredacted {
+				if strings.HasPrefix(spec, "UUID=") {
+					val := strings.TrimPrefix(spec, "UUID=")
+					newVal := sanitizeStr(val, "uuid", redactedMap)
+					redactedMap[spec] = "UUID=" + newVal
+				} else if strings.HasPrefix(spec, "LABEL=") {
+					val := strings.TrimPrefix(spec, "LABEL=")
+					newVal := sanitizeStr(val, "label", redactedMap)
+					redactedMap[spec] = "LABEL=" + newVal
+				} else if strings.HasPrefix(spec, "PARTUUID=") {
+					val := strings.TrimPrefix(spec, "PARTUUID=")
+					newVal := sanitizeStr(val, "partuuid", redactedMap)
+					redactedMap[spec] = "PARTUUID=" + newVal
+				} else if strings.HasPrefix(spec, "/") {
+					_ = sanitizeStr(spec, "path", redactedMap)
+				} else if strings.Contains(spec, ":/") || strings.HasPrefix(spec, "//") {
+				    // Network source
+				    _ = sanitizeStr(spec, "net", redactedMap)
+				}
+				if strings.HasPrefix(target, "/") {
+					_ = sanitizeStr(target, "path", redactedMap)
+				}
+			}
 
 			line := e.RawLine
+
+			// Try to sanitize mount options fields if they contain secrets
+			if len(e.Fields) >= 4 {
+			    opts := e.Fields[3]
+			    for _, opt := range strings.Split(opts, ",") {
+			        if strings.HasPrefix(opt, "password=") || strings.HasPrefix(opt, "username=") || strings.HasPrefix(opt, "credentials=") || strings.HasPrefix(opt, "secret=") {
+			            parts := strings.SplitN(opt, "=", 2)
+			            if len(parts) == 2 {
+			                sanitizedVal := sanitizeStr(parts[1], "secret", redactedMap)
+			                redactedMap[opt] = parts[0] + "=" + sanitizedVal
+			            }
+			        }
+			    }
+			}
+
 			for _, f := range e.Fields {
 				repl, ok := redactedMap[f]
 				if !ok {
@@ -209,16 +263,8 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 		})
 	}
 
-	// We don't read /proc/filesystems directly, since that would bypass the API.
-	// But our API doesn't expose it directly except via rules.CacheFS (if we check caching).
-	// Let's rely on what we can. If we need to capture /proc/filesystems safely, we shouldn't use os.ReadFile directly without checking if we're in offline replay.
-	procFsBytes, err := os.ReadFile("/proc/filesystems")
-	if err == nil {
-		ar.Files = append(ar.Files, x_txtar.File{
-			Name: "input/proc/filesystems",
-			Data: procFsBytes,
-		})
-	}
+	// Only capture /proc/filesystems if it's available in the cache/context (which rules.API might expose indirectly).
+	// For now we don't directly read os.ReadFile("/proc/filesystems") during capture because it breaks isolation mocks.
 
 	if len(cacheLines) > 0 {
 		ar.Files = append(ar.Files, x_txtar.File{
@@ -346,6 +392,12 @@ func ParseTXTAR(data []byte) (*Snapshot, error) {
 		if strings.Contains(name, "..") {
 			return nil, fmt.Errorf("unsafe path in archive: %s", name)
 		}
+		if len(name) > MaxNameLength {
+		    return nil, fmt.Errorf("archive file name exceeds maximum length")
+		}
+		if len(file.Data) > MaxSectionSize {
+		    return nil, fmt.Errorf("archive file %s exceeds maximum section size", name)
+		}
 
 		switch {
 		case name == "provider/inventory.json":
@@ -373,5 +425,8 @@ func ParseTXTAR(data []byte) (*Snapshot, error) {
 		}
 	}
 
+	if len(s.Fstab) == 0 {
+	    return nil, fmt.Errorf("invalid archive: missing fstab data")
+	}
 	return s, nil
 }

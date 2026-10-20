@@ -61,7 +61,10 @@ func TestCaptureAndReplay(t *testing.T) {
 	tempDir := t.TempDir()
 	fstabPath := filepath.Join(tempDir, "fstab")
 
-	fstabContent := `/dev/sda1 /tmp/test ext4 defaults,unknown_opt 0 0`
+	fstabContent := `# server=private-host user=alice secret=TOP_SECRET
+
+malformed-only
+/dev/sda1 /tmp/test ext4 defaults,unknown_opt,password=TOP_SECRET 0 0`
 	if err := os.WriteFile(fstabPath, []byte(fstabContent), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -84,6 +87,12 @@ func TestCaptureAndReplay(t *testing.T) {
 	// it should be different from original fstab!
 	if strings.TrimSpace(string(snapshot.Fstab)) == fstabContent {
 		t.Errorf("expected fstab to be sanitized and differ from original %q, got %q", fstabContent, string(snapshot.Fstab))
+	}
+	if strings.Contains(string(snapshot.Fstab), "TOP_SECRET") {
+	    t.Errorf("fstab leaked secret TOP_SECRET: %q", string(snapshot.Fstab))
+	}
+	if strings.Contains(string(snapshot.Fstab), "private-host") {
+	    t.Errorf("fstab leaked private-host: %q", string(snapshot.Fstab))
 	}
 
 	if snapshot.KernelVer != "Linux version 5.15.0-100-generic" {
@@ -130,5 +139,18 @@ func TestParseTXTARLimits(t *testing.T) {
 	_, err = ParseTXTAR(unsafeData)
 	if err == nil || !strings.Contains(err.Error(), "unsafe path") {
 		t.Errorf("expected unsafe path error, got %v", err)
+	}
+	// Duplicate file test
+	dupData := []byte("-- input/etc/fstab --\nhello\n-- input/etc/fstab --\nworld\n")
+	_, err = ParseTXTAR(dupData)
+	if err == nil || !strings.Contains(err.Error(), "duplicate file") {
+		t.Errorf("expected duplicate file error, got %v", err)
+	}
+
+	// Missing fstab test
+	missingData := []byte("-- kernel --\n123\n")
+	_, err = ParseTXTAR(missingData)
+	if err == nil || !strings.Contains(err.Error(), "missing fstab data") {
+		t.Errorf("expected missing fstab error, got %v", err)
 	}
 }

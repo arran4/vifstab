@@ -308,9 +308,14 @@ func runCapture(args []string) error {
 		if err != nil {
 			return fmt.Errorf("open capture output: %w", err)
 		}
-		defer f.Close()
 		if _, err := f.Write(outData); err != nil {
+			_ = f.Close()
+			_ = os.Remove(*outFlag)
 			return fmt.Errorf("write capture output: %w", err)
+		}
+		if err := f.Close(); err != nil {
+		    _ = os.Remove(*outFlag)
+		    return fmt.Errorf("close capture output: %w", err)
 		}
 	} else {
 		if _, err := os.Stdout.Write(outData); err != nil {
@@ -405,9 +410,20 @@ func runVerifyTxtarData(data []byte) error {
 }
 
 func runVerifyTxtar(txtarPath string) error {
-	data, err := os.ReadFile(txtarPath)
+	f, err := os.Open(txtarPath)
 	if err != nil {
-		return fmt.Errorf("failed to read txtar file: %w", err)
+		return fmt.Errorf("failed to open txtar file: %w", err)
 	}
+	defer f.Close()
+
+	lr := io.LimitReader(f, txtar.MaxArchiveSize+1)
+	data, err := io.ReadAll(lr)
+	if err != nil {
+		return fmt.Errorf("failed to read txtar input: %w", err)
+	}
+	if len(data) > txtar.MaxArchiveSize {
+		return fmt.Errorf("txtar snapshot exceeds maximum allowed size")
+	}
+
 	return runVerifyTxtarData(data)
 }
