@@ -284,16 +284,17 @@ func handleError(err error) {
 func runCapture(args []string) error {
 	captureCmd := flag.NewFlagSet("capture", flag.ExitOnError)
 	fileFlag := captureCmd.String("file", "/etc/fstab", "File to capture")
+	outFlag := captureCmd.String("output", "-", "Output file for capture (defaults to stdout)")
 	unredactedFlag := captureCmd.Bool("unredacted", false, "Do not redact sensitive values")
 	captureCmd.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: vifstab capture [options] [<output.txtar>]\n")
+		fmt.Fprintf(os.Stderr, "Usage: vifstab capture [options]\n")
 		captureCmd.PrintDefaults()
 	}
 	_ = captureCmd.Parse(args)
 
-	if captureCmd.NArg() > 1 {
+	if captureCmd.NArg() > 0 {
 		captureCmd.Usage()
-		return fmt.Errorf("unexpected arguments: %v", captureCmd.Args()[1:])
+		return fmt.Errorf("unexpected arguments: %v", captureCmd.Args())
 	}
 
 	outData, err := txtar.CaptureSystem(context.Background(), rules.ActualFS{}, *fileFlag, *unredactedFlag)
@@ -301,38 +302,52 @@ func runCapture(args []string) error {
 		return fmt.Errorf("capture failed: %w", err)
 	}
 
-	if captureCmd.NArg() == 1 {
-		if err := os.WriteFile(captureCmd.Arg(0), outData, 0600); err != nil {
-			return fmt.Errorf("failed to write capture: %w", err)
+	if *outFlag != "-" {
+		f, err := os.OpenFile(*outFlag, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if err != nil {
+			return fmt.Errorf("open capture output: %w", err)
+		}
+		defer f.Close()
+		if _, err := f.Write(outData); err != nil {
+			return fmt.Errorf("write capture output: %w", err)
 		}
 	} else {
-		os.Stdout.Write(outData)
+		if _, err := os.Stdout.Write(outData); err != nil {
+			return fmt.Errorf("write capture output to stdout: %w", err)
+		}
 	}
 	return nil
 }
 
 func runReplay(args []string) error {
 	replayCmd := flag.NewFlagSet("replay", flag.ExitOnError)
+	inputFlag := replayCmd.String("input", "-", "Input file for replay (defaults to stdin)")
 	replayCmd.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: vifstab replay <snapshot.txtar>\n")
+		fmt.Fprintf(os.Stderr, "Usage: vifstab replay [options]\n")
 		replayCmd.PrintDefaults()
 	}
 	_ = replayCmd.Parse(args)
 
-	if replayCmd.NArg() != 1 {
+	if replayCmd.NArg() > 0 {
 		replayCmd.Usage()
-		return fmt.Errorf("expected 1 argument, got %d", replayCmd.NArg())
+		return fmt.Errorf("unexpected arguments: %v", replayCmd.Args())
 	}
 
-	return runVerifyTxtar(replayCmd.Arg(0))
+	var data []byte
+	var err error
+	if *inputFlag == "-" {
+		data, err = io.ReadAll(os.Stdin)
+	} else {
+		data, err = os.ReadFile(*inputFlag)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to read txtar input: %w", err)
+	}
+
+	return runVerifyTxtarData(data)
 }
 
-func runVerifyTxtar(txtarPath string) error {
-	data, err := os.ReadFile(txtarPath)
-	if err != nil {
-		return fmt.Errorf("failed to read txtar file: %w", err)
-	}
-
+func runVerifyTxtarData(data []byte) error {
 	snapshot, err := txtar.ParseTXTAR(data)
 	if err != nil {
 		return fmt.Errorf("failed to parse txtar file: %w", err)
@@ -348,8 +363,12 @@ func runVerifyTxtar(txtarPath string) error {
 		return err
 	}
 	defer os.Remove(tempFstab.Name())
-	tempFstab.Write(snapshot.Fstab)
-	tempFstab.Close()
+	if _, err := tempFstab.Write(snapshot.Fstab); err != nil {
+		return err
+	}
+	if err := tempFstab.Close(); err != nil {
+		return err
+	}
 
 	cfg, err := config.GetDefaultConfig(tempFstab.Name())
 	if err != nil {
@@ -388,4 +407,12 @@ func runVerifyTxtar(txtarPath string) error {
 		ExitCode: 1,
 		Err:      fmt.Errorf("validation failed with %d blocking issues", issueCount),
 	}
+}
+
+func runVerifyTxtar(txtarPath string) error {
+	data, err := os.ReadFile(txtarPath)
+	if err != nil {
+		return fmt.Errorf("failed to read txtar file: %w", err)
+	}
+	return runVerifyTxtarData(data)
 }

@@ -20,42 +20,63 @@ type Snapshot struct {
 	KernelVer string
 }
 
-func sanitizeDevice(dev *rules.BlockDevice) {
+var redactedMap map[string]string
+
+func sanitizeStr(val string, prefix string, redactedMap map[string]string) string {
+	if val == "" {
+		return ""
+	}
+	if mapped, ok := redactedMap[val]; ok {
+		return mapped
+	}
+	newVal := fmt.Sprintf("<sanitized-%s-%d>", prefix, len(redactedMap))
+	redactedMap[val] = newVal
+	return newVal
+}
+
+func sanitizeDevice(dev *rules.BlockDevice, redactedMap map[string]string) {
 	if dev.UUID != "" {
-		dev.UUID = "<sanitized>"
+		dev.UUID = sanitizeStr(dev.UUID, "uuid", redactedMap)
 	}
 	if dev.Label != "" {
-		dev.Label = "<sanitized>"
+		dev.Label = sanitizeStr(dev.Label, "label", redactedMap)
 	}
 	if dev.PartUUID != "" {
-		dev.PartUUID = "<sanitized>"
+		dev.PartUUID = sanitizeStr(dev.PartUUID, "partuuid", redactedMap)
 	}
 	var cleanAliases []string
 	for _, a := range dev.Aliases {
-		if strings.HasPrefix(a, "/dev/disk/by-uuid/") ||
-			strings.HasPrefix(a, "/dev/disk/by-partuuid/") ||
-			strings.HasPrefix(a, "/dev/disk/by-label/") ||
-			strings.HasPrefix(a, "/dev/disk/by-partlabel/") ||
-			strings.HasPrefix(a, "/dev/disk/by-id/") {
-			continue
+		if strings.HasPrefix(a, "/dev/disk/by-uuid/") {
+			cleanAliases = append(cleanAliases, "/dev/disk/by-uuid/"+sanitizeStr(strings.TrimPrefix(a, "/dev/disk/by-uuid/"), "uuid", redactedMap))
+		} else if strings.HasPrefix(a, "/dev/disk/by-partuuid/") {
+			cleanAliases = append(cleanAliases, "/dev/disk/by-partuuid/"+sanitizeStr(strings.TrimPrefix(a, "/dev/disk/by-partuuid/"), "partuuid", redactedMap))
+		} else if strings.HasPrefix(a, "/dev/disk/by-label/") {
+			cleanAliases = append(cleanAliases, "/dev/disk/by-label/"+sanitizeStr(strings.TrimPrefix(a, "/dev/disk/by-label/"), "label", redactedMap))
+		} else if strings.HasPrefix(a, "/dev/disk/by-partlabel/") {
+			cleanAliases = append(cleanAliases, "/dev/disk/by-partlabel/"+sanitizeStr(strings.TrimPrefix(a, "/dev/disk/by-partlabel/"), "label", redactedMap))
+		} else if strings.HasPrefix(a, "/dev/disk/by-id/") {
+			cleanAliases = append(cleanAliases, "/dev/disk/by-id/"+sanitizeStr(strings.TrimPrefix(a, "/dev/disk/by-id/"), "id", redactedMap))
+		} else {
+			cleanAliases = append(cleanAliases, a)
 		}
-		cleanAliases = append(cleanAliases, a)
 	}
 	dev.Aliases = cleanAliases
 }
 
-// CaptureSystem captures the current system state, reading fstab from the
-// provided path, and serializing it along with block device info and other
-// environment states into a txtar byte slice.
+// CaptureSystem captures the current system state.
 func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredacted bool) ([]byte, error) {
 	ar := &x_txtar.Archive{}
+	redactedMap = make(map[string]string)
 
-	// Capture fstab
 	fstabBytes, err := os.ReadFile(fstabPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read fstab from %s: %w", fstabPath, err)
 	}
-	ar.Files = append(ar.Files, x_txtar.File{Name: "input/etc/fstab", Data: fstabBytes})
+	fstabStr := string(fstabBytes)
+
+	entries, _ := core.ParseFstab(strings.NewReader(fstabStr))
+
+	var cacheLines []string
 
 	// Capture block devices
 	inv, err := api.GetBlockDevices()
@@ -66,7 +87,6 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 			Data: b,
 		})
 	} else {
-		// Serialize full struct instead of just Devices
 		clonedInv := rules.BlockDeviceInventory{
 			Available:   inv.Available,
 			Diagnostics: inv.Diagnostics,
@@ -76,7 +96,7 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 
 		if !unredacted {
 			for i := range clonedInv.Devices {
-				sanitizeDevice(&clonedInv.Devices[i])
+				sanitizeDevice(&clonedInv.Devices[i], redactedMap)
 			}
 		}
 
@@ -89,7 +109,69 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 		}
 	}
 
-	// Capture kernel version
+	for _, e := range entries {
+		if len(e.Fields) < 2 || strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") || e.Fields[1] == "" {
+			continue
+		}
+		target := e.Fields[1]
+		spec := e.Fields[0]
+
+		// Check file existence
+		if strings.HasPrefix(target, "/") {
+			st := api.CheckFileExists(target)
+			var stateStr string
+			switch st {
+			case rules.FileExists:
+				stateStr = "true"
+			case rules.FileDoesNotExist:
+				stateStr = "false"
+			case rules.FilePermissionDenied:
+				stateStr = "permission_denied"
+			default:
+				stateStr = "unknown"
+			}
+			if !unredacted {
+				for old, new := range redactedMap {
+					target = strings.ReplaceAll(target, old, new)
+				}
+			}
+			cacheLines = append(cacheLines, fmt.Sprintf("file_exists:%s=%s", target, stateStr))
+		}
+
+		st := api.CheckBlockDeviceExists(spec)
+		var stateStr string
+		switch st {
+		case rules.Exists:
+			stateStr = "true"
+		case rules.DoesNotExist:
+			stateStr = "false"
+		case rules.PermissionDenied:
+			stateStr = "permission_denied"
+		default:
+			stateStr = "unknown"
+		}
+
+		resolved := api.ResolveDevicePath(spec)
+		if !unredacted {
+			for old, new := range redactedMap {
+				spec = strings.ReplaceAll(spec, old, new)
+				resolved = strings.ReplaceAll(resolved, old, new)
+			}
+		}
+
+		cacheLines = append(cacheLines, fmt.Sprintf("block_exists:%s=%s", resolved, stateStr))
+		if spec != resolved {
+			cacheLines = append(cacheLines, fmt.Sprintf("block_exists:%s=%s", spec, stateStr))
+		}
+	}
+
+	if !unredacted {
+		for old, new := range redactedMap {
+			fstabStr = strings.ReplaceAll(fstabStr, old, new)
+		}
+	}
+	ar.Files = append(ar.Files, x_txtar.File{Name: "input/etc/fstab", Data: []byte(fstabStr)})
+
 	kv := api.GetHostKernelVersion()
 	if kv != "" {
 		ar.Files = append(ar.Files, x_txtar.File{
@@ -98,7 +180,6 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 		})
 	}
 
-	// Optionally we could probe proc_filesystems by checking /proc/filesystems
 	procFsBytes, err := os.ReadFile("/proc/filesystems")
 	if err == nil {
 		ar.Files = append(ar.Files, x_txtar.File{
@@ -107,70 +188,11 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 		})
 	}
 
-	// Capture any paths referenced in fstab to see if they exist
-	entries, err := core.ParseFstab(strings.NewReader(string(fstabBytes)))
-	if err == nil {
-		var cacheLines []string
-		for _, e := range entries {
-			if len(e.Fields) < 2 || strings.HasPrefix(strings.TrimSpace(e.RawLine), "#") {
-				continue
-			}
-			target := e.Fields[1]
-			spec := e.Fields[0]
-			// Check file existence
-			if strings.HasPrefix(target, "/") {
-				st := api.CheckFileExists(target)
-				var stateStr string
-				switch st {
-				case rules.FileExists:
-					stateStr = "true"
-				case rules.FileDoesNotExist:
-					stateStr = "false"
-				case rules.FilePermissionDenied:
-					stateStr = "permission_denied"
-				default:
-					stateStr = "unknown"
-				}
-				cacheLines = append(cacheLines, fmt.Sprintf("file_exists:%s=%s", target, stateStr))
-			}
-
-			// Resolve block device
-			st := api.CheckBlockDeviceExists(spec)
-			var stateStr string
-			switch st {
-			case rules.Exists:
-				stateStr = "true"
-			case rules.DoesNotExist:
-				stateStr = "false"
-			case rules.PermissionDenied:
-				stateStr = "permission_denied"
-			default:
-				stateStr = "unknown"
-			}
-			resolved := api.ResolveDevicePath(spec)
-
-			cacheLines = append(cacheLines, fmt.Sprintf("block_exists:%s=%s", resolved, stateStr))
-			if spec != resolved {
-				cacheLines = append(cacheLines, fmt.Sprintf("block_exists:%s=%s", spec, stateStr))
-			}
-		}
-
-		if len(cacheLines) > 0 {
-			found := false
-			for i, file := range ar.Files {
-				if file.Name == "cache" {
-					ar.Files[i].Data = append(ar.Files[i].Data, []byte(strings.Join(cacheLines, "\n")+"\n")...)
-					found = true
-					break
-				}
-			}
-			if !found {
-				ar.Files = append(ar.Files, x_txtar.File{
-					Name: "cache",
-					Data: []byte(strings.Join(cacheLines, "\n") + "\n"),
-				})
-			}
-		}
+	if len(cacheLines) > 0 {
+		ar.Files = append(ar.Files, x_txtar.File{
+			Name: "cache",
+			Data: []byte(strings.Join(cacheLines, "\n") + "\n"),
+		})
 	}
 
 	return x_txtar.Format(ar), nil
@@ -243,6 +265,8 @@ func ReplaySnapshot(snapshot *Snapshot) (rules.API, error) {
 		var inv rules.BlockDeviceInventory
 		if err := json.Unmarshal(invData.Data, &inv); err == nil {
 			c.Set(rules.CacheKey("block_devices"), inv)
+		} else {
+			return nil, fmt.Errorf("malformed provider/inventory.json: %w", err)
 		}
 	}
 

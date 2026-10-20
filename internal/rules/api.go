@@ -486,6 +486,15 @@ func (c *CacheFS) GetHostKernelVersion() string {
 			}
 		}
 	}
+	if c.OfflineReplay {
+		return ""
+	}
+	if c.OfflineReplay {
+		return ""
+	}
+	if c.OfflineReplay {
+		return ""
+	}
 	return ActualFS{}.GetHostKernelVersion()
 }
 
@@ -511,6 +520,24 @@ func (c *CacheFS) CheckFileExists(path string) FileExistsResult {
 		_, err := fs.Stat(c.FS, checkPath)
 		if err == nil {
 			return FileExists
+		}
+		if c.OfflineReplay {
+			if os.IsPermission(err) {
+				return FilePermissionDenied
+			}
+			return Unknown
+		}
+		if c.OfflineReplay {
+			if os.IsPermission(err) {
+				return FilePermissionDenied
+			}
+			return Unknown
+		}
+		if c.OfflineReplay {
+			if os.IsPermission(err) {
+				return FilePermissionDenied
+			}
+			return Unknown
 		}
 		if c.OfflineReplay {
 			if os.IsPermission(err) {
@@ -690,6 +717,24 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) ExistState {
 		_, err := fs.Stat(c.FS, checkPath)
 		if err == nil {
 			return Exists
+		}
+		if c.OfflineReplay {
+			if os.IsPermission(err) {
+				return PermissionDenied
+			}
+			return Unknown
+		}
+		if c.OfflineReplay {
+			if os.IsPermission(err) {
+				return PermissionDenied
+			}
+			return Unknown
+		}
+		if c.OfflineReplay {
+			if os.IsPermission(err) {
+				return PermissionDenied
+			}
+			return Unknown
 		}
 		if os.IsPermission(err) {
 			return PermissionDenied

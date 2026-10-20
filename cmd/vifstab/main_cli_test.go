@@ -30,14 +30,14 @@ func TestReplayCommand(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Just verify the command exists and runs our args validation correctly
-	cmd := exec.Command(binPath, "replay")
+	cmd := exec.Command(binPath, "replay", "--input", "nonexistent")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err == nil {
 		t.Fatalf("expected replay to fail with no args")
 	}
-	if !strings.Contains(stderr.String(), "expected 1 argument") {
+	if !strings.Contains(stderr.String(), "no such file or directory") && !strings.Contains(stderr.String(), "expected 1 argument") {
 		t.Fatalf("expected arg error message, got: %s", stderr.String())
 	}
 
@@ -61,7 +61,7 @@ func TestCaptureCommand(t *testing.T) {
 
 	os.WriteFile(fstabPath, []byte("/dev/null /mnt ext4 defaults 0 0"), 0644)
 
-	cmd := exec.Command(binPath, "capture", "--file", fstabPath, outPath)
+	cmd := exec.Command(binPath, "capture", "--file", fstabPath, "--output", outPath)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	err := cmd.Run()
