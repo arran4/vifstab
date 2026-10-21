@@ -123,21 +123,21 @@ malformed-only
 	redactedTarget := ""
 	lines := strings.Split(string(snapshot.Fstab), "\n")
 	for _, l := range lines {
-	    if strings.Contains(l, "/sanitized-path-") {
-	        parts := strings.Fields(l)
-	        if len(parts) >= 2 {
-	            redactedTarget = parts[1]
-	        }
-	        break
-	    }
+		if strings.Contains(l, "/sanitized-path-") {
+			parts := strings.Fields(l)
+			if len(parts) >= 2 {
+				redactedTarget = parts[1]
+			}
+			break
+		}
 	}
 
 	if redactedTarget != "" {
-	    if replayAPI.CheckFileExists(redactedTarget) != rules.FileExists {
-		    t.Errorf("replay CheckFileExists returned incorrect result for sanitized target: %s", redactedTarget)
-	    }
+		if replayAPI.CheckFileExists(redactedTarget) != rules.FileExists {
+			t.Errorf("replay CheckFileExists returned incorrect result for sanitized target: %s", redactedTarget)
+		}
 	} else {
-	    t.Errorf("could not find sanitized path in fstab")
+		t.Errorf("could not find sanitized path in fstab")
 	}
 
 	// Test offline isolation
@@ -175,24 +175,23 @@ func TestParseTXTARLimits(t *testing.T) {
 	}
 
 	// Empty fstab test (should be valid)
-	emptyFstabData := []byte("-- manifest.json --\n{\"version\": \"1.0\"}\n-- input/etc/fstab --\n-- kernel --\n123\n")
+	emptyFstabData := []byte("-- manifest.json --\n{\"version\": \"1.0\", \"type\": \"system\"}\n-- input/etc/fstab --\n-- kernel --\n123\n")
 	snapshot2, err := ParseTXTAR(emptyFstabData)
 	if err != nil {
 		t.Errorf("expected empty fstab to be valid, got %v", err)
-	}
-	if snapshot2.Fstab == nil {
+	} else if snapshot2.Fstab == nil {
 		t.Errorf("expected fstab to be present but empty")
 	}
 
 	malformedManifest := []byte("-- manifest.json --\n{\"version: 1.0\"}\n-- input/etc/fstab --\n")
 	_, err = ParseTXTAR(malformedManifest)
 	if err == nil {
-	    t.Errorf("expected malformed manifest error")
+		t.Errorf("expected malformed manifest error")
 	}
 
 	invalidVersion := []byte("-- manifest.json --\n{\"version\": \"2.0\"}\n-- input/etc/fstab --\n")
 	_, err = ParseTXTAR(invalidVersion)
 	if err == nil {
-	    t.Errorf("expected unsupported manifest version error")
+		t.Errorf("expected unsupported manifest version error")
 	}
 }
