@@ -13,11 +13,18 @@ import (
 	x_txtar "golang.org/x/tools/txtar"
 )
 
+type Manifest struct {
+	Version  string `json:"version"`
+	Type     string `json:"type"`
+	Redacted bool   `json:"redacted"`
+}
+
 type Snapshot struct {
 	Fstab     []byte
 	Cache     map[string]string
 	MockFS    fstest.MapFS
 	KernelVer string
+	Manifest  *Manifest
 }
 
 func sanitizeStr(val string, prefix string, redactedMap map[string]string) string {
@@ -461,17 +468,25 @@ func ParseTXTAR(data []byte) (*Snapshot, error) {
 
 		switch {
 		case name == "manifest.json":
-			var manifest struct {
-				Version  string `json:"version"`
-				Type     string `json:"type"`
-				Redacted bool   `json:"redacted"`
-			}
-			if err := json.Unmarshal(file.Data, &manifest); err != nil {
-				return nil, fmt.Errorf("malformed manifest.json: %w", err)
-			}
-			if manifest.Version != "1.0" {
-				return nil, fmt.Errorf("unsupported manifest version: %v", manifest.Version)
-			}
+		    var manifest Manifest
+		    if err := json.Unmarshal(file.Data, &manifest); err != nil {
+		        return nil, fmt.Errorf("malformed manifest.json: %w", err)
+		    }
+
+		    // Validate required fields
+		    var raw map[string]interface{}
+		    if err := json.Unmarshal(file.Data, &raw); err != nil {
+		        return nil, fmt.Errorf("malformed manifest.json: %w", err)
+		    }
+		    if _, ok := raw["redacted"]; !ok {
+		        return nil, fmt.Errorf("manifest missing required field 'redacted'")
+		    }
+		    if manifest.Version != "1.0" {
+		        return nil, fmt.Errorf("unsupported manifest version: %v", manifest.Version)
+		    }
+		    if manifest.Type != "system" {
+		        return nil, fmt.Errorf("unsupported manifest type: %v", manifest.Type)
+		    }
 			if manifest.Type != "system" {
 				return nil, fmt.Errorf("unsupported manifest type: %v", manifest.Type)
 			}

@@ -175,12 +175,20 @@ func TestParseTXTARLimits(t *testing.T) {
 	}
 
 	// Empty fstab test (should be valid)
-	emptyFstabData := []byte("-- manifest.json --\n{\"version\": \"1.0\", \"type\": \"system\"}\n-- input/etc/fstab --\n-- kernel --\n123\n")
+	emptyFstabData := []byte("-- manifest.json --\n{\"version\": \"1.0\", \"type\": \"system\", \"redacted\": false}\n-- input/etc/fstab --\n-- kernel --\n123\n")
 	snapshot2, err := ParseTXTAR(emptyFstabData)
 	if err != nil {
 		t.Errorf("expected empty fstab to be valid, got %v", err)
-	} else if snapshot2.Fstab == nil {
+	}
+
+	if snapshot2.Fstab == nil {
 		t.Errorf("expected fstab to be present but empty")
+	}
+
+	missingRedacted := []byte("-- manifest.json --\n{\"version\": \"1.0\", \"type\": \"system\"}\n-- input/etc/fstab --\n")
+	_, err = ParseTXTAR(missingRedacted)
+	if err == nil || !strings.Contains(err.Error(), "missing required field") {
+	    t.Errorf("expected missing redacted field error, got %v", err)
 	}
 
 	malformedManifest := []byte("-- manifest.json --\n{\"version: 1.0\"}\n-- input/etc/fstab --\n")
