@@ -16,7 +16,7 @@ import (
 type Manifest struct {
 	Version  string `json:"version"`
 	Type     string `json:"type"`
-	Redacted bool   `json:"redacted"`
+	Redacted *bool  `json:"redacted"`
 }
 
 type Snapshot struct {
@@ -468,28 +468,21 @@ func ParseTXTAR(data []byte) (*Snapshot, error) {
 
 		switch {
 		case name == "manifest.json":
-		    var manifest Manifest
-		    if err := json.Unmarshal(file.Data, &manifest); err != nil {
-		        return nil, fmt.Errorf("malformed manifest.json: %w", err)
-		    }
+			var manifest Manifest
+			if err := json.Unmarshal(file.Data, &manifest); err != nil {
+				return nil, fmt.Errorf("malformed manifest.json: %w", err)
+			}
 
-		    // Validate required fields
-		    var raw map[string]interface{}
-		    if err := json.Unmarshal(file.Data, &raw); err != nil {
-		        return nil, fmt.Errorf("malformed manifest.json: %w", err)
-		    }
-		    if _, ok := raw["redacted"]; !ok {
-		        return nil, fmt.Errorf("manifest missing required field 'redacted'")
-		    }
-		    if manifest.Version != "1.0" {
-		        return nil, fmt.Errorf("unsupported manifest version: %v", manifest.Version)
-		    }
-		    if manifest.Type != "system" {
-		        return nil, fmt.Errorf("unsupported manifest type: %v", manifest.Type)
-		    }
+			if manifest.Redacted == nil {
+				return nil, fmt.Errorf("manifest missing required field 'redacted'")
+			}
+			if manifest.Version != "1.0" {
+				return nil, fmt.Errorf("unsupported manifest version: %v", manifest.Version)
+			}
 			if manifest.Type != "system" {
 				return nil, fmt.Errorf("unsupported manifest type: %v", manifest.Type)
 			}
+			s.Manifest = &manifest
 		case name == "provider/inventory.json":
 			s.MockFS["provider/inventory.json"] = &fstest.MapFile{Data: file.Data}
 		case name == "input" || name == "input/etc/fstab":

@@ -188,7 +188,7 @@ func TestParseTXTARLimits(t *testing.T) {
 	missingRedacted := []byte("-- manifest.json --\n{\"version\": \"1.0\", \"type\": \"system\"}\n-- input/etc/fstab --\n")
 	_, err = ParseTXTAR(missingRedacted)
 	if err == nil || !strings.Contains(err.Error(), "missing required field") {
-	    t.Errorf("expected missing redacted field error, got %v", err)
+		t.Errorf("expected missing redacted field error, got %v", err)
 	}
 
 	malformedManifest := []byte("-- manifest.json --\n{\"version: 1.0\"}\n-- input/etc/fstab --\n")
