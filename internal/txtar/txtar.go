@@ -105,7 +105,11 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 	// Capture block devices
 	inv, err := api.GetBlockDevices()
 	if err != nil {
-		b, _ := json.Marshal(rules.BlockDeviceInventory{Available: false, Diagnostics: []rules.BlockDeviceDiagnostic{{Error: err.Error()}}})
+		diagMsg := err.Error()
+		if !unredacted {
+			diagMsg = "<sanitized-error>"
+		}
+		b, _ := json.Marshal(rules.BlockDeviceInventory{Available: false, Diagnostics: []rules.BlockDeviceDiagnostic{{Error: diagMsg}}})
 		ar.Files = append(ar.Files, x_txtar.File{
 			Name: "provider/inventory.json",
 			Data: b,
