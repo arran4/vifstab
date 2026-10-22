@@ -114,10 +114,10 @@ func Print(w io.Writer, device string, opts ...any) error {
 		}
 
 		if startPos >= barWidth {
-			startPos = barWidth - 1 // clamp to end
+		    startPos = barWidth - 1 // clamp to end
 		}
 		if startPos+sizeChars > barWidth {
-			sizeChars = barWidth - startPos
+		    sizeChars = barWidth - startPos
 		}
 
 		var letter rune
