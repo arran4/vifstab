@@ -116,19 +116,16 @@ malformed-only
 		t.Errorf("replay kernel version mismatch: %v", replayAPI.GetHostKernelVersion())
 	}
 
-	// The original path "/tmp/test" was renamed to something like "/sanitized-path-N"
-	// So asking CheckFileExists for original path in replay should return Unknown or DoesNotExist,
-	// while the *sanitized* path should return FileExists.
-	// Since we don't know the exact N, we can just extract it from the fstab output.
 	redactedTarget := ""
 	lines := strings.Split(string(snapshot.Fstab), "\n")
 	for _, l := range lines {
-		if strings.Contains(l, "/sanitized-path-") {
+		l = strings.TrimSpace(l)
+		if len(l) > 0 && !strings.HasPrefix(l, "#") && !strings.HasPrefix(l, "<sanitized-malformed") {
 			parts := strings.Fields(l)
 			if len(parts) >= 2 {
 				redactedTarget = parts[1]
+				break
 			}
-			break
 		}
 	}
 
@@ -137,7 +134,7 @@ malformed-only
 			t.Errorf("replay CheckFileExists returned incorrect result for sanitized target: %s", redactedTarget)
 		}
 	} else {
-		t.Errorf("could not find sanitized path in fstab")
+		t.Errorf("could not find sanitized path in fstab: %q", string(snapshot.Fstab))
 	}
 
 	// Test offline isolation
