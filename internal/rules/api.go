@@ -661,7 +661,34 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) ExistState {
 	resolvedPath := c.ResolveDevicePath(dev)
 
 	if c.Cache != nil {
+		// Typed key takes precedence to avoid collisions with file_exists
+		if v, ok := c.Cache.Get(CacheKey("block_device_exists:" + resolvedPath)); ok {
+			if result, ok := v.(ExistState); ok {
+				return result
+			}
+		}
+
+		// Fallback check the original requested path before it was resolved
+		if v, ok := c.Cache.Get(CacheKey("block_device_exists:" + dev)); ok {
+			if result, ok := v.(ExistState); ok {
+				return result
+			}
+		}
+
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + resolvedPath)); ok {
+			if exists, ok := v.(bool); ok {
+				if exists {
+					return Exists
+				}
+				return DoesNotExist
+			}
+			if result, ok := v.(ExistState); ok {
+				return result
+			}
+		}
+
+		// Fallback check the original requested path on file_exists
+		if v, ok := c.Cache.Get(CacheKey("file_exists:" + dev)); ok {
 			if exists, ok := v.(bool); ok {
 				if exists {
 					return Exists

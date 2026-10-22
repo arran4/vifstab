@@ -427,16 +427,12 @@ func ReplaySnapshot(snapshot *Snapshot) (rules.API, error) {
 			} else {
 				c.Set(rules.CacheKey(targetKey), rules.Unknown)
 			}
-			// Backwards compat
-			if v == "true" {
-				c.Set(rules.CacheKey("file_exists:"+strings.TrimPrefix(k, "block_exists:")), rules.Exists)
-			} else if v == "false" {
-				c.Set(rules.CacheKey("file_exists:"+strings.TrimPrefix(k, "block_exists:")), rules.DoesNotExist)
-			} else if v == "permission_denied" {
-				c.Set(rules.CacheKey("file_exists:"+strings.TrimPrefix(k, "block_exists:")), rules.PermissionDenied)
-			} else {
-				c.Set(rules.CacheKey("file_exists:"+strings.TrimPrefix(k, "block_exists:")), rules.Unknown)
-			}
+
+			// Only populate file_exists for backwards compatibility if a newer manifest isn't dictating strictly typed output.
+			// But since we can't reliably know here and it could overwrite explicit file_exists, we just avoid setting file_exists
+			// if it hasn't already been explicitly recorded by file_exists:, or rely on the CheckBlockDeviceExists fallback.
+			// Since our api.go now reads "block_device_exists:" FIRST, we don't need to overwrite "file_exists:"!
+			// We skip backwards compat overwrites to prevent map iteration key collisions.
 		} else if v == "true" {
 			c.Set(rules.CacheKey(k), true)
 		} else if v == "false" {
