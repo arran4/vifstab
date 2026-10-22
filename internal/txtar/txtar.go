@@ -417,8 +417,17 @@ func ReplaySnapshot(snapshot *Snapshot) (rules.API, error) {
 				c.Set(rules.CacheKey(k), rules.Unknown)
 			}
 		} else if strings.HasPrefix(k, "block_exists:") {
-			// For backward compatibility, the CheckBlockDeviceExists looks at file_exists:
-			// Let's set both or modify CheckBlockDeviceExists. It looks at file_exists:<path>.
+			targetKey := "block_device_exists:" + strings.TrimPrefix(k, "block_exists:")
+			if v == "true" {
+				c.Set(rules.CacheKey(targetKey), rules.Exists)
+			} else if v == "false" {
+				c.Set(rules.CacheKey(targetKey), rules.DoesNotExist)
+			} else if v == "permission_denied" {
+				c.Set(rules.CacheKey(targetKey), rules.PermissionDenied)
+			} else {
+				c.Set(rules.CacheKey(targetKey), rules.Unknown)
+			}
+			// Backwards compat
 			if v == "true" {
 				c.Set(rules.CacheKey("file_exists:"+strings.TrimPrefix(k, "block_exists:")), rules.Exists)
 			} else if v == "false" {
