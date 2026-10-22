@@ -57,6 +57,61 @@ func (m mockAPI) ResolveDevicePath(dev string) string {
 	return dev
 }
 
+func TestFullArchivePrivacy(t *testing.T) {
+	tempDir := t.TempDir()
+	fstabPath := filepath.Join(tempDir, "fstab")
+
+	fstabContent := `
+# server=TOP_SECRET_HOST password=TOP_SECRET_PASS
+/dev/disk/by-id/wwn-0x50014ee058778899 /mnt/data ext4 defaults 0 2
+UUID=SECRET-UUID /mnt/data2 ext4 defaults 0 2
+//SECRET_NAS/share /mnt/net cifs credentials=/home/user/.smbcredentials,password=TOP_SECRET_PASS 0 0
+/dev/mapper/PRIVATE_MAPPER /mnt/data3 ext4 defaults 0 2
+`
+	if err := os.WriteFile(fstabPath, []byte(fstabContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	api := mockAPI{}
+	data, err := CaptureSystem(context.Background(), api, fstabPath, false)
+	if err != nil {
+		t.Fatalf("CaptureSystem failed: %v", err)
+	}
+
+	outStr := string(data)
+	if strings.Contains(outStr, "TOP_SECRET_HOST") {
+		t.Errorf("expected TOP_SECRET_HOST to be redacted, got leaked in archive: %q", outStr)
+	}
+	if strings.Contains(outStr, "TOP_SECRET_PASS") {
+		t.Errorf("expected TOP_SECRET_PASS to be redacted, got leaked in archive")
+	}
+	if strings.Contains(outStr, "wwn-0x50014ee058778899") {
+		t.Errorf("expected wwn-0x50014ee058778899 to be redacted, got leaked in archive")
+	}
+	if strings.Contains(outStr, "SECRET-UUID") {
+		t.Errorf("expected SECRET-UUID to be redacted, got leaked in archive")
+	}
+	if strings.Contains(outStr, "SECRET_NAS") {
+		t.Errorf("expected SECRET_NAS to be redacted, got leaked in archive")
+	}
+	if strings.Contains(outStr, "PRIVATE_MAPPER") {
+		t.Errorf("expected PRIVATE_MAPPER to be redacted, got leaked in archive")
+	}
+
+	// Verify Redacted Fstab
+	snapshot, err := ParseTXTAR(data)
+	if err != nil {
+		t.Fatalf("ParseTXTAR failed: %v", err)
+	}
+	fstabOut := string(snapshot.Fstab)
+	if !strings.Contains(fstabOut, "UUID=") {
+		t.Errorf("expected fstab to retain UUID= prefix, got: %q", fstabOut)
+	}
+	if !strings.Contains(fstabOut, "//") {
+		t.Errorf("expected fstab to retain CIFS // prefix, got: %q", fstabOut)
+	}
+}
+
 func TestCaptureAndReplay(t *testing.T) {
 	tempDir := t.TempDir()
 	fstabPath := filepath.Join(tempDir, "fstab")
