@@ -112,6 +112,7 @@ UUID=SECRET-UUID /mnt/data2 ext4 defaults 0 2
 	}
 }
 
+
 func TestCaptureAndReplay(t *testing.T) {
 	tempDir := t.TempDir()
 	fstabPath := filepath.Join(tempDir, "fstab")
