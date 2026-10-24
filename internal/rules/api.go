@@ -699,18 +699,6 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) ExistState {
 				return result
 			}
 		}
-		// Also check if they cached the raw path for some reason
-		if v, ok := c.Cache.Get(CacheKey("file_exists:" + dev)); ok {
-			if exists, ok := v.(bool); ok {
-				if exists {
-					return Exists
-				}
-				return DoesNotExist
-			}
-			if result, ok := v.(ExistState); ok {
-				return result
-			}
-		}
 	}
 	if c.FS != nil {
 		checkPath := resolvedPath
