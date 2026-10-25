@@ -45,70 +45,41 @@ func sanitizeStr(val string, prefix string, redactedMap map[string]string) strin
 	return newVal
 }
 
-// redactDeviceReference maps all aliases for one original identifier consistently.
-// Its output preserves reference syntax so offline inventory lookup can resolve it.
-func redactDeviceReference(ref string, redactedMap map[string]string) string {
-	if mapped, ok := redactedMap[ref]; ok {
-		return mapped
-	}
-	var out string
-	switch {
-	case strings.HasPrefix(ref, "UUID="):
-		out = "UUID=" + sanitizeStr(strings.TrimPrefix(ref, "UUID="), "uuid", redactedMap)
-	case strings.HasPrefix(ref, "PARTUUID="):
-		out = "PARTUUID=" + sanitizeStr(strings.TrimPrefix(ref, "PARTUUID="), "partuuid", redactedMap)
-	case strings.HasPrefix(ref, "LABEL="):
-		out = "LABEL=" + sanitizeStr(strings.TrimPrefix(ref, "LABEL="), "label", redactedMap)
-	case strings.HasPrefix(ref, "PARTLABEL="):
-		out = "PARTLABEL=" + sanitizeStr(strings.TrimPrefix(ref, "PARTLABEL="), "partlabel", redactedMap)
-	case strings.HasPrefix(ref, "ID="):
-		out = "ID=" + sanitizeStr(strings.TrimPrefix(ref, "ID="), "id", redactedMap)
-	case strings.HasPrefix(ref, "/dev/disk/by-uuid/"):
-		out = "/dev/disk/by-uuid/" + sanitizeStr(strings.TrimPrefix(ref, "/dev/disk/by-uuid/"), "uuid", redactedMap)
-	case strings.HasPrefix(ref, "/dev/disk/by-partuuid/"):
-		out = "/dev/disk/by-partuuid/" + sanitizeStr(strings.TrimPrefix(ref, "/dev/disk/by-partuuid/"), "partuuid", redactedMap)
-	case strings.HasPrefix(ref, "/dev/disk/by-label/"):
-		out = "/dev/disk/by-label/" + sanitizeStr(strings.TrimPrefix(ref, "/dev/disk/by-label/"), "label", redactedMap)
-	case strings.HasPrefix(ref, "/dev/disk/by-partlabel/"):
-		out = "/dev/disk/by-partlabel/" + sanitizeStr(strings.TrimPrefix(ref, "/dev/disk/by-partlabel/"), "partlabel", redactedMap)
-	case strings.HasPrefix(ref, "/dev/disk/by-id/"):
-		out = "/dev/disk/by-id/" + sanitizeStr(strings.TrimPrefix(ref, "/dev/disk/by-id/"), "id", redactedMap)
-	case strings.HasPrefix(ref, "/dev/disk/by-path/"):
-		out = "/dev/disk/by-path/" + sanitizeStr(strings.TrimPrefix(ref, "/dev/disk/by-path/"), "path", redactedMap)
-	case strings.HasPrefix(ref, "//"):
-		out = "//" + strings.Trim(sanitizeStr(ref, "net", redactedMap), "<>")
-	case strings.Contains(ref, ":/"):
-		out = strings.Trim(sanitizeStr(ref, "net", redactedMap), "<>") + ":/export"
-	case strings.HasPrefix(ref, "/dev/"):
-		out = "/dev/sanitized-" + strings.Trim(sanitizeStr(ref, "dev", redactedMap), "<>")
-	case strings.HasPrefix(ref, "/"):
-		out = "/sanitized-" + strings.Trim(sanitizeStr(ref, "path", redactedMap), "<>")
-	default:
-		// Preserve known pseudo-filesystem names, but never pass through arbitrary
-		// unrecognized sources that can be user/device/network identifiers.
-		switch ref {
-		case "", "none", "tmpfs", "proc", "sysfs", "devtmpfs", "devpts", "ramfs", "overlay", "swap", "cgroup", "cgroup2", "autofs", "securityfs", "debugfs", "tracefs", "mqueue", "hugetlbfs":
-			return ref
-		}
-		out = "sanitized-" + strings.Trim(sanitizeStr(ref, "unknown", redactedMap), "<>")
-	}
-	redactedMap[ref] = out
-	return out
-}
-
 func sanitizeDevice(dev *rules.BlockDevice, redactedMap map[string]string) {
 	if dev.UUID != "" {
-		dev.UUID = sanitizeStr(dev.UUID, "uuid", redactedMap)
+		newVal := sanitizeStr(dev.UUID, "uuid", redactedMap)
+		redactedMap["UUID="+dev.UUID] = "UUID=" + newVal
+		dev.UUID = newVal
 	}
 	if dev.Label != "" {
-		dev.Label = sanitizeStr(dev.Label, "label", redactedMap)
+		newVal := sanitizeStr(dev.Label, "label", redactedMap)
+		redactedMap["LABEL="+dev.Label] = "LABEL=" + newVal
+		dev.Label = newVal
 	}
 	if dev.PartUUID != "" {
-		dev.PartUUID = sanitizeStr(dev.PartUUID, "partuuid", redactedMap)
+		newVal := sanitizeStr(dev.PartUUID, "partuuid", redactedMap)
+		redactedMap["PARTUUID="+dev.PartUUID] = "PARTUUID=" + newVal
+		dev.PartUUID = newVal
 	}
-	cleanAliases := make([]string, 0, len(dev.Aliases))
-	for _, alias := range dev.Aliases {
-		cleanAliases = append(cleanAliases, redactDeviceReference(alias, redactedMap))
+	var cleanAliases []string
+	for _, a := range dev.Aliases {
+		if strings.HasPrefix(a, "/dev/disk/by-uuid/") {
+			cleanAliases = append(cleanAliases, "/dev/disk/by-uuid/"+sanitizeStr(strings.TrimPrefix(a, "/dev/disk/by-uuid/"), "uuid", redactedMap))
+		} else if strings.HasPrefix(a, "/dev/disk/by-partuuid/") {
+			cleanAliases = append(cleanAliases, "/dev/disk/by-partuuid/"+sanitizeStr(strings.TrimPrefix(a, "/dev/disk/by-partuuid/"), "partuuid", redactedMap))
+		} else if strings.HasPrefix(a, "/dev/disk/by-label/") {
+			cleanAliases = append(cleanAliases, "/dev/disk/by-label/"+sanitizeStr(strings.TrimPrefix(a, "/dev/disk/by-label/"), "label", redactedMap))
+		} else if strings.HasPrefix(a, "/dev/disk/by-partlabel/") {
+			cleanAliases = append(cleanAliases, "/dev/disk/by-partlabel/"+sanitizeStr(strings.TrimPrefix(a, "/dev/disk/by-partlabel/"), "label", redactedMap))
+		} else if strings.HasPrefix(a, "/dev/disk/by-id/") || strings.HasPrefix(a, "/dev/disk/by-path/") {
+			// Don't keep raw by-id/by-path since they contain serials/topology
+			continue
+		} else {
+			// Just map it as a path
+			newVal := "/sanitized-" + sanitizeStr(a, "path", redactedMap)
+			redactedMap[a] = newVal
+			cleanAliases = append(cleanAliases, newVal)
+		}
 	}
 	dev.Aliases = cleanAliases
 }
@@ -160,7 +131,17 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 				clonedInv.Devices[i].SysfsName = ""
 
 				if clonedInv.Devices[i].Path != "" {
-					clonedInv.Devices[i].Path = redactDeviceReference(clonedInv.Devices[i].Path, redactedMap)
+					if strings.HasPrefix(clonedInv.Devices[i].Path, "/dev/") {
+						val := sanitizeStr(clonedInv.Devices[i].Path, "dev", redactedMap)
+						newPath := "/dev/sanitized-" + strings.Trim(val, "<>")
+						redactedMap[clonedInv.Devices[i].Path] = newPath
+						clonedInv.Devices[i].Path = newPath
+					} else {
+						val := sanitizeStr(clonedInv.Devices[i].Path, "path", redactedMap)
+						newPath := "/sanitized-" + strings.Trim(val, "<>")
+						redactedMap[clonedInv.Devices[i].Path] = newPath
+						clonedInv.Devices[i].Path = newPath
+					}
 				}
 
 				clonedInv.Devices[i].MountPoints = nil
@@ -204,8 +185,52 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 		copy(outLineFields, e.Fields)
 
 		if !unredacted {
-			// Use the same canonical mapping as the inventory and cache.
-			outSpec = redactDeviceReference(origSpec, redactedMap)
+			// Redact spec safely maintaining structure
+			if strings.HasPrefix(origSpec, "UUID=") {
+				val := strings.TrimPrefix(origSpec, "UUID=")
+				newVal := sanitizeStr(val, "uuid", redactedMap)
+				outSpec = "UUID=" + newVal
+			} else if strings.HasPrefix(origSpec, "LABEL=") {
+				val := strings.TrimPrefix(origSpec, "LABEL=")
+				newVal := sanitizeStr(val, "label", redactedMap)
+				outSpec = "LABEL=" + newVal
+			} else if strings.HasPrefix(origSpec, "PARTUUID=") {
+				val := strings.TrimPrefix(origSpec, "PARTUUID=")
+				newVal := sanitizeStr(val, "partuuid", redactedMap)
+				outSpec = "PARTUUID=" + newVal
+			} else if strings.HasPrefix(origSpec, "PARTLABEL=") {
+				val := strings.TrimPrefix(origSpec, "PARTLABEL=")
+				outSpec = "PARTLABEL=" + sanitizeStr(val, "partlabel", redactedMap)
+			} else if strings.HasPrefix(origSpec, "ID=") {
+				val := strings.TrimPrefix(origSpec, "ID=")
+				outSpec = "ID=" + sanitizeStr(val, "id", redactedMap)
+			} else if strings.HasPrefix(origSpec, "//") {
+				// CIFS
+				val := sanitizeStr(origSpec, "net", redactedMap)
+				outSpec = "//" + strings.Trim(val, "<>")
+			} else if strings.Contains(origSpec, ":/") {
+				// NFS
+				val := sanitizeStr(origSpec, "net", redactedMap)
+				outSpec = strings.Trim(val, "<>") + ":/export"
+			} else if strings.HasPrefix(origSpec, "/") {
+				if strings.HasPrefix(origSpec, "/dev/") {
+					if mapped, ok := redactedMap[origSpec]; ok {
+						outSpec = mapped
+					} else {
+						val := sanitizeStr(origSpec, "dev", redactedMap)
+						outSpec = "/dev/sanitized-" + strings.Trim(val, "<>")
+					}
+				} else {
+					val := sanitizeStr(origSpec, "path", redactedMap)
+					outSpec = "/sanitized-" + strings.Trim(val, "<>")
+				}
+			} else if strings.HasPrefix(origSpec, "//") {
+				val := sanitizeStr(origSpec, "net", redactedMap)
+				outSpec = "//" + strings.Trim(val, "<>")
+			} else if strings.Contains(origSpec, ":/") {
+				val := sanitizeStr(origSpec, "net", redactedMap)
+				outSpec = strings.Trim(val, "<>") + ":/export"
+			}
 
 			// Redact target safely
 			if strings.HasPrefix(origTarget, "/") {
@@ -271,7 +296,46 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 		outResolved := origResolved
 
 		if !unredacted {
-			outResolved = redactDeviceReference(origResolved, redactedMap)
+			if mapped, ok := redactedMap[origResolved]; ok {
+				outResolved = mapped
+			} else if strings.HasPrefix(origResolved, "/dev/disk/by-uuid/") {
+				outResolved = "/dev/disk/by-uuid/" + sanitizeStr(strings.TrimPrefix(origResolved, "/dev/disk/by-uuid/"), "uuid", redactedMap)
+			} else if strings.HasPrefix(origResolved, "/dev/disk/by-partuuid/") {
+				outResolved = "/dev/disk/by-partuuid/" + sanitizeStr(strings.TrimPrefix(origResolved, "/dev/disk/by-partuuid/"), "partuuid", redactedMap)
+			} else if strings.HasPrefix(origResolved, "/dev/disk/by-label/") {
+				outResolved = "/dev/disk/by-label/" + sanitizeStr(strings.TrimPrefix(origResolved, "/dev/disk/by-label/"), "label", redactedMap)
+			} else if strings.HasPrefix(origResolved, "UUID=") {
+				outResolved = "UUID=" + sanitizeStr(strings.TrimPrefix(origResolved, "UUID="), "uuid", redactedMap)
+			} else if strings.HasPrefix(origResolved, "LABEL=") {
+				outResolved = "LABEL=" + sanitizeStr(strings.TrimPrefix(origResolved, "LABEL="), "label", redactedMap)
+			} else if strings.HasPrefix(origResolved, "PARTUUID=") {
+				outResolved = "PARTUUID=" + sanitizeStr(strings.TrimPrefix(origResolved, "PARTUUID="), "partuuid", redactedMap)
+			} else if strings.HasPrefix(origResolved, "PARTLABEL=") {
+				outResolved = "PARTLABEL=" + sanitizeStr(strings.TrimPrefix(origResolved, "PARTLABEL="), "partlabel", redactedMap)
+			} else if strings.HasPrefix(origResolved, "ID=") {
+				outResolved = "ID=" + sanitizeStr(strings.TrimPrefix(origResolved, "ID="), "id", redactedMap)
+			} else if strings.HasPrefix(origResolved, "//") {
+				val := sanitizeStr(origResolved, "net", redactedMap)
+				outResolved = "//" + strings.Trim(val, "<>")
+			} else if strings.Contains(origResolved, ":/") {
+				val := sanitizeStr(origResolved, "net", redactedMap)
+				outResolved = strings.Trim(val, "<>") + ":/export"
+			} else if strings.HasPrefix(origResolved, "/dev/disk/by-id/") || strings.HasPrefix(origResolved, "/dev/disk/by-path/") {
+				val := sanitizeStr(origResolved, "path", redactedMap)
+				outResolved = "/sanitized-" + strings.Trim(val, "<>")
+			} else if strings.HasPrefix(origResolved, "/") {
+				if strings.HasPrefix(origResolved, "/dev/") {
+					val := sanitizeStr(origResolved, "dev", redactedMap)
+					outResolved = "/dev/sanitized-" + strings.Trim(val, "<>")
+				} else {
+					val := sanitizeStr(origResolved, "path", redactedMap)
+					outResolved = "/sanitized-" + strings.Trim(val, "<>")
+				}
+			} else {
+				// Something completely unknown (like a bare "server:/export" but missed above)
+				val := sanitizeStr(origResolved, "unknown", redactedMap)
+				outResolved = "sanitized-unknown-" + strings.Trim(val, "<>")
+			}
 		}
 
 		cacheLines = append(cacheLines, fmt.Sprintf("block_exists:%s=%s", outResolved, stateStr))
