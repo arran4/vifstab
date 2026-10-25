@@ -3,7 +3,6 @@ package editor
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/arran4/vifstab/internal/config"
@@ -37,12 +36,8 @@ func VerifyAndLint(cfg config.Config, api rules.API) ([]rules.ValidationIssue, e
 	defer func() {
 		_ = f.Close()
 	}()
-	return VerifyAndLintReader(f, api)
-}
 
-// VerifyAndLintReader lints fstab entries directly from an io.Reader.
-func VerifyAndLintReader(r io.Reader, api rules.API) ([]rules.ValidationIssue, error) {
-	entries, err := core.ParseFstab(r)
+	entries, err := core.ParseFstab(f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse: %w", err)
 	}

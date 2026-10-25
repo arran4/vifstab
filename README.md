@@ -86,12 +86,9 @@ vifstab --file /path/to/custom/fstab --backup-dir /var/backups/vifstab
 
 `vifstab` provides several subcommands for specific tasks:
 
-- `capture [--file /etc/fstab] [--unredacted] [<output.txtar>]`: Captures the current system state, reading fstab from the provided path, and serializing it along with block device info and other environment states into a txtar byte slice. It redacts sensitive values (UUIDs, labels) by default, and output is saved securely.
-- `replay <snapshot.txtar>`: Equivalent to `--verify --txtar <snapshot.txtar>`, executing exactly the same validation path using a replayed offline snapshot without leaking or touching the live host state.
 - `diagram <device>`: Generates an ASCII art diagram of the filesystem stack and dependencies for the given block device.
 - `format [options]`: Formats the `fstab` entries into a column-aligned format.
 - `uefi <device> <mountpoint>`: Correlates an fstab ESP entry with firmware boot entries and the currently booted EFI partition.
-
 
 Examples:
 
