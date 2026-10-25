@@ -230,7 +230,7 @@ func TestParseTXTARLimits(t *testing.T) {
 	emptyFstabData := []byte("-- manifest.json --\n{\"version\": \"1.0\", \"type\": \"system\", \"redacted\": false}\n-- input/etc/fstab --\n-- kernel --\n123\n")
 	snapshot2, err := ParseTXTAR(emptyFstabData)
 	if err != nil {
-		t.Errorf("expected empty fstab to be valid, got %v", err)
+		t.Fatalf("expected empty fstab to be valid, got %v", err)
 	}
 
 	if snapshot2.Fstab == nil {
