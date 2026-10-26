@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	_ "embed"
 	"errors"
 	"flag"
@@ -14,6 +16,7 @@ import (
 	"github.com/arran4/vifstab/internal/format"
 	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/txtar"
 	"github.com/arran4/vifstab/internal/uefi"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
 )
@@ -62,6 +65,22 @@ func main() {
 
 		device := diagramCmd.Arg(0)
 		err := diagram.Print(os.Stdout, device)
+		if err != nil {
+			handleError(err)
+		}
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "capture" {
+		err := runCapture(os.Args[2:])
+		if err != nil {
+			handleError(err)
+		}
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "replay" {
+		err := runReplay(os.Args[2:])
 		if err != nil {
 			handleError(err)
 		}
@@ -159,6 +178,9 @@ func main() {
 	flag.StringVar(&file, "file", "/etc/fstab", "File to edit")
 	flag.BoolVar(&generateManpage, "generate-manpage", false, "Generate man page for vifstab to vifstab.1")
 	flag.BoolVar(&verifyOnly, "verify", false, "Verify the file without opening an editor")
+	var txtarFile string
+	flag.StringVar(&txtarFile, "txtar", "", "Run validation against a captured TXTAR snapshot instead of live system")
+
 	flag.StringVar(&systemdReload, "systemd-reload", "warn", "Post-save systemd handling for /etc/fstab (auto|warn|never)")
 
 	flag.Usage = func() {
@@ -167,10 +189,25 @@ func main() {
 	}
 
 	flag.Parse()
+
+	if txtarFile != "" && !verifyOnly {
+		handleError(fmt.Errorf("--txtar requires --verify; use 'vifstab replay' for offline validation"))
+	}
+
 	if flag.NArg() > 0 {
 		fmt.Fprintf(os.Stderr, "Error: unexpected arguments: %v\n", flag.Args())
 		flag.Usage()
 		os.Exit(1)
+	}
+
+	if txtarFile != "" {
+		if generateManpage {
+			handleError(fmt.Errorf("--txtar cannot be combined with --generate-manpage"))
+		}
+		if err := runVerifyTxtar(txtarFile); err != nil {
+			handleError(err)
+		}
+		return
 	}
 
 	if generateManpage {
@@ -201,30 +238,10 @@ func main() {
 			handleError(err)
 		}
 
-		var issueCount int
-		for _, s := range issues {
-			if rules.IsBlockingIssue(s) {
-				issueCount++
-			}
+		if err := reportVerification(issues); err != nil {
+			handleError(err)
 		}
-
-		if issueCount == 0 {
-			fmt.Println("Validation successful.")
-			if len(issues) > 0 {
-				fmt.Println("Issues:")
-				for _, s := range issues {
-					fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
-				}
-			}
-			return
-		}
-
-		fmt.Println("Validation issues found:")
-		for _, s := range issues {
-			fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
-		}
-
-		os.Exit(1)
+		return
 	}
 
 	if err != nil && backupDir == "" {
@@ -247,4 +264,138 @@ func handleError(err error) {
 	}
 	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	os.Exit(1)
+}
+
+func runCapture(args []string) error {
+	captureCmd := flag.NewFlagSet("capture", flag.ExitOnError)
+	fileFlag := captureCmd.String("file", "/etc/fstab", "File to capture")
+	outFlag := captureCmd.String("output", "-", "Output file for capture (defaults to stdout)")
+	unredactedFlag := captureCmd.Bool("unredacted", false, "Do not redact sensitive values")
+	captureCmd.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: vifstab capture [options]\n")
+		captureCmd.PrintDefaults()
+	}
+	_ = captureCmd.Parse(args)
+
+	if captureCmd.NArg() > 0 {
+		captureCmd.Usage()
+		return fmt.Errorf("unexpected arguments: %v", captureCmd.Args())
+	}
+
+	if *unredactedFlag {
+		fmt.Fprintln(os.Stderr, "Warning: unredacted capture includes sensitive identifiers, paths and credentials. Review before sharing.")
+	} else {
+		fmt.Fprintln(os.Stderr, "Capture redacts private values; review before sharing. Redaction can change validation findings.")
+	}
+
+	outData, err := txtar.CaptureSystem(context.Background(), rules.ActualFS{}, *fileFlag, *unredactedFlag)
+	if err != nil {
+		return fmt.Errorf("capture failed: %w", err)
+	}
+
+	if *outFlag != "-" {
+		f, err := os.OpenFile(*outFlag, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if err != nil {
+			return fmt.Errorf("open capture output: %w", err)
+		}
+		if _, err := f.Write(outData); err != nil {
+			_ = f.Close()
+			_ = os.Remove(*outFlag)
+			return fmt.Errorf("write capture output: %w", err)
+		}
+		if err := f.Close(); err != nil {
+			_ = os.Remove(*outFlag)
+			return fmt.Errorf("close capture output: %w", err)
+		}
+	} else {
+		if _, err := os.Stdout.Write(outData); err != nil {
+			return fmt.Errorf("write capture output to stdout: %w", err)
+		}
+	}
+	return nil
+}
+
+func runReplay(args []string) error {
+	replayCmd := flag.NewFlagSet("replay", flag.ExitOnError)
+	inputFlag := replayCmd.String("input", "-", "Input file for replay (defaults to stdin)")
+	replayCmd.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: vifstab replay [options]\n")
+		replayCmd.PrintDefaults()
+	}
+	_ = replayCmd.Parse(args)
+
+	if replayCmd.NArg() > 0 {
+		replayCmd.Usage()
+		return fmt.Errorf("unexpected arguments: %v", replayCmd.Args())
+	}
+
+	return runVerifyTxtar(*inputFlag)
+}
+
+func runVerifyTxtarData(data []byte) error {
+	snapshot, err := txtar.ParseTXTAR(data)
+	if err != nil {
+		return fmt.Errorf("failed to parse txtar file: %w", err)
+	}
+
+	api, err := txtar.ReplaySnapshot(snapshot)
+	if err != nil {
+		return fmt.Errorf("failed to setup replay environment: %w", err)
+	}
+
+	r := bytes.NewReader(snapshot.Fstab)
+	issues, err := editor.VerifyAndLintReader(r, api)
+	if err != nil {
+		return err
+	}
+
+	return reportVerification(issues)
+}
+
+func reportVerification(issues []rules.ValidationIssue) error {
+
+	var issueCount int
+	for _, s := range issues {
+		if rules.IsBlockingIssue(s) {
+			issueCount++
+		}
+	}
+
+	if issueCount == 0 {
+		fmt.Println("Validation successful.")
+		if len(issues) > 0 {
+			fmt.Println("Issues:")
+			for _, s := range issues {
+				fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
+			}
+		}
+		return nil
+	}
+
+	fmt.Println("Validation issues found:")
+	for _, s := range issues {
+		fmt.Printf(" - [%s] %s (Line: %s)\n", s.Level, s.Message, s.Line)
+	}
+
+	return &outcome.ApplicationOutcome{
+		ExitCode: 1,
+		Err:      fmt.Errorf("validation failed with %d blocking issues", issueCount),
+	}
+}
+
+func runVerifyTxtar(txtarPath string) error {
+	var r io.Reader = os.Stdin
+	if txtarPath != "-" {
+		f, err := os.Open(txtarPath)
+		if err != nil {
+			return fmt.Errorf("failed to open txtar file: %w", err)
+		}
+		defer func() { _ = f.Close() }()
+		r = f
+	}
+	data, err := txtar.Read(r)
+	if err != nil {
+		return fmt.Errorf("failed to read txtar input: %w", err)
+	}
+	return runVerifyTxtarData(data)
 }

@@ -116,6 +116,14 @@ func validateLowerdir(ctx context.Context, api rules.API, entry *rules.FstabEntr
 		}
 		existsResult := api.CheckFileExists(p)
 		if existsResult != rules.FileExists {
+			if existsResult == rules.Unknown {
+				issues = append(issues, rules.ValidationIssue{
+					Message: fmt.Sprintf("Unable to determine existence of file '%s' for %s mount option '%s' on line %d", p, fsName, key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelInfo,
+				})
+				continue
+			}
 			if existsResult == rules.FilePermissionDenied {
 				continue
 			}

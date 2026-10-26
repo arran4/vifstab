@@ -1,6 +1,9 @@
 package rules
 
-import "sync"
+import (
+	"sort"
+	"sync"
+)
 
 var (
 	registryMu sync.RWMutex
@@ -20,5 +23,6 @@ func GetAllRules() []Rule {
 	for _, r := range registry {
 		rules = append(rules, r)
 	}
+	sort.Slice(rules, func(i, j int) bool { return rules[i].Name() < rules[j].Name() })
 	return rules
 }

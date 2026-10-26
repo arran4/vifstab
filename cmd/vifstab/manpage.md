@@ -5,6 +5,9 @@ vifstab - Edit fstab files with linting and versioning
 
 ## SYNOPSIS
 vifstab [--backup-dir=<value>] [--file=<value>] [--generate-manpage] [--systemd-reload=<value>] [--verify] [--help|-h]
+vifstab --verify --txtar <snapshot.txtar|->
+vifstab capture [--file=<value>] [--output=<snapshot.txtar|->] [--unredacted]
+vifstab replay [--input=<snapshot.txtar|->]
 vifstab diagram <device>
 vifstab format [--file=<value>]
 vifstab uefi <device> <mountpoint>
@@ -30,14 +33,31 @@ If the validation fails (for example, if a mount point does not exist or a files
 
 **--verify**: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
 
+**--txtar**="": With `--verify`, validate the given TXTAR snapshot offline. `-` reads standard input. Requires `--verify` and cannot be combined with `--generate-manpage`.
+
 **--help**, **-h**: Show help information.
 
 ## SUBCOMMANDS
+**capture** `[--file=<value>] [--output=<snapshot.txtar|->] [--unredacted]`: Capture the fstab (default `/etc/fstab`), kernel version, filesystem support, device inventory, mount locations and observations used by production validation. Output defaults to stdout. New output files use `0600`; existing files and symlinks are rejected. Diagnostics go to stderr. Default redaction pseudonymizes identifiers, aliases, account IDs, private paths, network locations and option values consistently. `--unredacted` retains sensitive information, including possible credentials, and prints a warning.
+
+**replay** `[--input=<snapshot.txtar|->]`: Validate a snapshot with the production rules and exit-status policy. Input defaults to stdin. Equivalent to `--verify --txtar`. Replay never consults host metadata to fill gaps or creates temporary files. Missing observations remain unknown; explicit absence and permission denial remain distinct. Editing, backups, systemd reloads, diagrams, UEFI analysis and filesystem-content inspection are unsupported replay operations.
+
 **diagram** `<device>`: Generates an ASCII art diagram of the filesystem stack and dependencies for the specified block device.
+
 
 **format** `[--file=<value>] [-i]`: Reads fstab entries and outputs them in a formatted, column-aligned manner. Defaults to formatting `/etc/fstab` unless `--file` is specified. The `-i` flag writes the formatted output back to the file in-place (cannot be used when reading from standard input).
 
 **uefi** `<device> <mountpoint>`: Correlates an fstab ESP entry with firmware boot entries and the currently booted EFI partition. Note this subcommand depends on access to `/sys/firmware/efi` to determine EFI boot variables.
+
+## SUPPORT SNAPSHOTS
+
+Generate a support attachment with `vifstab capture --output case.txtar`, inspect the entire file, then use `vifstab replay --input case.txtar`. To capture an alternative fstab, add `--file ./fstab`. Pipelines use `vifstab capture --output - | vifstab replay --input -`. The caller controls permissions and overwriting when redirecting stdout.
+
+Even redacted captures require review before public sharing. Public role mountpoints (`/`, `/boot`, `/efi`, `/boot/efi`), filesystem/partition types, option names and topology remain visible. Comments and kernel build identities are removed. Redaction of option values and malformed fields can affect validation findings. Use `--unredacted` only for private reproduction when that detail is needed. Capture never opens credential-file contents or exports account databases, reads block-device contents, mounts devices, or escalates privileges.
+
+The versioned TXTAR contains `manifest.json` (version `1.0`, type `system`, redaction flag), `input/etc/fstab`, optional `kernel`, `provider/inventory.json` and `provider/observations.json`. Legacy `input`, `input/proc/filesystems` and line-based `cache` sections are supported. Input limits are 10 MiB total, 2 MiB per section, 100 sections and 1024 bytes per name. Unsafe paths, malformed data, ambiguous sections and unsupported versions are rejected. Unavailable metadata remains unknown rather than becoming a validation failure.
+
+For a repository regression, copy a reviewed capture to a rule's `testdata`, append `expected/validationerrors.txt`, and optionally select `rule=<name>` (or `all`) and `format=plain` in `options.txt`. The test harness shares production snapshot handling and retains its expected-output controls.
 
 ## ENVIRONMENT
 **VISUAL**, **EDITOR**: Determines the text editor to be launched by `vifstab`. The command respects standard arguments provided in these variables. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is ignored. If neither is set, it defaults to `vi`. Editor commands are executed directly rather than through a shell. Note that `vifstab` does not acquire or manage privileges; it executes the editor using the credentials of the invoking process.

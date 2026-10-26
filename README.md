@@ -74,6 +74,7 @@ Note: `SUDO_EDITOR` is intentionally ignored because `vifstab` does not infer or
 - `--file value`: File to edit (default: "/etc/fstab")
 - `--generate-manpage`: Generate man page for vifstab to `vifstab.1`
 - `--systemd-reload value`: Post-save systemd handling for `/etc/fstab` (`auto|warn|never`) (default: `warn`). `auto` runs `systemctl daemon-reload` only after validation and a committed save; an explicitly saved validation failure is warned instead. `warn` prints a diagnostic; `never` does nothing. In-place formatting of `/etc/fstab` warns conservatively and never reloads automatically.
+- `--txtar value`: With `--verify`, validate a TXTAR snapshot instead of the live system (`-` reads standard input).
 - `--verify`: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
 
 Example:
@@ -86,9 +87,12 @@ vifstab --file /path/to/custom/fstab --backup-dir /var/backups/vifstab
 
 `vifstab` provides several subcommands for specific tasks:
 
+- `capture [--file /etc/fstab] [--output system.txtar] [--unredacted]`: Records the validation environment. Output defaults to standard output; files are created exclusively with mode `0600`.
+- `replay [--input system.txtar]`: Validates a snapshot offline; input defaults to standard input. Equivalent to `--verify --txtar system.txtar`.
 - `diagram <device>`: Generates an ASCII art diagram of the filesystem stack and dependencies for the given block device.
 - `format [options]`: Formats the `fstab` entries into a column-aligned format.
 - `uefi <device> <mountpoint>`: Correlates an fstab ESP entry with firmware boot entries and the currently booted EFI partition.
+
 
 Examples:
 
@@ -115,6 +119,66 @@ Format `fstab` entries from standard input:
 ```bash
 cat /etc/fstab | vifstab format
 ```
+
+## Capturing a support case
+
+```bash
+vifstab capture --output system.txtar
+vifstab capture --file ./fstab --output case.txtar
+vifstab replay --input case.txtar
+vifstab --verify --txtar case.txtar
+vifstab capture --output - | vifstab replay --input -
+```
+
+Capture records the fstab, kernel version, filesystem support, block inventory,
+current mount locations and the file/device/UID/GID observations requested by the
+production validator. It uses kernel and filesystem metadata through the normal
+provider. It never reads block-device contents, mounts a device, reads credential
+files, exports account databases, or elevates privileges. An unreadable fstab is
+an error; inaccessible system metadata is retained as unavailable or unknown.
+
+Default redaction uses consistent pseudonyms for device paths, UUIDs, labels,
+aliases, account IDs, personal mount paths, network sources and option values.
+Public role paths (`/`, `/boot`, `/efi`, `/boot/efi`) remain visible for validation.
+Kernel build identities and diagnostic details are removed. Comments are replaced.
+**Review the entire archive before attaching it to a public issue.** Redaction is
+not an anonymity guarantee: filesystem types, partition types, public role paths,
+option names and topology remain visible. Unknown option values and malformed
+fields can change meaning when sanitized, so redacted findings may differ from
+live verification. Unredacted snapshots preserve more detail for exact reproduction:
+
+```bash
+vifstab capture --unredacted --output private-case.txtar
+```
+
+This prints a warning to stderr and can include credentials. Keep that file private.
+Existing output paths, including symlinks, are rejected; choose a new filename.
+When using stdout, the caller controls destination permissions and overwrite behavior.
+Diagnostics go to stderr, keeping stdout suitable for pipelines.
+
+Replay runs the same parser, rule registry, validation pipeline and blocking-status
+policy as live verification. It reads only the archive, makes no temporary files,
+and never fills missing observations from the replay host. An unrecorded check is
+unknown, distinct from an explicit negative or permission denial. Full validation
+is the supported replay operation; editing, backups, systemd actions, diagrams,
+UEFI analysis and filesystem-content inspection are not supported replay operations.
+
+Archives use `golang.org/x/tools/txtar` with `input/etc/fstab`, optional `kernel`,
+`manifest.json` (`version: "1.0"`, `type: "system"`, `redacted: true/false`),
+`provider/inventory.json` and `provider/observations.json`. Observations keep file,
+block, user, group and resolution queries separate, including unknown states and
+provider errors. Serialization is deterministic. Input is limited to 10 MiB,
+100 sections, 2 MiB per section and 1024 bytes per archive name. Unsafe paths,
+ambiguous sections, malformed structured data and unsupported versions are rejected.
+Legacy fixtures using `input`, `input/proc/filesystems`, `kernel` and line-based
+`cache` entries remain supported without inventing host defaults.
+
+To make a regression fixture, copy a reviewed capture into the relevant rule's
+`testdata` directory, append `expected/validationerrors.txt`, and optionally add
+`options.txt` with `rule=<name>` and `format=plain` (or the existing harness's
+`level_prefix`/`contains` formats). Choose `rule=all` to exercise every production
+rule. The fixture harness shares the CLI snapshot parser and provider adapter;
+expected output and rule-selection controls remain test-only.
 
 ## Linting
 

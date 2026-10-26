@@ -1,8 +1,7 @@
 -- kernel --
 Linux version 5.10.0
 -- cache --
-proc_filesystems:
-nodev	9p
+proc_filesystems=9p
 -- input/etc/passwd --
 root:x:0:0:root:/root:/bin/bash
 jules:x:1000:1000:jules:/home/jules:/bin/bash
