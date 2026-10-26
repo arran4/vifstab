@@ -454,9 +454,8 @@ func (a ActualFS) GetHostKernelVersion() string {
 }
 
 type CacheFS struct {
-	Cache         *Cache
-	FS            fs.FS
-	OfflineReplay bool
+	Cache *Cache
+	FS    fs.FS
 }
 
 func NewCacheFS(cache *Cache, mockFS fs.FS) *CacheFS {
@@ -486,9 +485,6 @@ func (c *CacheFS) GetHostKernelVersion() string {
 			}
 		}
 	}
-	if c.OfflineReplay {
-		return ""
-	}
 	return ActualFS{}.GetHostKernelVersion()
 }
 
@@ -507,19 +503,12 @@ func (c *CacheFS) CheckFileExists(path string) FileExistsResult {
 		}
 	}
 	if c.FS != nil {
-		checkPath := path
-		if checkPath != "" && checkPath[0] == '/' {
-			checkPath = checkPath[1:]
+		if path != "" && path[0] == '/' {
+			path = path[1:]
 		}
-		_, err := fs.Stat(c.FS, checkPath)
+		_, err := fs.Stat(c.FS, path)
 		if err == nil {
 			return FileExists
-		}
-		if c.OfflineReplay {
-			if os.IsPermission(err) {
-				return FilePermissionDenied
-			}
-			return Unknown
 		}
 		if os.IsPermission(err) {
 			return FilePermissionDenied
@@ -661,20 +650,6 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) ExistState {
 	resolvedPath := c.ResolveDevicePath(dev)
 
 	if c.Cache != nil {
-		// Typed key takes precedence to avoid collisions with file_exists
-		if v, ok := c.Cache.Get(CacheKey("block_device_exists:" + resolvedPath)); ok {
-			if result, ok := v.(ExistState); ok {
-				return result
-			}
-		}
-
-		// Fallback check the original requested path before it was resolved
-		if v, ok := c.Cache.Get(CacheKey("block_device_exists:" + dev)); ok {
-			if result, ok := v.(ExistState); ok {
-				return result
-			}
-		}
-
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + resolvedPath)); ok {
 			if exists, ok := v.(bool); ok {
 				if exists {
@@ -686,8 +661,7 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) ExistState {
 				return result
 			}
 		}
-
-		// Fallback check the original requested path on file_exists
+		// Also check if they cached the raw path for some reason
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + dev)); ok {
 			if exists, ok := v.(bool); ok {
 				if exists {
@@ -708,12 +682,6 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) ExistState {
 		_, err := fs.Stat(c.FS, checkPath)
 		if err == nil {
 			return Exists
-		}
-		if c.OfflineReplay {
-			if os.IsPermission(err) {
-				return PermissionDenied
-			}
-			return Unknown
 		}
 		if os.IsPermission(err) {
 			return PermissionDenied
