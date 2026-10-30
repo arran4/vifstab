@@ -42,7 +42,7 @@ func (r *Ext4Rule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 }
 
 // validateExt4DataMode keeps enum validation independent of the kernel
-// deprecation warning, so invalid values always remain errors.
+// deprecation notice, so invalid values always remain errors.
 func validateExt4DataMode(ctx context.Context, api rules.API, entry *rules.FstabEntry, fsName string, key string, val string, hasVal bool, allOpts map[string]options.OptionState) []rules.ValidationIssue {
 	issues := (options.EnumOption{Allowed: map[string]bool{"journal": true, "ordered": true, "writeback": true}}).ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)
 	if len(issues) != 0 || val != "journal" {
@@ -60,7 +60,7 @@ func validateExt4DataMode(ctx context.Context, api rules.API, entry *rules.Fstab
 		return []rules.ValidationIssue{{
 			Message: fmt.Sprintf("ext4 mount option 'data=journal' is deprecated since kernel 7.3 on line %d; removal is planned for January 2028 (removal kernel version not yet confirmed). Consider the default 'data=ordered' after reviewing its different data-integrity guarantees", entry.LineNum),
 			Line:    entry.RawLine,
-			Level:   rules.IssueLevelWarning,
+			Level:   rules.IssueLevelInfo,
 		}}
 	}
 	return nil
