@@ -132,3 +132,7 @@ Currently built-in rules check for:
 ## Environment Variables
 
 - `VISUAL` or `EDITOR`: Defines the text editor to use when opening the fstab file. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is not interpreted. Normal editor arguments are supported. Editor commands are executed directly rather than through a shell.
+
+## License
+
+`vifstab` is licensed under the [BSD 3-Clause License](LICENSE).
