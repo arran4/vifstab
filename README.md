@@ -133,7 +133,7 @@ cat /etc/fstab | vifstab format
 - **7.3 and later:** a non-blocking informational notice explains that it is deprecated and upstream plans removal in January 2028.
 - **Removal:** the precise kernel version is not yet confirmed, so `vifstab` does **not** reject the option solely on a guessed future version or calendar date. Revisit the rule when the removal lands.
 
-The warning does not rewrite `fstab`. Switching to the default `data=ordered` changes crash-consistency guarantees, so the administrator must decide whether it is an appropriate alternative. If the kernel version cannot be determined, this rule does not assume deprecation is active.
+The informational notice does not rewrite `fstab`. Switching to the default `data=ordered` changes crash-consistency guarantees, so the administrator must decide whether it is an appropriate alternative. If the kernel version cannot be determined, this rule does not assume deprecation is active.
 
 Currently built-in rules check for:
 - Format validity (e.g., minimum number of fields)

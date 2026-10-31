@@ -1,4 +1,4 @@
-test: later data mode suppresses journal deprecation warning
+test: later data mode suppresses journal deprecation notice
 -- kernel --
 7.3.0
 -- input --
