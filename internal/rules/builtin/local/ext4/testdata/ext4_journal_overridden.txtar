@@ -1,0 +1,6 @@
+test: later data mode suppresses journal deprecation notice
+-- kernel --
+7.3.0
+-- input --
+/dev/sda1 /mnt/ext4 ext4 data=journal,data=ordered 0 0
+-- issues --

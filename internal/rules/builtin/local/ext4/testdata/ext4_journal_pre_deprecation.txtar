@@ -1,0 +1,6 @@
+test: ext4 journal mode remains supported before 7.3
+-- kernel --
+7.2.99
+-- input --
+/dev/sda1 /mnt/ext4 ext4 defaults,data=journal 0 0
+-- issues --
