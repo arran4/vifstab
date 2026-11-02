@@ -189,6 +189,16 @@ expected output and rule-selection controls remain test-only.
 3. **Security:** Security issues are similar to warnings but track their own severity score for security-related issues.
 4. **Errors:** Errors indicate critical issues that might cause a complete failure, such as missing block devices or unknown filesystems.
 
+### EXT4 `data=journal` compatibility
+
+`vifstab` checks the running Linux kernel version when linting EXT4's `data=journal` mount option:
+
+- **Before 7.3:** `data=journal` remains valid.
+- **7.3 and later:** a non-blocking informational notice explains that it is deprecated and upstream plans removal in January 2028.
+- **Removal:** the precise kernel version is not yet confirmed, so `vifstab` does **not** reject the option solely on a guessed future version or calendar date. Revisit the rule when the removal lands.
+
+The informational notice does not rewrite `fstab`. Switching to the default `data=ordered` changes crash-consistency guarantees, so the administrator must decide whether it is an appropriate alternative. If the kernel version cannot be determined, this rule does not assume deprecation is active.
+
 Currently built-in rules check for:
 - Format validity (e.g., minimum number of fields)
 - Linux filesystem validity (checking against `/proc/filesystems`)
@@ -196,3 +206,7 @@ Currently built-in rules check for:
 ## Environment Variables
 
 - `VISUAL` or `EDITOR`: Defines the text editor to use when opening the fstab file. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is not interpreted. Normal editor arguments are supported. Editor commands are executed directly rather than through a shell.
+
+## License
+
+`vifstab` is licensed under the [BSD 3-Clause License](LICENSE).

@@ -1,0 +1,7 @@
+test: invalid data mode still errors on 7.3
+-- kernel --
+7.3.0
+-- input --
+/dev/sda1 /mnt/ext4 ext4 data=incorrect 0 0
+-- issues --
+Error: Invalid value 'incorrect' for ext4 mount option 'data' on line 1

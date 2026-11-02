@@ -1,0 +1,7 @@
+test: other ext4 journal modes are unaffected on 7.3
+-- kernel --
+7.3.0
+-- input --
+/dev/sda1 /mnt/ext4 ext4 data=ordered 0 0
+/dev/sda2 /mnt/ext4b ext4 data=writeback 0 0
+-- issues --

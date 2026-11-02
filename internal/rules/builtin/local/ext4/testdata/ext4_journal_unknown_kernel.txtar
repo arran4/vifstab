@@ -1,0 +1,6 @@
+test: unknown kernel does not claim deprecation is active
+-- kernel --
+unknown-version
+-- input --
+/dev/sda1 /mnt/ext4 ext4 data=journal 0 0
+-- issues --
