@@ -19,6 +19,11 @@ Additionally, `vifstab` maintains a version history of the edited file using RCS
 
 If the validation fails (for example, if a mount point does not exist or a filesystem is unknown), `vifstab` categorizes the feedback into Suggestions, Warnings, and Errors. It requires critical Errors to be resolved before saving the modifications, thus preventing a system from becoming unbootable due to a malformed `fstab`.
 
+Saves preserve a configured symlink and replace its resolved regular-file
+target. Broken links, loops and missing parent directories are rejected.
+Concurrency, ownership, extended-metadata and RCS limitations remain; the
+editing and in-place formatting paths must not yet be treated as production-safe.
+
 ## OPTIONS
 **--backup-dir**="": Directory to store RCS backups. If omitted, `vifstab` defaults to a sensible location. It checks `$XDG_CACHE_HOME/vifstab`, then `$HOME/.cache/vifstab`, and finally falls back to `/tmp/.vifstab`.
 

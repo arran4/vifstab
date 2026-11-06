@@ -4,6 +4,12 @@
 
 `vifstab` is a work-in-progress utility providing a visudo-like safe editing workflow for `/etc/fstab` files. It safely edits `fstab` files with built-in linting and versioning, respects the `$VISUAL` or `$EDITOR` environment variables, and saves backups using RCS.
 
+Saving through a symlink updates its resolved regular-file target and preserves
+the link. Broken links and loops are rejected. Editing and in-place formatting
+still have concurrency, ownership, extended-metadata and RCS limitations; read
+[save behaviour and limitations](docs/SAVE-SAFETY.md) before using either on an
+important configuration.
+
 ## Features
 
 - **Safe editing:** Edits `/etc/fstab` with validation to prevent critical boot errors.
