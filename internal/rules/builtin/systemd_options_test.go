@@ -56,7 +56,7 @@ func TestSystemdSharedRuleRunsOnceAcrossRegistry(t *testing.T) {
 					significant = append(significant, issue)
 				}
 			}
-			if len(significant) != 3 || !strings.Contains(significant[0].Message, "mount-timeout") || !strings.Contains(significant[1].Message, "requires") || !strings.Contains(significant[2].Message, "future") {
+			if len(significant) != 3 || significant[0].Level != rules.IssueLevelError || significant[1].Level != rules.IssueLevelError || significant[2].Level != rules.IssueLevelInfo || !strings.Contains(significant[0].Message, "mount-timeout") || !strings.Contains(significant[1].Message, "requires") || !strings.Contains(significant[2].Message, "future") {
 				t.Errorf("systemd findings reordered: %v", systemdIssues)
 			}
 			if !reflect.DeepEqual(original, entries[0].Fields) || entries[0].RawLine != raw {
