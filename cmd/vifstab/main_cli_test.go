@@ -38,7 +38,21 @@ func runCLI(t *testing.T, bin, input string, args ...string) (int, string, strin
 }
 func TestTxtarSafety(t *testing.T) {
 	bin := buildBinary(t)
-	for _, args := range [][]string{{"--txtar", "dummy.txtar"}, {"replay", "--input", "-", "--file", "/etc/fstab"}, {"replay", "--input", "-", "--backup-dir", "/tmp"}, {"replay", "--input", "-", "--systemd-reload", "auto"}, {"--verify", "--txtar", "-", "--generate-manpage"}} {
+	for _, args := range [][]string{
+		{"--snapshot", "-", "edit", "--backup-dir", "/tmp"},
+		{"verify", "--snapshot", "-", "--file", "/etc/fstab"},
+		{"verify", "--snapshot", "-", "--backup-dir", "/tmp"},
+		{"verify", "--snapshot", "-", "--systemd-reload", "auto"},
+		{"verify", "--snapshot", "-", "--capture", "-"},
+		{"verify", "--snapshot", "-", "--static"},
+		{"verify", "--snapshot", "-", "--unredacted"},
+		{"verify", "--snapshot", ""},
+		{"verify", "--capture", ""},
+		{"edit", "--snapshot", "-"},
+		{"diagram", "--snapshot", "-"},
+		{"uefi", "--snapshot", "-"},
+		{"verify", "--snapshot", "-", "diagram"},
+	} {
 		if code, _, _ := runCLI(t, bin, "", args...); code == 0 {
 			t.Fatalf("unsafe options accepted: %v", args)
 		}
@@ -50,9 +64,9 @@ func TestReplayCommand(t *testing.T) {
 		args              []string
 		input, diagnostic string
 	}{
-		{[]string{"replay", "--input", "/nonexistent-vifstab-snapshot"}, "", "failed to open txtar file"},
-		{[]string{"replay", "--input", "-"}, "NOT A TXTAR", "missing fstab data"},
-		{[]string{"--verify", "--txtar", "-"}, strings.Repeat("a", txtar.MaxArchiveSize+1), "exceeds limit"},
+		{[]string{"verify", "--snapshot", "/nonexistent-vifstab-snapshot"}, "", "failed to open txtar file"},
+		{[]string{"verify", "--snapshot", "-"}, "NOT A TXTAR", "missing fstab data"},
+		{[]string{"verify", "--snapshot", "-"}, strings.Repeat("a", txtar.MaxArchiveSize+1), "exceeds limit"},
 	} {
 		code, _, errout := runCLI(t, bin, tc.input, tc.args...)
 		if code == 0 || !strings.Contains(errout, tc.diagnostic) {
@@ -102,7 +116,7 @@ func TestReplayProductionFindingsAndExitParity(t *testing.T) {
 					t.Fatal(err)
 				}
 				var firstOut, firstErr string
-				for i, args := range [][]string{{"replay", "--input", snapshotPath}, {"--verify", "--txtar", snapshotPath}, {"replay", "--input", "-"}, {"--verify", "--txtar", "-"}} {
+				for i, args := range [][]string{{"verify", "--snapshot", snapshotPath}, {"verify", "-snapshot", snapshotPath}, {"verify", "--snapshot", "-"}, {"verify", "-snapshot", "-"}} {
 					code, out, errout := runCLI(t, bin, string(data), args...)
 					if code != tc.wantCode || !strings.Contains(out, tc.finding) {
 						t.Fatalf("%v: exit=%d stdout=%q stderr=%q", args, code, out, errout)
@@ -133,8 +147,8 @@ func TestCaptureCommand(t *testing.T) {
 	if err := os.WriteFile(input, []byte(text), 0600); err != nil {
 		t.Fatal(err)
 	}
-	code, stdout, stderr := runCLI(t, bin, "", "capture", "--file", input, "--output", output)
-	if code != 0 || stdout != "" {
+	code, stdout, stderr := runCLI(t, bin, "", "verify", "--static", "--file", input, "--capture", output)
+	if code != 0 || !strings.Contains(stdout, "Validation successful.") {
 		t.Fatalf("capture: code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 	info, err := os.Stat(output)
@@ -154,7 +168,7 @@ func TestCaptureCommand(t *testing.T) {
 	if _, err := txtar.ParseTXTAR(before); err != nil {
 		t.Fatal(err)
 	}
-	if code, _, _ := runCLI(t, bin, "", "capture", "--file", input, "--output", output); code == 0 {
+	if code, _, _ := runCLI(t, bin, "", "verify", "--static", "--file", input, "--capture", output); code == 0 {
 		t.Fatal("existing output overwritten")
 	}
 	after, err := os.ReadFile(output)
@@ -168,20 +182,20 @@ func TestCaptureCommand(t *testing.T) {
 	if err := os.Symlink(output, link); err != nil {
 		t.Fatal(err)
 	}
-	if code, _, _ := runCLI(t, bin, "", "capture", "--file", input, "--output", link); code == 0 {
+	if code, _, _ := runCLI(t, bin, "", "verify", "--static", "--file", input, "--capture", link); code == 0 {
 		t.Fatal("symlink output followed")
 	}
-	if code, _, _ := runCLI(t, bin, "", "capture", "--file", input, "--output", filepath.Join(dir, "missing-dir", "snapshot")); code == 0 {
+	if code, _, _ := runCLI(t, bin, "", "verify", "--static", "--file", input, "--capture", filepath.Join(dir, "missing-dir", "snapshot")); code == 0 {
 		t.Fatal("output error ignored")
 	}
-	code, stdout, stderr = runCLI(t, bin, "", "capture", "--file", input, "--output", "-", "--unredacted")
+	code, stdout, stderr = runCLI(t, bin, "", "verify", "--static", "--file", input, "--capture", "-", "--unredacted")
 	if code != 0 || !strings.Contains(stdout, "PRIVATE_HOST") || !strings.Contains(stderr, "Warning: unredacted") {
 		t.Fatalf("unredacted stdout capture: %d %q %q", code, stdout, stderr)
 	}
 	if _, err := txtar.ParseTXTAR([]byte(stdout)); err != nil {
 		t.Fatal(err)
 	}
-	code, stdout, stderr = runCLI(t, bin, "", "capture", "--file", input, "--output", "-")
+	code, stdout, stderr = runCLI(t, bin, "", "verify", "--static", "--file", input, "--capture", "-")
 	if code != 0 || strings.Contains(stdout, "PRIVATE_") {
 		t.Fatalf("redacted stdout capture: %d %q %q", code, stdout, stderr)
 	}
@@ -190,5 +204,29 @@ func TestCaptureCommand(t *testing.T) {
 	}
 	if original, err := os.ReadFile(input); err != nil || string(original) != text {
 		t.Fatal("capture changed source fstab")
+	}
+}
+
+// An operational parser failure must not discard a bounded unredacted support
+// case. Both capture verification and subsequent replay return failure.
+func TestCaptureRetainsTechnicalValidationFailure(t *testing.T) {
+	bin := buildBinary(t)
+	output := filepath.Join(t.TempDir(), "case.txtar")
+	input := strings.Repeat("a", 70*1024) + "\n"
+	code, _, stderr := runCLI(t, bin, input, "verify", "--static", "--file", "-", "--capture", output, "--unredacted")
+	if code != 1 || !strings.Contains(stderr, "capture saved; verification failed") {
+		t.Fatalf("code=%d, stderr=%q", code, stderr)
+	}
+	data, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := txtar.ParseTXTAR(data)
+	if err != nil || string(snapshot.Fstab) != input {
+		t.Fatalf("capture lost failed input: %v", err)
+	}
+	code, _, stderr = runCLI(t, bin, string(data), "verify", "--snapshot", "-")
+	if code != 1 || !strings.Contains(stderr, "failed to parse") {
+		t.Fatalf("replay code=%d, stderr=%q", code, stderr)
 	}
 }

@@ -1,0 +1,10 @@
+Executable regression: file-missing; default fstab is a build-time fixture.
+-- args.json --
+["verify", "--file", "missing"]
+-- fstab --
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: verify failed: open input: open missing: no such file or directory

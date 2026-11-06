@@ -462,8 +462,15 @@ func (r *recordingAPI) GetSupportedFilesystems() (map[string]bool, error) {
 	return r.observations.Filesystems, nil
 }
 
-// CaptureSystem records the queries made by the production validator. Only the
-// explicitly supplied fstab is read directly; system metadata comes from api.
+// CaptureResult separates validation status from archive construction. A failed
+// verification is often precisely the support case the user needs to retain.
+type CaptureResult struct {
+	Archive         []byte
+	Issues          []rules.ValidationIssue
+	ValidationError error
+}
+
+// CaptureSystem preserves the existing file-based capture API.
 func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredacted bool) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -472,13 +479,29 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 	if err != nil {
 		return nil, fmt.Errorf("read fstab: %w", err)
 	}
-	b, err := io.ReadAll(io.LimitReader(f, MaxSectionSize+1))
-	closeErr := f.Close()
+	result, err := CaptureReader(ctx, api, f, unredacted)
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
 	if err != nil {
 		return nil, err
 	}
-	if closeErr != nil {
-		return nil, closeErr
+	if result.ValidationError != nil {
+		return nil, fmt.Errorf("capture validation: %w", result.ValidationError)
+	}
+	return result.Archive, nil
+}
+
+// CaptureReader records production validation and returns its findings alongside
+// the bounded archive. It never treats blocking findings as a capture failure.
+// The caller owns input and may explicitly supply stdin.
+func CaptureReader(ctx context.Context, api rules.API, input io.Reader, unredacted bool) (*CaptureResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	b, err := io.ReadAll(io.LimitReader(input, MaxSectionSize+1))
+	if err != nil {
+		return nil, err
 	}
 	if len(b) > MaxSectionSize {
 		return nil, fmt.Errorf("fstab exceeds maximum section size")
@@ -493,9 +516,7 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 	if err != nil {
 		r.observations.FilesystemError = err.Error()
 	}
-	if _, err := editor.VerifyAndLintReader(bytes.NewReader(b), r); err != nil {
-		return nil, fmt.Errorf("capture validation: %w", err)
-	}
+	issues, validationErr := editor.VerifyAndLintReader(bytes.NewReader(b), r)
 	// Also retain direct source/target observations for callers using the provider
 	// beyond the initial rule set. These are metadata existence checks only.
 	for _, line := range strings.Split(string(b), "\n") {
@@ -549,5 +570,5 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 			return nil, fmt.Errorf("capture section %s contains TXTAR delimiter", file.Name)
 		}
 	}
-	return data, nil
+	return &CaptureResult{Archive: data, Issues: issues, ValidationError: validationErr}, nil
 }

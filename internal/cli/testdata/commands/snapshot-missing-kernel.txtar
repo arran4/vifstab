@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: snapshot-missing-kernel.
+-- args.json --
+["verify", "--snapshot", "-"]
+-- fstab --
+-- stdin.json --
+"-- input/etc/fstab --\n/dev/fixture /fixture ext4 defaults,data=journal 0 2\n-- cache --\nproc_filesystems=ext4\nblock_exists:/dev/fixture=true\nfile_exists:/fixture=true\n"
+-- status --
+0
+-- stdout.json --
+"Snapshot verification: missing observations remain unknown; only recorded host data is used.\nValidation successful.\n"
+-- stderr.json --
+""

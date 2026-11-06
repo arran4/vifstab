@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: snapshot-unsafe-path.
+-- args.json --
+["verify", "--snapshot", "-"]
+-- fstab --
+-- stdin.json --
+"-- input/etc/fstab --\n-- ../escape --\nno\n"
+-- status --
+1
+-- stdout.json --
+""
+-- stderr.json --
+"Error: verify failed: failed to parse txtar file: unsafe path in archive: ../escape\n"

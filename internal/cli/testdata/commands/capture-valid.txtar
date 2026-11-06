@@ -1,0 +1,14 @@
+Compiled, isolated support/verification regression: capture-valid.
+-- args.json --
+["verify", "--static", "--capture", "case.txtar"]
+-- fstab --
+-- stdin.json --
+""
+-- status --
+0
+-- stdout.json --
+"Static verification: live observations are unchecked/unknown.\nValidation successful.\n"
+-- stderr.json --
+"Capture redacts private values; review before sharing. Redaction can change validation findings.\n"
+-- capture.json --
+"-- input/etc/fstab --\n-- manifest.json --\n{\"version\":\"1.0\",\"type\":\"system\",\"redacted\":true}\n-- provider/inventory.json --\n{\"Devices\":[],\"Diagnostics\":[],\"Available\":false}\n-- provider/observations.json --\n{\"filesystems\":null,\"filesystem_error\":\"capture filesystem support unavailable (details redacted)\",\"inventory_error\":\"capture inventory unavailable (details redacted)\"}\n"

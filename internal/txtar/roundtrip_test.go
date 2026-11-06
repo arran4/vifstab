@@ -413,3 +413,40 @@ func TestExactBlockObservationPrecedesResolvedFallback(t *testing.T) {
 		t.Fatal("exact alias observation lost")
 	}
 }
+
+// Retain support artifacts even when verification fails, using the exact
+// observations and findings from the one production validation pass.
+func TestCaptureReaderRetainsFailedVerification(t *testing.T) {
+	for _, text := range []string{"malformed\n", strings.Repeat("a", 70*1024) + "\n"} {
+		result, err := CaptureReader(context.Background(), fixtureAPI(), strings.NewReader(text), true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(result.Archive) == 0 {
+			t.Fatal("failed validation lost its support artifact")
+		}
+		snapshot, err := ParseTXTAR(result.Archive)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(snapshot.Fstab) != text {
+			t.Fatal("capture lost original input")
+		}
+		if len(text) > 64*1024 {
+			if result.ValidationError == nil {
+				t.Fatal("scanner failure was hidden")
+			}
+		} else {
+			if result.ValidationError != nil {
+				t.Fatal(result.ValidationError)
+			}
+			blocked := false
+			for _, issue := range result.Issues {
+				blocked = blocked || rules.IsBlockingIssue(issue)
+			}
+			if !blocked {
+				t.Fatal("malformed input did not retain blocking findings")
+			}
+		}
+	}
+}

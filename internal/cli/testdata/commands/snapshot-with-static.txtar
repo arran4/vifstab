@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: snapshot-with-static.
+-- args.json --
+["verify", "--snapshot", "-", "--static"]
+-- fstab --
+-- stdin.json --
+"-- input/etc/fstab --\n"
+-- status --
+1
+-- stdout.json --
+""
+-- stderr.json --
+"Error: verify failed: --snapshot cannot be combined with --file, --capture, --static or --unredacted\n"

@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: snapshot-empty.
+-- args.json --
+["verify", "--snapshot", "-"]
+-- fstab --
+-- stdin.json --
+"-- input/etc/fstab --\n"
+-- status --
+0
+-- stdout.json --
+"Snapshot verification: missing observations remain unknown; only recorded host data is used.\nValidation successful.\n"
+-- stderr.json --
+""

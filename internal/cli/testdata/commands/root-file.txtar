@@ -1,0 +1,10 @@
+Executable regression: root-file; default fstab is a build-time fixture.
+-- args.json --
+["--file", "fstab"]
+-- fstab --
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: flag provided but not defined: -file
