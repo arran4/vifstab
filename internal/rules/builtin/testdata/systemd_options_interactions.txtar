@@ -1,0 +1,20 @@
+Automount keeps activation with noauto, singleton overrides stay nonblocking,
+repeatable dependencies stay legal and device initialization is explicit.
+-- options.txt --
+rule=systemd-options
+format=level_prefix
+-- cache --
+systemd_version=258
+-- input --
+UUID=example /boot ext4 defaults,noauto,x-systemd.automount,x-systemd.idle-timeout=30s 0 2
+UUID=example /efi vfat defaults,umask=0077,x-systemd.automount,x-systemd.idle-timeout=2min 0 2
+UUID=example /data ext4 x-systemd.idle-timeout=30s 0 2
+UUID=example /data ext4 x-systemd.mount-timeout=30s,x-systemd.mount-timeout=2min,x-systemd.requires=first.mount,x-systemd.requires=second.mount 0 2
+UUID=example /data ext4 x-systemd.makefs 0 2
+server:/export /network nfs x-systemd.device-timeout=30s 0 0
+-- issues --
+Info: systemd option 'x-systemd.automount' on line 1: auto/noauto have no effect when systemd automount is requested; the automount unit controls on-demand activation
+Info: systemd option 'x-systemd.idle-timeout' on line 3: idle timeout is for an automount unit; add x-systemd.automount or remove the ineffective timeout
+Info: systemd option 'x-systemd.mount-timeout' on line 4: repeated singleton setting; all occurrences were checked, but review the repeated values and intended override
+Info: systemd option 'x-systemd.makefs' on line 5: requests device initialization when systemd considers it empty; review this potentially destructive side effect (contents are not inspected by vifstab)
+Info: systemd option 'x-systemd.device-timeout' on line 6: device timeout applies to a device-backed entry; this source is not a /dev/ reference after tag translation

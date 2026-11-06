@@ -5,7 +5,7 @@ proc_filesystems=ext4
 -- kernel --
 6.5.0
 -- input --
-example /example ext4 X-mount.mkdir=bad,X-mount.noloop=,X-mount.subdir,x-future.thing=value,X-mount.noloopp,x-systemd.future= 0 0
+example /example ext4 X-mount.mkdir=bad,X-mount.noloop=,X-mount.subdir,x-future.thing=value,X-mount.noloopp 0 0
 example /example ext4 X-mount.mkdir=0755,x-mount.mkdir,X-mount.noloop,X-mount.subdir=relative 0 0
 -- issues --
 Error: Invalid value 'bad' for ext4 mount option 'X-mount.mkdir' on line 1, must be an octal integer
@@ -13,4 +13,3 @@ Error: ext4 mount option 'X-mount.noloop' does not take a value on line 1
 Error: Missing value for ext4 mount option 'X-mount.subdir' on line 1
 Info: Unverified userspace x- extension 'x-future.thing' on line 1: value syntax and semantics were not checked
 Info: Unverified userspace X- extension 'X-mount.noloopp' on line 1: value syntax and semantics were not checked
-Info: Unverified systemd extension 'x-systemd.future' on line 1: value syntax and semantics were not checked

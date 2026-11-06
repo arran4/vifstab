@@ -1,0 +1,12 @@
+Version gates use explicit target observations, not kernel/distro/PID1 guesses.
+-- options.txt --
+rule=systemd-options
+format=level_prefix
+-- cache --
+systemd_version=256
+-- input --
+UUID=example /data ext4 x-systemd.wants-mounts-for=/other,x-systemd.wants=other.mount,x-systemd.validatefs,x-systemd.graceful-option=nosymfollow 0 2
+-- issues --
+Warning: systemd option 'x-systemd.wants' on line 1: requires systemd 257 or newer; the supplied target version is 256
+Warning: systemd option 'x-systemd.validatefs' on line 1: requires systemd 258 or newer; the supplied target version is 256
+Warning: systemd option 'x-systemd.graceful-option' on line 1: requires systemd 258 or newer; the supplied target version is 256
