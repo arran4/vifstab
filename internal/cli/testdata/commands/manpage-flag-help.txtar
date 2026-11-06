@@ -7,7 +7,7 @@ Executable regression: manpage-flag-help; default fstab is a build-time fixture.
 0
 -- stdout --
 -- stderr --
-Usage: vifstab [flags...] manpage [flags...] [operands...]
+Usage: vifstab manpage [flags...] [operands...]
 
 Generate the manual page explicitly.
 
@@ -16,12 +16,8 @@ Subcommands:
     usage Print this usage message
 
 
-
-`vifstab` Flags:
-    --file string       (default: "/etc/fstab")   File to verify.
-
-`manpage` Flags:
-    --output string     (default: "vifstab.1")    Destination file.
+Flags:
+    --output string     (default: "vifstab.1")   Destination file.
 
 Positional Arguments:
     [operands...] No positional operands are accepted.

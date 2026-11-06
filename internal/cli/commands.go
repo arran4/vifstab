@@ -20,8 +20,7 @@ import (
 	"github.com/cpuguy83/go-md2man/v2/md2man"
 )
 
-// Verify is a subcommand `vifstab` -- Verify fstab read-only with the caller's credentials.
-// Aliases: verify
+// Verify is a subcommand `vifstab verify` -- Verify fstab read-only with the caller's credentials.
 //
 // Flags:
 //
@@ -32,7 +31,7 @@ func Verify(file string, seen map[string]bool, operands ...string) error {
 	if !seen["file"] {
 		file = vifstab.DefaultFile
 	}
-	if err := noOperands("vifstab", operands); err != nil {
+	if err := noOperands("vifstab verify", operands); err != nil {
 		return err
 	}
 	issues, err := editor.VerifyAndLint(config.Config{FilePath: file}, rules.ActualFS{})

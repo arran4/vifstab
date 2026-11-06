@@ -6,7 +6,7 @@ vifstab - Verify Linux fstab configurations and explicitly edit with linting and
 
 ## SYNOPSIS
 
-vifstab [--file PATH]
+vifstab
 
 vifstab verify [--file PATH]
 
@@ -84,7 +84,8 @@ No systemd or external boot utility is required. No `verify --uefi` option exist
 **version**: Print build version, commit and date.
 
 **help COMMAND**, **--help**, **-h**: Show command-specific help without executing
-the action. Flags precede positional operands. The old root editing/`--verify`
+the action. Verification flags belong after `verify`; root verification flags
+before another command are rejected. Flags precede positional operands. The old root editing/`--verify`
 interface has been replaced. Static verification, TXTAR integration and edit
 preflight are separately tracked work, not flags in this foundation.
 

@@ -28,7 +28,7 @@ development goal, not a guarantee. BSD and other fstab dialects are future work.
 ## Commands
 
 ```text
-vifstab [--file PATH]
+vifstab
 vifstab verify [--file PATH]
 vifstab edit [--file PATH] [--backup-dir DIR] [--systemd-reload MODE]
 vifstab format [--file PATH|-] [--in-place|-i] [--backup-dir DIR]
@@ -41,7 +41,8 @@ vifstab help [COMMAND]
 
 Each command supports `--help` and `-h`, and `vifstab help COMMAND` shows its help
 without performing the action. Flags precede positional operands. `--file`
-defaults to `/etc/fstab`. The earlier root `--verify`/editing interface has been
+defaults to `/etc/fstab`. Verification options belong after `verify`; root flags before another command are rejected.
+The earlier root `--verify`/editing interface has been
 replaced by explicit commands; there is no established released CLI contract.
 
 ### Editing and backups

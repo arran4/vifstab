@@ -3,7 +3,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/arran4/vifstab/cmd"
 	"github.com/arran4/vifstab/cmd/vifstab/templates"
-	"github.com/arran4/vifstab/internal/cli"
 )
 
 type Cmd interface {
@@ -71,9 +69,6 @@ type RootCmd struct {
 	Version       string
 	Commit        string
 	Date          string
-	file          string
-	seen          map[string]bool
-	operands      []string
 	CommandAction func(c *RootCmd) error
 }
 
@@ -111,32 +106,6 @@ func NewRoot(name, version, commit, date string) (*RootCmd, error) {
 		Date:     date,
 	}
 	c.FlagSet.Usage = c.Usage
-
-	c.StringVar(&c.file, "file", "/etc/fstab", "File to verify.")
-
-	c.CommandAction = func(c *RootCmd) error {
-
-		err := cli.Verify(c.file, c.seen, c.operands...)
-		if err != nil {
-			var exitCode *cmd.ErrExitCode
-			if errors.As(err, &exitCode) {
-				return err
-			}
-			if errors.Is(err, cmd.ErrPrintHelp) {
-				c.Usage()
-				return nil
-			}
-			if errors.Is(err, cmd.ErrHelp) {
-				fmt.Fprintf(os.Stderr, "Use '%s help' for more information.\n", os.Args[0])
-				return nil
-			}
-			if errors.Is(err, cmd.ErrUsage) {
-				return err
-			}
-			return fmt.Errorf("vifstab failed: %w", err)
-		}
-		return nil
-	}
 
 	{
 		subCmd := NewLazyCommand(func() Cmd { return c.NewDiagram() })
@@ -263,13 +232,10 @@ func (c *RootCmd) Execute(args []string) (err error) {
 
 	c.FlagSet = flag.NewFlagSet(c.FlagSet.Name(), flag.ContinueOnError)
 	c.FlagSet.Usage = c.Usage
-	seenFlags := make(map[string]bool)
 
 	// Create a local flagset so it doesn't ExitOnError or panic
 	fs := flag.NewFlagSet(c.FlagSet.Name(), flag.ContinueOnError)
 	fs.Usage = c.Usage
-
-	fs.StringVar(&c.file, "file", c.file, "File to verify.")
 
 	remainingArgs, dashDashSeen, err = parseGoFlags(fs, args, c.commandPath())
 	if err != nil {
@@ -279,31 +245,19 @@ func (c *RootCmd) Execute(args []string) (err error) {
 		return err
 	}
 
-	fs.Visit(func(f *flag.Flag) {
-		if f.Name == "file" {
-			seenFlags["file"] = true
-		}
-	})
-
 	if !dashDashSeen && len(remainingArgs) > 0 {
 		if cmd, ok := c.Commands[remainingArgs[0]]; ok {
 			return cmd().Execute(remainingArgs[1:])
 		}
 	}
-	// Handle vararg operands
-	{
-		varArgStart := 0
-		if varArgStart > len(remainingArgs) {
-			varArgStart = len(remainingArgs)
+	if !dashDashSeen && len(remainingArgs) == 0 {
+		if sub, ok := c.Commands["verify"]; ok {
+			return sub().Execute(nil)
 		}
-		varArgs := remainingArgs[varArgStart:]
-		c.operands = varArgs
 	}
-	c.seen = seenFlags
-	if c.CommandAction != nil {
-		if err := c.CommandAction(c); err != nil {
-			return err
-		}
+	c.Usage()
+	if len(remainingArgs) > 0 {
+		return c.usageError(cmd.UsageUnknownCommand, "", nil, "unknown command: %s", remainingArgs[0])
 	}
 	return nil
 }

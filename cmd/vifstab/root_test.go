@@ -12,26 +12,11 @@ func TestRoot_Execute(t *testing.T) {
 		t.Fatalf("Failed to create root command: %v", err)
 	}
 
-	called := false
-	cmd.CommandAction = func(c *RootCmd) error {
-		called = true
-		return nil
-	}
-
-	args := []string{}
-	args = append(args, "--file")
-	args = append(args, "test")
-
-	err = cmd.Execute(args)
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	if !called {
-		t.Error("CommandAction was not called")
-	}
-
-	if cmd.file != "test" {
-		t.Errorf("Expected file to be 'test', got '%v'", cmd.file)
+	// No function defined for root command, so Execute expects a subcommand.
+	// We can test that it fails with unknown command or usage.
+	err = cmd.Execute([]string{"unknown-command"})
+	if err == nil {
+		t.Error("Expected error for unknown command, got nil")
 	}
 
 }

@@ -7,17 +7,13 @@ Executable regression: diagram-flag-help; default fstab is a build-time fixture.
 0
 -- stdout --
 -- stderr --
-Usage: vifstab [flags...] diagram [devices...]
+Usage: vifstab diagram [devices...]
 
 Print a partition diagram.
 
 Subcommands:
     help  Print this help message
     usage Print this usage message
-
-
-Flags:
-    --file string       (default: "/etc/fstab")   File to verify.
 
 Positional Arguments:
     [devices...] Device or disk image.

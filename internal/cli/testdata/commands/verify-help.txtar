@@ -7,7 +7,7 @@ Executable regression: verify-help; default fstab is a build-time fixture.
 0
 -- stdout --
 -- stderr --
-Usage: vifstab [flags...] verify [flags...] [operands...]
+Usage: vifstab verify [flags...] [operands...]
 
 Verify fstab read-only with the caller's credentials.
 

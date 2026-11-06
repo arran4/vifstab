@@ -7,7 +7,7 @@ Executable regression: format-help; default fstab is a build-time fixture.
 0
 -- stdout --
 -- stderr --
-Usage: vifstab [flags...] format [flags...] [operands...]
+Usage: vifstab format [flags...] [operands...]
 
 Print aligned fstab; writing requires --in-place.
 
