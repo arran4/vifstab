@@ -1,0 +1,10 @@
+Executable regression: unknown; default fstab is a build-time fixture.
+-- args.json --
+["bogus"]
+-- fstab --
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: unexpected arguments: ["bogus"]

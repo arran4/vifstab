@@ -1,148 +1,167 @@
 # vifstab
 
-**⚠️ Work in Progress**
+`vifstab` verifies Linux fstab configurations and reports validity, safety,
+filesystem compatibility and configuration mistakes. It also provides an explicit
+visudo-inspired editing workflow, pure-Go RCS versioning and optional post-save
+systemd handling. This is work in progress: validation cannot prevent every boot
+failure, and editor save-safety limitations remain under review.
 
-`vifstab` is a work-in-progress utility providing a visudo-like safe editing workflow for `/etc/fstab` files. It safely edits `fstab` files with built-in linting and versioning, respects the `$VISUAL` or `$EDITOR` environment variables, and saves backups using RCS.
+## Build and run
 
-## Features
+The application targets Go 1.25. Use a patched Go toolchain when building binaries.
 
-- **Safe editing:** Edits `/etc/fstab` with validation to prevent critical boot errors.
-- **Linting:** Built-in modular rules for format and filesystem checks.
-- **Versioning:** Automatically backs up changes using RCS.
-- **Manpage generation:** Can generate its own man page.
-
-## Installation
-
-### Using Go
-
-You can install `vifstab` using the `go install` command:
-
-```bash
-go install github.com/arran4/vifstab/cmd/vifstab@latest
-```
-
-### Building from Source
-
-```bash
-git clone https://github.com/arran4/vifstab.git
-cd vifstab
+```sh
 go build -o vifstab ./cmd/vifstab
+./vifstab
+./vifstab verify --file ./example.fstab
 ```
 
-### System Installation
+Bare invocation always verifies `/etc/fstab` read-only, including when run as root.
+`verify` is an explicit route to the same action. Verification does not launch an
+editor, create backups or reload systemd; it does not require a cache directory.
+It uses available live metadata, so verifying a custom file still compares it
+against this machine. Missing observations are not proof of absence.
 
-After building from source or installing via Go, it is highly recommended to install the binary to a system-wide directory such as `/usr/local/sbin` or `/usr/sbin` so it is accessible to administrators:
+Linux is the immediate platform. General Linux 7-series compatibility is a
+development goal, not a guarantee. BSD and other fstab dialects are future work.
 
-```bash
-sudo cp vifstab /usr/local/sbin/
-sudo chown root:root /usr/local/sbin/vifstab
-sudo chmod 755 /usr/local/sbin/vifstab
+## Commands
+
+```text
+vifstab [--file PATH]
+vifstab verify [--file PATH]
+vifstab edit [--file PATH] [--backup-dir DIR] [--systemd-reload MODE]
+vifstab format [--file PATH|-] [--in-place|-i] [--backup-dir DIR]
+vifstab diagram DEVICE
+vifstab uefi DEVICE MOUNTPOINT
+vifstab manpage [--output vifstab.1]
+vifstab version
+vifstab help [COMMAND]
 ```
 
-## Usage
+Each command supports `--help` and `-h`, and `vifstab help COMMAND` shows its help
+without performing the action. Flags precede positional operands. `--file`
+defaults to `/etc/fstab`. The earlier root `--verify`/editing interface has been
+replaced by explicit commands; there is no established released CLI contract.
 
-Run `vifstab` to edit the default `/etc/fstab` file:
+### Editing and backups
 
-```bash
-vifstab
-```
-*Note: Modifying system files like `/etc/fstab` requires elevated privileges. It is the caller's responsibility to arrange sufficient permissions (e.g., using `sudo`, `doas`, or `su`) when invoking `vifstab`.*
+Only explicit `vifstab edit` opens an editor. It uses `VISUAL`, then `EDITOR`, then
+`vi`, with normal quoted arguments. It executes the editor directly, passes `--`
+and the temporary file path, and inherits the caller's credentials and standard
+streams. `SUDO_EDITOR` is ignored. An editor failure or unavailable write access
+is an error, not a request to fall back to verification.
 
-### Security Model and Privileges
+After editing, blocking findings prompt for re-edit, override-save or abort.
+Information does not block saving. `--backup-dir` overrides the default
+`$XDG_CACHE_HOME/vifstab` or the caller's user cache directory (normally
+`$HOME/.cache/vifstab`). If that directory cannot be determined, editing and
+in-place formatting require an explicit backup directory; there is no shared
+`/tmp` backup fallback. The current RCS history name is `<basename>,v`.
 
-`vifstab` is designed to validate and version files, not to manage process privileges. It provides a visudo-like safe editing workflow, but unlike `visudo`, `vifstab` does not acquire or manage privileges itself; it relies entirely on the invocation context.
+Known editor limitations tracked in #153–#156 include stale concurrent edits,
+symlink replacement, ownership/extended metadata preservation and backup-name
+collisions. Use a separate backup directory for distinct files sharing a basename.
+The save path uses a same-directory temporary file, file sync, atomic rename and
+directory sync. A post-rename error may leave the new content installed even
+though the command returns failure; inspect the diagnostic before retrying.
+Do not treat this experimental editor as a production-safe replacement workflow.
 
-*   `vifstab` does **not** acquire or manage privileges.
-*   `vifstab` does **not** switch users or identities.
-*   `vifstab` does **not** implement sudo/su/setuid/runas-specific behavior.
-*   All filesystem access, editor execution, backups, and final writes occur using the process credentials supplied by the caller.
-*   Users are responsible for arranging whatever permissions or invocation context they require.
-*   Editor commands are executed directly rather than through a shell.
-*   Normal editor arguments are supported.
+`--systemd-reload=warn` (default) prints a stale-unit diagnostic after saving the
+real `/etc/fstab` when systemd is active. `never` disables this handling. Explicit
+`auto` runs `systemctl daemon-reload` only after a completed save with blocking
+validation passed and no save, durability or RCS error. An override-save or
+post-rename error warns instead of automatically reloading. Reload failures leave
+the saved fstab in place. Reloading does not remount filesystems.
 
-### Setting the Editor
+`vifstab` never acquires privileges, changes UID/GID or internally launches an
+elevation helper. The only application subprocesses are the configured editor
+from explicit `edit` and the eligible, explicitly selected post-save reload.
+The caller must arrange any permissions required for editing system files.
 
-`vifstab` respects the following environment variables (in order):
-1. `VISUAL`
-2. `EDITOR`
+### Formatting
 
-Note: `SUDO_EDITOR` is intentionally ignored because `vifstab` does not infer or manage sudo-specific environments.
+Formatting prints column-aligned fstab by default. An explicit `--file` takes
+precedence over piped stdin; `--file -` explicitly selects stdin. Without an
+explicit file, piped/file stdin is used, otherwise `/etc/fstab` is read.
 
-### Flags
-
-- `--backup-dir value`: Directory to store RCS backups. If not provided, it defaults to `$XDG_CACHE_HOME/vifstab` or `~/.cache/vifstab` for the current user.
-- `--file value`: File to edit (default: "/etc/fstab")
-- `--generate-manpage`: Generate man page for vifstab to `vifstab.1`
-- `--systemd-reload value`: Post-save systemd handling for `/etc/fstab` (`auto|warn|never`) (default: `warn`). `auto` runs `systemctl daemon-reload` only after validation and a committed save; an explicitly saved validation failure is warned instead. `warn` prints a diagnostic; `never` does nothing. In-place formatting of `/etc/fstab` warns conservatively and never reloads automatically.
-- `--verify`: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
-
-Example:
-
-```bash
-vifstab --file /path/to/custom/fstab --backup-dir /var/backups/vifstab
-```
-
-### Subcommands
-
-`vifstab` provides several subcommands for specific tasks:
-
-- `diagram <device>`: Generates an ASCII art diagram of the filesystem stack and dependencies for the given block device.
-- `format [options]`: Formats the `fstab` entries into a column-aligned format.
-- `uefi <device> <mountpoint>`: Correlates an fstab ESP entry with firmware boot entries and the currently booted EFI partition.
-
-Examples:
-
-Generate a diagram for a block device:
-
-```bash
-vifstab diagram /dev/sda1
+```sh
+vifstab format --file ./fstab
+cat ./fstab | vifstab format
+vifstab format --file ./fstab --in-place --backup-dir ./backups
 ```
 
-Format an existing `fstab` file:
+`--in-place` (also `-i`) uses the existing atomic save/RCS path and requires file
+input. It shares the editor's known save limitations. It never automatically
+reloads systemd and conservatively warns for `/etc/fstab`.
 
-```bash
-vifstab format --file /etc/fstab
+### Diagrams and experimental UEFI correlation
+
+`diagram DEVICE` currently renders an ASCII partition-table diagram; it is not
+a general filesystem-stack or mount-state inspector. Its existing disk-image
+fixtures are tested offline. The legacy block-device opening path remains a
+policy concern pending migration to metadata-only device observations.
+
+`uefi DEVICE MOUNTPOINT` is an explicit experimental live report, retained while
+its integration into verification is assessed. It uses the canonical device
+inventory and native EFI-variable parsing, without systemd or external boot
+utilities. It correlates firmware boot entries and BootCurrent with a PARTUUID;
+it does not establish every current-loader configuration or bootability.
+Unavailable firmware information and unmounted filesystem contents remain
+unknown. Optional observations of an already-mounted EFI tree do not gate
+verification. There is no `verify --uefi` flag yet.
+
+Static verification, TXTAR capture/replay integration and `edit --check` are
+separately tracked work, not options implemented by this CLI foundation.
+
+## Findings and exit status
+
+The blocking levels are `warning`, `security` and `error`. `info` is non-blocking.
+Suggestions may appear in messages; they are not a separate blocking level.
+The modular rule families include structure, filesystem support, mount sources
+and targets, device identity/partition roles and filesystem-specific options.
+An accepted extension option is not necessarily semantically verified.
+
+Exit 0 indicates successful completion (including an explicit abort). Exit 1
+indicates blocking verification findings, usage errors or operational failures.
+Verification and replay use the same blocking-severity policy when replay is
+integrated. Read the diagnostics: a save may already be installed when a later
+RCS/durability/systemd operation fails.
+
+EXT4 `data=journal` emits non-blocking deprecation information for a known Linux
+kernel of 7.3 or newer. Unknown kernel versions do not trigger it. The precise
+removal kernel is not confirmed; a calendar date is not proof of unsupported
+syntax. `data=ordered` has different integrity guarantees and is not silently
+substituted.
+
+## Development and regression cases
+
+```sh
+go test ./...
+go vet ./...
+git diff --check
+go test -race ./internal/editor ./internal/rules/... ./internal/cli
 ```
 
-Format an existing `fstab` file in-place:
+Validation fixtures live under `internal/rules/builtin/**/testdata/*.txtar`.
+Compiled command scenarios are in `internal/cli/testdata/commands/*.txtar`;
+these assert exact stdout, stderr and status, read-only file identity, forbidden
+process probes and inherited editor credentials against temporary files.
+They never use the host `/etc/fstab`.
 
-```bash
-vifstab format -i --file /etc/fstab
+The generated command tree comes from `internal/cli/commands.go`:
+
+```sh
+go generate ./...
 ```
 
-Format `fstab` entries from standard input:
-
-```bash
-cat /etc/fstab | vifstab format
-```
-
-## Linting
-
-`vifstab` includes a modular linting registry that validates your entries before saving. It categorizes feedback into three levels:
-
-1. **Suggestions:** Suggestions can accompany a warning or stand on their own. They represent automatically determined improvements.
-2. **Warnings:** Warnings indicate issues that might cause non-critical errors, such as non-existent mount options.
-3. **Security:** Security issues are similar to warnings but track their own severity score for security-related issues.
-4. **Errors:** Errors indicate critical issues that might cause a complete failure, such as missing block devices or unknown filesystems.
-
-### EXT4 `data=journal` compatibility
-
-`vifstab` checks the running Linux kernel version when linting EXT4's `data=journal` mount option:
-
-- **Before 7.3:** `data=journal` remains valid.
-- **7.3 and later:** a non-blocking informational notice explains that it is deprecated and upstream plans removal in January 2028.
-- **Removal:** the precise kernel version is not yet confirmed, so `vifstab` does **not** reject the option solely on a guessed future version or calendar date. Revisit the rule when the removal lands.
-
-The informational notice does not rewrite `fstab`. Switching to the default `data=ordered` changes crash-consistency guarantees, so the administrator must decide whether it is an appropriate alternative. If the kernel version cannot be determined, this rule does not assume deprecation is active.
-
-Currently built-in rules check for:
-- Format validity (e.g., minimum number of fields)
-- Linux filesystem validity (checking against `/proc/filesystems`)
-
-## Environment Variables
-
-- `VISUAL` or `EDITOR`: Defines the text editor to use when opening the fstab file. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is not interpreted. Normal editor arguments are supported. Editor commands are executed directly rather than through a shell.
+Generation pins `go-subcommand` v0.0.32 and needs Go 1.26 (automatically selected
+by Go's toolchain mechanism); generated application code has no runtime
+`go-subcommand` dependency and is tested with Go 1.25. Timestamp and project
+provenance are disabled for deterministic output. `--force` permits existing
+handwritten CLI tests, the manual and legacy template to coexist; generation
+does not run `--clean`. Do not edit generated files.
 
 ## License
 
-`vifstab` is licensed under the [BSD 3-Clause License](LICENSE).
+[BSD 3-Clause](LICENSE).

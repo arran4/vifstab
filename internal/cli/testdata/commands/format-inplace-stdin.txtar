@@ -1,0 +1,10 @@
+Executable regression: format-inplace-stdin; default fstab is a build-time fixture.
+-- args.json --
+["format", "--in-place", "--file", "-"]
+-- fstab --
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: format failed: cannot use --in-place when reading from standard input
