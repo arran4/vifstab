@@ -161,6 +161,30 @@ func securityScript(t *testing.T, text, marker string) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+func securityJobCondition(t *testing.T, job string) string {
+	t.Helper()
+	start := strings.Index(job, "\n    if:")
+	if start < 0 {
+		t.Fatal("missing job condition")
+	}
+	lines := strings.Split(job[start+len("\n    if:"):], "\n")
+	value := strings.TrimSpace(lines[0])
+	if value == ">-" || value == ">" || value == "|" || value == "|-" {
+		var parts []string
+		for _, line := range lines[1:] {
+			if !strings.HasPrefix(line, "      ") {
+				break
+			}
+			parts = append(parts, strings.TrimSpace(line))
+		}
+		value = strings.Join(parts, " ")
+	}
+	if !strings.HasPrefix(value, "${{") || !strings.HasSuffix(value, "}}") {
+		t.Fatalf("unsupported job condition %q", value)
+	}
+	return strings.TrimSpace(value[3 : len(value)-2])
+}
 func TestPublicWorkflowPermissions(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "ci.yml"))
 	if err != nil {
@@ -242,8 +266,9 @@ func TestPublicWorkflowPermissions(t *testing.T) {
 			}
 		}
 	}
-	// Read the actual job conditions. Give all dependencies success so the test
-	// proves event admission rather than accidentally relying on a skipped job.
+	// Read the actual conditions with successful prerequisites (and intentionally
+	// skipped tag preparation for a tag push). These tests check the event gate;
+	// the independent release graph tests cover dependency-status admission.
 	cases := []struct {
 		event, ref, mode       string
 		allow, format, publish bool
@@ -261,12 +286,12 @@ func TestPublicWorkflowPermissions(t *testing.T) {
 	}
 	for _, tc := range cases {
 		for _, name := range []string{"go-fmt-pr", "goreleaser"} {
-			condition := regexp.MustCompile(`(?m)^    if: \$\{\{ (.*) \}\}$`).FindStringSubmatch(jobs[name])
-			if len(condition) != 2 {
-				t.Fatalf("missing condition %s", name)
-			}
+			condition := securityJobCondition(t, jobs[name])
 			values := map[string]any{"github.event_name": tc.event, "github.ref": tc.ref, "inputs.mode": tc.mode, "inputs.allow_prs": tc.allow, "needs.route.outputs.run_release": "true", "needs.route.result": "success", "needs.go-test.result": "success", "needs.go-vet.result": "success", "needs.prepare-release-tag.result": "success"}
-			got := securityTruth(securityEvaluate(t, condition[1], values, false, true))
+			if tc.event == "push" && strings.HasPrefix(tc.ref, "refs/tags/v") {
+				values["needs.prepare-release-tag.result"] = "skipped"
+			}
+			got := securityTruth(securityEvaluate(t, condition, values, false, true))
 			want := tc.publish
 			if name == "go-fmt-pr" {
 				want = tc.format
