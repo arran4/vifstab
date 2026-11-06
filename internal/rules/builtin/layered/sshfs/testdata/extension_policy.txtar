@@ -1,0 +1,6 @@
+Upper-case SSH passthrough must not swallow the distinct X- userspace namespace.
+-- input --
+example:/path /target sshfs X-mount.mkdir=bad,X-future.option=value,ServerAliveInterval=15 0 0
+-- issues --
+Error: Invalid value 'bad' for sshfs mount option 'X-mount.mkdir' on line 1, must be an octal integer
+Info: Unverified userspace X- extension 'X-future.option' on line 1: value syntax and semantics were not checked

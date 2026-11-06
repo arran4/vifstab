@@ -117,7 +117,7 @@ func (r *SshfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 	for _, opt := range parsedOpts {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
-		if len(key) > 0 && key[0] >= 'A' && key[0] <= 'Z' {
+		if len(key) > 0 && key[0] >= 'A' && key[0] <= 'Z' && !strings.HasPrefix(key, "X-") {
 			// Skip capitalized options as they are passed to ssh (e.g., ServerAliveInterval)
 			continue
 		}
