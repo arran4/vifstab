@@ -146,3 +146,7 @@ Currently built-in rules check for:
 ## License
 
 `vifstab` is licensed under the [BSD 3-Clause License](LICENSE).
+
+Unknown `x-`, `X-` and `x-systemd.` mount options remain accepted with nonblocking
+unverified information. Known extension value shapes are checked; acceptance is
+not proof of helper or systemd behavior. See [extension validation](docs/EXTENSION-OPTIONS.md).

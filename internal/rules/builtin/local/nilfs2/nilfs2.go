@@ -36,11 +36,11 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 		return nil, nil
 	}
 
-	options := rules.SplitOptions(entry.Fields[3])
+	parsedOptions := rules.SplitOptions(entry.Fields[3])
 	hasRo := false
 	hasRw := false
 
-	for _, opt := range options {
+	for _, opt := range parsedOptions {
 		parts := strings.SplitN(opt, "=", 2)
 		switch parts[0] {
 		case "ro":
@@ -51,7 +51,7 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 	}
 
 	var issues []rules.ValidationIssue
-	for _, opt := range options {
+	for _, opt := range parsedOptions {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
 		var val string
@@ -60,15 +60,18 @@ func (r *Nilfs2Rule) Validate(ctx context.Context, api rules.API, entry *rules.F
 			val = parts[1]
 		}
 
+		if extensionIssues, handled := options.ValidateExtensionOption(ctx, api, entry, "nilfs2", key, val, len(parts) > 1); handled {
+			issues = append(issues, extensionIssues...)
+			continue
+		}
+
 		validator, ok := nilfs2Options[key]
 		if !ok {
-			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("nilfs2 mount option '%s' on line %d is unknown", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
+			issues = append(issues, rules.ValidationIssue{
+				Message: fmt.Sprintf("nilfs2 mount option '%s' on line %d is unknown", key, entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelError,
+			})
 			continue
 		}
 

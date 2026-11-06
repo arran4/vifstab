@@ -47,7 +47,7 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 	}
 
 	var issues []rules.ValidationIssue
-	options := rules.SplitOptions(entry.Fields[3])
+	parsedOptions := rules.SplitOptions(entry.Fields[3])
 	hostVer := kernel.GetHostKernelVersion(api)
 
 	hasNoRecovery := false
@@ -56,7 +56,7 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 	sunit := -1
 	swidth := -1
 
-	for _, opt := range options {
+	for _, opt := range parsedOptions {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
 		switch key {
@@ -77,7 +77,7 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 		})
 	}
 
-	for _, opt := range options {
+	for _, opt := range parsedOptions {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
 		var val string
@@ -86,15 +86,18 @@ func (r *XfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 			val = parts[1]
 		}
 
+		if extensionIssues, handled := options.ValidateExtensionOption(ctx, api, entry, "XFS", key, val, len(parts) > 1); handled {
+			issues = append(issues, extensionIssues...)
+			continue
+		}
+
 		validator, ok := xfsOptions[key]
 		if !ok {
-			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Unknown XFS mount option '%s' on line %d", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
+			issues = append(issues, rules.ValidationIssue{
+				Message: fmt.Sprintf("Unknown XFS mount option '%s' on line %d", key, entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelError,
+			})
 			continue
 		}
 

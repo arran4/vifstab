@@ -41,10 +41,10 @@ func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 
 	issues := legacy.CheckFSVersion(ctx, api, entry, "jfs", kernel.Ver{}, kernel.Ver{}, false, "", true)
 
-	options := rules.SplitOptions(entry.Fields[3])
+	parsedOptions := rules.SplitOptions(entry.Fields[3])
 	hasRemount := false
 	hasRo := false
-	for _, opt := range options {
+	for _, opt := range parsedOptions {
 		parts := strings.SplitN(opt, "=", 2)
 		switch parts[0] {
 		case "remount":
@@ -56,7 +56,7 @@ func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 		}
 	}
 
-	for _, opt := range options {
+	for _, opt := range parsedOptions {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
 		var val string
@@ -65,15 +65,18 @@ func (r *JfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fsta
 			val = parts[1]
 		}
 
+		if extensionIssues, handled := options.ValidateExtensionOption(ctx, api, entry, "jfs", key, val, len(parts) > 1); handled {
+			issues = append(issues, extensionIssues...)
+			continue
+		}
+
 		validator, ok := jfsOptions[key]
 		if !ok {
-			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("jfs mount option '%s' on line %d is unknown", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
+			issues = append(issues, rules.ValidationIssue{
+				Message: fmt.Sprintf("jfs mount option '%s' on line %d is unknown", key, entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelError,
+			})
 			continue
 		}
 

@@ -23,7 +23,6 @@ func CommonOptions() map[string]OptionValidator {
 		"rbind":   NoValueOption{},
 		"remount": NoValueOption{},
 		"silent":  NoValueOption{},
-		"X-":      NoValueOption{}, "x-": NoValueOption{},
 
 		"private": NoValueOption{}, "slave": NoValueOption{}, "shared": NoValueOption{}, "unbindable": NoValueOption{},
 		"rprivate": NoValueOption{}, "rslave": NoValueOption{}, "rshared": NoValueOption{}, "runbindable": NoValueOption{},
@@ -35,9 +34,6 @@ func CommonOptions() map[string]OptionValidator {
 		"defcontext":  SELinuxContextOption{},
 		"rootcontext": SELinuxContextOption{},
 		"fscontext":   SELinuxContextOption{},
-
-		"X-mount.mkdir": OptionalOctalOption{},
-		"x-mount.mkdir": OptionalOctalOption{},
 	}
-	return opts
+	return MergeOptions(opts, GenericExtensionOptions())
 }

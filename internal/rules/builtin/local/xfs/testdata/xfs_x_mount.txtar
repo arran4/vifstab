@@ -4,3 +4,4 @@ test: X-mount options
 -- input --
 /dev/sda1 /mnt/xfs xfs X-mount.mkdir=0755,x-systemd.mount-timeout=30s 0 0
 -- issues --
+Info: Unverified systemd extension 'x-systemd.mount-timeout' on line 1: value syntax and semantics were not checked

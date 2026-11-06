@@ -38,12 +38,12 @@ func (r *F2fsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 	}
 
 	var issues []rules.ValidationIssue
-	options := rules.SplitOptions(entry.Fields[3])
+	parsedOptions := rules.SplitOptions(entry.Fields[3])
 
 	hasRo := false
 	hasNoRecovery := false
 
-	for _, opt := range options {
+	for _, opt := range parsedOptions {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
 		switch key {
@@ -65,7 +65,7 @@ func (r *F2fsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 			Level:   rules.IssueLevelError,
 		})
 	}
-	for _, opt := range options {
+	for _, opt := range parsedOptions {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
 		var val string
@@ -74,15 +74,18 @@ func (r *F2fsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fst
 		}
 
 		hasVal := len(parts) > 1
+		if extensionIssues, handled := options.ValidateExtensionOption(ctx, api, entry, "f2fs", key, val, len(parts) > 1); handled {
+			issues = append(issues, extensionIssues...)
+			continue
+		}
+
 		validator, ok := f2fsOptions[key]
 		if !ok {
-			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Unknown f2fs mount option '%s' on line %d", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
+			issues = append(issues, rules.ValidationIssue{
+				Message: fmt.Sprintf("Unknown f2fs mount option '%s' on line %d", key, entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelError,
+			})
 			continue
 		}
 

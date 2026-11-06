@@ -52,3 +52,11 @@ The default `data=ordered` mode is not an equivalent durability replacement for 
 
 ## SEE ALSO
 `fstab(5)`, `mount(8)`, `rcs(1)`
+
+Unknown x-, X- and x-systemd. mount options produce nonblocking unverified
+information. Known generic extension value shapes are checked, including octal
+mkdir modes, bare X-mount.noloop and a nonempty X-mount.subdir value. Registered
+flag options reject any explicit value, including an empty one. Case matters;
+x- and X- have different util-linux userspace retention semantics. No filesystem
+contents or installed systemd behavior are verified by accepting an extension.
+See docs/EXTENSION-OPTIONS.md in the source distribution.

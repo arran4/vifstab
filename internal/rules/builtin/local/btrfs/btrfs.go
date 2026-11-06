@@ -42,13 +42,13 @@ func (r *BTRFSRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 	}
 
 	var issues []rules.ValidationIssue
-	options := strings.Split(entry.Fields[3], ",")
+	parsedOptions := rules.SplitOptions(entry.Fields[3])
 
 	c := rules.CacheFromContext(ctx)
 
 	hostVer := kernel.GetHostKernelVersion(api)
 
-	for _, opt := range options {
+	for _, opt := range parsedOptions {
 		parts := strings.SplitN(opt, "=", 2)
 		key := parts[0]
 		var val string
@@ -56,15 +56,17 @@ func (r *BTRFSRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 			val = parts[1]
 		}
 
+		if extensionIssues, handled := options.ValidateExtensionOption(ctx, api, entry, "BTRFS", key, val, len(parts) > 1); handled {
+			issues = append(issues, extensionIssues...)
+			continue
+		}
+
 		if _, ok := btrfsOptions[key]; !ok {
-			// Ignore systemd extensions
-			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Unknown BTRFS mount option '%s' on line %d", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
+			issues = append(issues, rules.ValidationIssue{
+				Message: fmt.Sprintf("Unknown BTRFS mount option '%s' on line %d", key, entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelError,
+			})
 			continue
 		}
 
