@@ -50,6 +50,9 @@ go test ./internal/rules/options/... -run 'TestExtensionPolicy|TestRegisteredSys
 go test ./internal/rules/builtin -run 'TestAllTxtarRules/.*/.*/testdata/extension_policy.txtar'
 ```
 
-The twelve TXTAR fixtures cover ext4, vfat, tmpfs, NFS, XFS, Btrfs, f2fs, JFS,
-nilfs2, romfs, cramfs and BFS. Each checks known valid shapes, malformed known
+The thirteen TXTAR fixtures cover ext4, vfat, tmpfs, NFS, XFS, Btrfs, f2fs, JFS,
+nilfs2, romfs, cramfs, BFS and SSHFS. Each checks known value shapes, malformed known
 values and future extension diagnostics through that filesystem's actual rule.
+
+SSHFS keeps its existing capitalized SSH option passthrough, while distinct `X-`
+userspace options still reach the shared validators and unverified policy.
