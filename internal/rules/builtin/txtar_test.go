@@ -244,7 +244,7 @@ func TestAllTxtarRules(t *testing.T) {
 			if fmtMode == "auto" {
 				if strings.HasPrefix(filepath.ToSlash(tcPath), "testdata/") {
 					fmtMode = "contains"
-				} else if strings.HasPrefix(expectedStr, "Error:") || strings.HasPrefix(expectedStr, "Warning:") || strings.HasPrefix(expectedStr, "Suggestion:") {
+				} else if strings.HasPrefix(expectedStr, "Error:") || strings.HasPrefix(expectedStr, "Warning:") || strings.HasPrefix(expectedStr, "Suggestion:") || strings.HasPrefix(expectedStr, "Info:") || strings.HasPrefix(expectedStr, "Security:") {
 					fmtMode = "level_prefix"
 				} else {
 					fmtMode = "plain"
