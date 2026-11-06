@@ -150,3 +150,6 @@ Currently built-in rules check for:
 Unknown `x-`, `X-` and `x-systemd.` mount options remain accepted with nonblocking
 unverified information. Known extension value shapes are checked; acceptance is
 not proof of helper or systemd behavior. See [extension validation](docs/EXTENSION-OPTIONS.md).
+
+Repeated mount-option values are preserved for cross-option checks; see
+[the validation API and its limits](docs/MOUNT-OPTIONS.md).

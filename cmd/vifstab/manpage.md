@@ -60,3 +60,9 @@ flag options reject any explicit value, including an empty one. Case matters;
 x- and X- have different util-linux userspace retention semantics. No filesystem
 contents or installed systemd behavior are verified by accepting an extension.
 See docs/EXTENSION-OPTIONS.md in the source distribution.
+
+Mount-option validation preserves repeated values and their input order. Existing
+per-option validators retain their last-value context; new cross-option checks
+can inspect every occurrence. This does not by itself validate systemd extensions
+or change existing filesystem conflict policies. Formatting keeps option spelling
+and order. See docs/MOUNT-OPTIONS.md in the source distribution.
