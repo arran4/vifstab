@@ -1,0 +1,13 @@
+Repeated dependency values and opposite flags retain source order; this API does
+not impose a singleton/exclusive policy or infer effective mount semantics.
+-- input/etc/fstab --
+UUID=example /data ext4 rw,x-systemd.requires=first.mount,ro,x-systemd.requires=second.mount,auto,noauto,x-systemd.requires=third.mount 0 2
+-- expected/options.txt --
+rw has-value=false value=""
+x-systemd.requires has-value=true value="first.mount"
+ro has-value=false value=""
+x-systemd.requires has-value=true value="second.mount"
+auto has-value=false value=""
+noauto has-value=false value=""
+x-systemd.requires has-value=true value="third.mount"
+-- expected/findings.txt --

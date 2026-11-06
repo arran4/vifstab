@@ -34,7 +34,7 @@ func TestExtensionPolicy(t *testing.T) {
 		{option: "x-mount.noloop=value", level: rules.IssueLevelInfo, text: "Unverified userspace x- extension"},
 		{option: "X-systemd.automount=no", level: rules.IssueLevelInfo, text: "Unverified userspace X- extension"},
 		{option: "x-systemd.future=value", level: rules.IssueLevelInfo, text: "Unverified systemd extension"},
-		{option: "x-systemd.automount=no", level: rules.IssueLevelInfo, text: "Unverified systemd extension"},
+		{option: "x-systemd.automount=no", level: rules.IssueLevelError, text: "takes no value"},
 		{option: "x-mount.mkidr=0755", level: rules.IssueLevelInfo, text: "Unverified"},
 		{option: "ordinary-unknown=value", level: rules.IssueLevelError, text: "Unknown"},
 	}
@@ -44,7 +44,7 @@ func TestExtensionPolicy(t *testing.T) {
 				entry := &rules.FstabEntry{LineNum: 7, RawLine: "example /example " + fsName + " " + tc.option + " 0 0", Fields: []string{"example", "/example", fsName, tc.option, "0", "0"}}
 				// Generic userspace extensions are checked even for a filesystem
 				// whose map does not include CommonOptions. No API calls needed.
-				issues := options.ValidateOptionsMap(context.Background(), nil, entry, fsName, nil)
+				issues := append(options.ValidateOptionsMap(systemdContext("262"), nil, entry, fsName, nil), options.ValidateSystemdOptions(systemdContext("262"), entry)...)
 				if tc.level == "" {
 					if len(issues) != 0 {
 						t.Fatalf("valid option: %v", issues)
@@ -66,7 +66,7 @@ func TestRegisteredSystemdValidatorPrecedesNamespacePolicy(t *testing.T) {
 	entry := &rules.FstabEntry{LineNum: 3, Fields: []string{"test", "/test", "test", "x-systemd.automount=no,x-systemd.future=new,X-systemd.automount"}}
 	optionMap := map[string]options.OptionValidator{"x-systemd.automount": options.NoValueOption{}}
 	issues := options.ValidateOptionsMap(context.Background(), nil, entry, "test", optionMap)
-	if len(issues) != 3 || issues[0].Level != rules.IssueLevelError || issues[1].Level != rules.IssueLevelInfo || issues[2].Level != rules.IssueLevelInfo {
+	if len(issues) != 2 || issues[0].Level != rules.IssueLevelError || issues[1].Level != rules.IssueLevelInfo {
 		t.Fatalf("dedicated validator was bypassed or namespaces conflated: %v", issues)
 	}
 }
