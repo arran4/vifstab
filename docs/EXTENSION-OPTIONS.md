@@ -37,9 +37,10 @@ The shared map entry point gives explicitly registered validators precedence.
 The eight older filesystem rules with custom option loops delegate extension
 handling to that same policy, retaining their existing native-option checks and
 messages. Btrfs now uses the existing quote-aware `SplitOptions` as well.
-Known systemd semantic rules remain tracked in #171. An explicitly registered
-systemd validator takes precedence over the unverified namespace fallback; unknown
-newer names remain nonblocking. `X-systemd.*` is an ordinary `X-` extension, not an
+The dedicated shared systemd rule owns lower-case `x-systemd.*`, including unknown
+newer names; native filesystem option maps delegate that namespace. See
+[systemd checks](SYSTEMD-OPTIONS.md). Explicit map validators retain their ordinary
+per-option API behavior. `X-systemd.*` is an ordinary `X-` extension, not an
 alias for systemd's lower-case namespace. The separate repeated-value API in #189
 is not a dependency of this policy.
 

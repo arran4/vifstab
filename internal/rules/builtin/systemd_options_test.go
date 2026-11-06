@@ -43,10 +43,20 @@ func TestSystemdSharedRuleRunsOnceAcrossRegistry(t *testing.T) {
 					}
 				}
 			}
-			if len(systemdIssues) != 3 {
+			want := 3
+			if fsName == "swap" {
+				want += 2 // One applicability note per mount-only key.
+			}
+			if len(systemdIssues) != want {
 				t.Fatalf("missing/duplicate shared checks: %v", systemdIssues)
 			}
-			if !strings.Contains(systemdIssues[0].Message, "mount-timeout") || !strings.Contains(systemdIssues[1].Message, "requires") || !strings.Contains(systemdIssues[2].Message, "future") {
+			var significant []rules.ValidationIssue
+			for _, issue := range systemdIssues {
+				if issue.Level == rules.IssueLevelError || strings.HasPrefix(issue.Message, "Unverified systemd extension") {
+					significant = append(significant, issue)
+				}
+			}
+			if len(significant) != 3 || !strings.Contains(significant[0].Message, "mount-timeout") || !strings.Contains(significant[1].Message, "requires") || !strings.Contains(significant[2].Message, "future") {
 				t.Errorf("systemd findings reordered: %v", systemdIssues)
 			}
 			if !reflect.DeepEqual(original, entries[0].Fields) || entries[0].RawLine != raw {

@@ -138,16 +138,23 @@ func validateSystemdOption(ctx context.Context, entry *rules.FstabEntry, key, va
 		issues = append(issues, issue(rules.IssueLevelInfo, "target systemd version/applicability unknown; syntax checks do not establish generator behavior"))
 	}
 	automount := hasBareOption(set, "x-systemd.automount") || hasOptionValue(set, "comment", "systemd.automount")
+	isSwap := len(entry.Fields) > 2 && entry.Fields[2] == "swap"
+	mandatory := len(entry.Fields) > 1 && (entry.Fields[1] == "/" || entry.Fields[1] == "/usr")
+	if isSwap && key != "x-systemd.makefs" && key != "x-systemd.device-timeout" && key != "x-systemd.automount" {
+		issues = append(issues, issue(rules.IssueLevelInfo, "this mount-unit option is not applied to swap entries by the inspected generator; use native swap-unit configuration where needed"))
+	}
 	switch key {
 	case "x-systemd.automount":
-		if automount && (set.Has("noauto") || set.Has("auto")) {
+		if mandatory {
+			issues = append(issues, issue(rules.IssueLevelInfo, "mandatory root/usr generator handling can override automount; on-demand activation is unverified for this target"))
+		} else if automount && !isSwap && (set.Has("noauto") || set.Has("auto")) {
 			issues = append(issues, issue(rules.IssueLevelInfo, "auto/noauto have no effect when systemd automount is requested; the automount unit controls on-demand activation"))
 		}
-		if len(entry.Fields) > 2 && entry.Fields[2] == "swap" {
+		if isSwap {
 			issues = append(issues, issue(rules.IssueLevelInfo, "automount does not apply to swap entries"))
 		}
 	case "x-systemd.idle-timeout":
-		if !automount {
+		if !isSwap && (!automount || mandatory) {
 			issues = append(issues, issue(rules.IssueLevelInfo, "idle timeout is for an automount unit; add x-systemd.automount or remove the ineffective timeout"))
 		}
 	case "x-systemd.makefs":
@@ -237,6 +244,9 @@ func validateSystemdValue(shape systemdShape, value string, hasValue bool) (reas
 			}
 		}
 	case systemdAbsolutePath:
+		if strings.HasPrefix(value, "\"") {
+			return "quoted path syntax is unverified; prefer a documented absolute path with fstab field escapes", true
+		}
 		if !strings.HasPrefix(value, "/") {
 			return "requires an absolute path; use a path beginning with '/'", false
 		}

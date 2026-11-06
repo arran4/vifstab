@@ -105,6 +105,7 @@ func TestSystemdRepeatabilityAndInteractions(t *testing.T) {
 		{"x-systemd.makefs", 0, "potentially destructive", 1},
 		{"x-systemd.requires=shorthand", 0, "mangling", 1},
 		{`x-systemd.mount-timeout="30s"`, 0, "unverified", 1},
+		{`x-systemd.requires-mounts-for="/with-space"`, 0, "unverified", 1},
 		{"x-systemd.future=anything", 0, "Unverified systemd extension", 1},
 		{"X-systemd.automount=no", 0, "systemd", 0},
 	}
@@ -176,5 +177,22 @@ func TestSystemdDiagnosticOrderAndSourcePreservation(t *testing.T) {
 	var empty options.OptionSet
 	if _, ok := empty.FirstIndex("missing"); ok {
 		t.Fatal("empty set invented a first index")
+	}
+}
+
+func TestSystemdMandatoryAndSwapApplicability(t *testing.T) {
+	for _, tc := range []struct {
+		where, fsName, raw, text string
+	}{
+		{"/", "ext4", "noauto,x-systemd.automount", "mandatory root/usr"},
+		{"/usr", "ext4", "x-systemd.automount,x-systemd.idle-timeout=30s", "mandatory root/usr"},
+		{"none", "swap", "x-systemd.growfs", "not applied to swap"},
+		{"none", "swap", "x-systemd.onfailure=rescue.target", "not applied to swap"},
+	} {
+		entry := &rules.FstabEntry{LineNum: 1, Fields: []string{"UUID=example", tc.where, tc.fsName, tc.raw}}
+		issues := options.ValidateSystemdOptions(systemdContext("262"), entry)
+		if errorCount(issues) != 0 || matchingIssues(issues, tc.text) != 1 || matchingIssues(issues, "automount unit controls") != 0 {
+			t.Errorf("applicability %v: %v", tc, issues)
+		}
 	}
 }

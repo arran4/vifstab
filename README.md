@@ -153,3 +153,9 @@ not proof of helper or systemd behavior. See [extension validation](docs/EXTENSI
 
 Repeated mount-option values are preserved for cross-option checks; see
 [the validation API and its limits](docs/MOUNT-OPTIONS.md).
+
+Known `x-systemd.*` generator options receive offline shape and interaction
+checks through a shared rule, including swap/bind entries. Unknown names remain
+nonblocking and unverified. Normal verification reports the target version as
+unknown; it never infers systemd from a distro or launches a daemon. See
+[systemd option checks and version limits](docs/SYSTEMD-OPTIONS.md).

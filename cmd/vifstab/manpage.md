@@ -66,3 +66,13 @@ per-option validators retain their last-value context; new cross-option checks
 can inspect every occurrence. This does not by itself validate systemd extensions
 or change existing filesystem conflict policies. Formatting keeps option spelling
 and order. See docs/MOUNT-OPTIONS.md in the source distribution.
+
+Known x-systemd.* generator options are checked offline for flag/value shape,
+time spans, dependency/path forms and repetitions by a shared rule across
+filesystem, swap and bind entries. Context guidance and unknown names are
+nonblocking; malformed known syntax is an error. auto/noauto do not disable an
+ordinary automount, and makefs calls out initialization without inspecting
+contents. Normal CLI verification has no automatic systemd-version detector;
+unknown applicability is reported explicitly. Only a supplied target-version
+observation enables version warnings. No daemon, mount or content inspection is
+performed. See docs/SYSTEMD-OPTIONS.md in the source distribution.
