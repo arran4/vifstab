@@ -52,3 +52,9 @@ The default `data=ordered` mode is not an equivalent durability replacement for 
 
 ## SEE ALSO
 `fstab(5)`, `mount(8)`, `rcs(1)`
+
+Mount-option validation preserves repeated values and their input order. Existing
+per-option validators retain their last-value context; new cross-option checks
+can inspect every occurrence. This does not by itself validate systemd extensions
+or change existing filesystem conflict policies. Formatting keeps option spelling
+and order. See docs/MOUNT-OPTIONS.md in the source distribution.

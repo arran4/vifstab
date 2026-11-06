@@ -146,3 +146,6 @@ Currently built-in rules check for:
 ## License
 
 `vifstab` is licensed under the [BSD 3-Clause License](LICENSE).
+
+Repeated mount-option values are preserved for cross-option checks; see
+[the validation API and its limits](docs/MOUNT-OPTIONS.md).
