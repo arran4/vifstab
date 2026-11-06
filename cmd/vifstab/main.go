@@ -89,8 +89,11 @@ func main() {
 		var err error
 
 		// If formatting standard input
-		stat, _ := os.Stdin.Stat()
-		if (stat.Mode() & os.ModeCharDevice) == 0 {
+		piped, err := stdinIsPiped(os.Stdin)
+		if err != nil {
+			handleError(err)
+		}
+		if piped {
 			in = os.Stdin
 			if *inPlaceFlag {
 				handleError(fmt.Errorf("cannot use -i when reading from standard input"))
@@ -247,4 +250,14 @@ func handleError(err error) {
 	}
 	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	os.Exit(1)
+}
+
+// stdinIsPiped distinguishes terminal input from a pipe or regular file.
+// A failed probe is an operational error, never evidence that stdin is a pipe.
+func stdinIsPiped(input interface{ Stat() (os.FileInfo, error) }) (bool, error) {
+	info, err := input.Stat()
+	if err != nil {
+		return false, fmt.Errorf("failed to inspect standard input: %w", err)
+	}
+	return info.Mode()&os.ModeCharDevice == 0, nil
 }
