@@ -2,11 +2,11 @@
 
 **⚠️ Work in Progress**
 
-`vifstab` is a work-in-progress utility providing a visudo-like safe editing workflow for `/etc/fstab` files. It safely edits `fstab` files with built-in linting and versioning, respects the `$VISUAL` or `$EDITOR` environment variables, and saves backups using RCS.
+`vifstab` is a work-in-progress Linux fstab verifier with a visudo-inspired editing workflow, built-in linting and RCS versioning. It respects `$VISUAL` or `$EDITOR`. Editing, replacement metadata and backup/recovery still have known limitations; validation cannot guarantee a successful boot.
 
 ## Features
 
-- **Safe editing:** Edits `/etc/fstab` with validation to prevent critical boot errors.
+- **Editing:** Validates proposed changes before an intentional save, with known save-safety limitations under review.
 - **Linting:** Built-in modular rules for format and filesystem checks.
 - **Versioning:** Automatically backs up changes using RCS.
 - **Manpage generation:** Can generate its own man page.
@@ -118,12 +118,13 @@ cat /etc/fstab | vifstab format
 
 ## Linting
 
-`vifstab` includes a modular linting registry that validates your entries before saving. It categorizes feedback into three levels:
-
-1. **Suggestions:** Suggestions can accompany a warning or stand on their own. They represent automatically determined improvements.
-2. **Warnings:** Warnings indicate issues that might cause non-critical errors, such as non-existent mount options.
-3. **Security:** Security issues are similar to warnings but track their own severity score for security-related issues.
-4. **Errors:** Errors indicate critical issues that might cause a complete failure, such as missing block devices or unknown filesystems.
+`vifstab` uses a modular registry with four finding levels: **info**, **warning**,
+**security** and **error**. Info is non-blocking. Warning, security and error
+findings fail verification and prompt before editing can continue; an explicit
+save override is possible. Suggestions can accompany a finding rather than
+forming a separate level. Unknown or unreadable observations are not proof that
+a device or property is absent. Diagnostics do not guarantee safe filesystem
+contents or a successful boot.
 
 ### EXT4 `data=journal` compatibility
 
@@ -135,13 +136,26 @@ cat /etc/fstab | vifstab format
 
 The informational notice does not rewrite `fstab`. Switching to the default `data=ordered` changes crash-consistency guarantees, so the administrator must decide whether it is an appropriate alternative. If the kernel version cannot be determined, this rule does not assume deprecation is active.
 
-Currently built-in rules check for:
-- Format validity (e.g., minimum number of fields)
-- Linux filesystem validity (checking against `/proc/filesystems`)
+Rule families cover parsing/field shape, filesystem and mount-option checks,
+mount-point/source identities, Linux/kernel compatibility and security-related
+configuration. Filesystem-specific families include local, network, virtual,
+layered and external filesystems. Coverage varies by rule and available metadata;
+accepted input is not proof that every option or future extension was validated.
+The rule fixtures under `internal/rules/builtin` are the evidence for individual
+behaviors.
 
 ## Environment Variables
 
 - `VISUAL` or `EDITOR`: Defines the text editor to use when opening the fstab file. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is not interpreted. Normal editor arguments are supported. Editor commands are executed directly rather than through a shell.
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for deterministic fixture tests and current
+interface boundaries, [SECURITY.md](SECURITY.md) for private reporting, and
+[capture privacy guidance](docs/CAPTURE-PRIVACY.md) before sharing system data.
+Linux 7-series compatibility is a development goal; BSD support is future work.
+The editor, in-place formatting and RCS remain experimental while save safety is
+reviewed. Validation cannot guarantee a successful boot.
 
 ## License
 
