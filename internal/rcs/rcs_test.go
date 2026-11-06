@@ -3,10 +3,12 @@ package rcs
 import (
 	"bytes"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/arran4/golang-rcs"
 )
@@ -32,6 +34,19 @@ func (m *mockFS) MkdirAll(path string, perm os.FileMode) error {
 func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 	return m.statInfo, m.statErr
 }
+
+func (m *mockFS) Lstat(name string) (os.FileInfo, error) {
+	if !strings.Contains(filepath.ToSlash(name), "/v1/") {
+		return nil, os.ErrNotExist
+	}
+	info, err := m.Stat(name)
+	if info == nil && err == nil {
+		return (fstest.MapFS{"history": {Mode: 0600}}).Stat("history")
+	}
+	return info, err
+}
+func (m *mockFS) Getwd() (string, error)         { return "/fixture", nil }
+func (m *mockFS) Lock(string) (io.Closer, error) { return io.NopCloser(strings.NewReader("")), nil }
 
 func (m *mockFS) ReadFile(name string) ([]byte, error) {
 	return m.readFileData, m.readFileErr
@@ -232,6 +247,7 @@ text
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
 			if tt.fsMock != nil {
+				labelFixture(t, tt.fsMock, "testfile.txt", tt.config.Dir)
 				err = Update("testfile.txt", []byte("content"), tt.config, tt.fsMock)
 			} else {
 				err = Update("testfile.txt", []byte("content"), tt.config)
@@ -280,7 +296,10 @@ func TestUpdate_NewFileSuccess(t *testing.T) {
 		t.Fatalf("expected TempFile Close to be called exactly once (recording write), got %d", fsMock.writeFileCalls)
 	}
 
-	expectedPath := filepath.Join(config.Dir, "testfile.txt,v")
+	expectedPath, err := HistoryPath("testfile.txt", config.Dir, fsMock)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if fsMock.writeFilePath != expectedPath {
 		t.Errorf("expected Rename to target path %q, got %q", expectedPath, fsMock.writeFilePath)
 	}
@@ -352,6 +371,7 @@ text
 	}
 	config := Config{Dir: "testdir"}
 	newContent := []byte("updated content")
+	labelFixture(t, fsMock, "testfile.txt", config.Dir)
 
 	err := Update("testfile.txt", newContent, config, fsMock)
 	if err != nil {
@@ -362,7 +382,10 @@ text
 		t.Fatalf("expected TempFile Close to be called exactly once (recording write), got %d", fsMock.writeFileCalls)
 	}
 
-	expectedPath := filepath.Join(config.Dir, "testfile.txt,v")
+	expectedPath, err := HistoryPath("testfile.txt", config.Dir, fsMock)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if fsMock.writeFilePath != expectedPath {
 		t.Errorf("expected Rename to target path %q, got %q", expectedPath, fsMock.writeFilePath)
 	}
@@ -400,7 +423,35 @@ text
 	if parsedFile.RevisionContents[1].Revision != "1.1" {
 		t.Errorf("expected second revision to be '1.1', got %q", parsedFile.RevisionContents[1].Revision)
 	}
-	if parsedFile.RevisionContents[1].Text != "old content\n" {
-		t.Errorf("expected original revision text 'old content\n', got %q", parsedFile.RevisionContents[1].Text)
+
+	identity, _, err := historyIdentity("testfile.txt", config.Dir, fsMock)
+	if err != nil {
+		t.Fatal(err)
 	}
+	provenance, err := parseProvenance(parsedFile, identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old, err := restoreRevision(parsedFile, provenance, "1.1")
+	if err != nil || string(old) != "old content\n" {
+		t.Errorf("expected recoverable original revision, got %q, %v", old, err)
+	}
+}
+
+// Port valid legacy-shaped unit data to the labelled fixture format only.
+// Malformed inputs stay malformed; production never automatically imports them.
+func labelFixture(t *testing.T, fs *mockFS, source, dir string) {
+	t.Helper()
+	f, err := rcs.ParseFile(bytes.NewReader(fs.readFileData))
+	if err != nil || len(f.RevisionContents) != 1 {
+		return
+	}
+	identity, _, err := historyIdentity(source, dir, fs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := setProvenance(f, identity, f.Head, []byte(f.RevisionContents[0].Text), nil); err != nil {
+		t.Fatal(err)
+	}
+	fs.readFileData = []byte(f.String())
 }

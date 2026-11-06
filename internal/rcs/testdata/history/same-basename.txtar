@@ -1,0 +1,19 @@
+Different absolute source paths must never mix their revisions.
+-- cases.json --
+[
+  {
+    "source": "/etc/fstab",
+    "revisions_base64": [
+      "b25lCg==",
+      "dHdvCg==",
+      "dGhyZWUK"
+    ]
+  },
+  {
+    "source": "/srv/chroot/etc/fstab",
+    "revisions_base64": [
+      "aW5kZXBlbmRlbnQK",
+      "cmV2aXNlZAo="
+    ]
+  }
+]

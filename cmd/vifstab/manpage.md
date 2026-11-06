@@ -15,9 +15,19 @@ vifstab uefi <device> <mountpoint>
 
 `vifstab` does not acquire privileges, nor does it invoke or implement sudo, su, doas, run0, setuid/SUID, runas, or other privilege-management mechanisms. It does not switch or infer user identities. All file reads, file writes, temporary-file operations, editor execution, RCS/versioning operations, backups, and final replacement operations run with the credentials of the `vifstab` process. Arranging sufficient permissions or an elevated invocation context is entirely the caller's responsibility.
 
-Additionally, `vifstab` maintains a version history of the edited file using RCS (Revision Control System) backups, ensuring that you can always recover previous functional states if an error occurs.
+Additionally, `vifstab` can maintain RCS revisions of saved content. The first
+revision records the content passed to the save operation, not an automatic
+pre-edit backup of the original. Recoverability does not prove a configuration
+is functional, and a versioning failure can occur after the target was changed.
 
 If the validation fails (for example, if a mount point does not exist or a filesystem is unknown), `vifstab` categorizes the feedback into Suggestions, Warnings, and Errors. It requires critical Errors to be resolved before saving the modifications, thus preventing a system from becoming unbootable due to a malformed `fstab`.
+
+RCS histories are stored under `<backup-dir>/v1/<name>--<source-path-sha256>,v`.
+Each archive records its source identity, and updates use a per-history advisory
+lock. An unlabelled legacy `<basename>,v` file requires explicit review and
+retention before a new labelled history starts; it is not automatically imported
+or overwritten. A versioning error can occur after the fstab itself was saved.
+See `docs/RCS-HISTORIES.md` for the mapping, migration and tested recovery scope.
 
 ## OPTIONS
 **--backup-dir**="": Directory to store RCS backups. If omitted, `vifstab` defaults to a sensible location. It checks `$XDG_CACHE_HOME/vifstab`, then `$HOME/.cache/vifstab`, and finally falls back to `/tmp/.vifstab`.

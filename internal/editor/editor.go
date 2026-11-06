@@ -27,10 +27,14 @@ type TempFile interface {
 // FS provides filesystem operations to allow mocking
 type FS interface {
 	ReadFile(name string) ([]byte, error)
+	ReadRegularFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte, perm os.FileMode) error
 	MkdirAll(path string, perm os.FileMode) error
 	Rename(oldpath, newpath string) error
 	Stat(name string) (os.FileInfo, error)
+	Lstat(name string) (os.FileInfo, error)
+	Getwd() (string, error)
+	Lock(name string) (io.Closer, error)
 	CreateTemp(dir, pattern string) (TempFile, error)
 	Remove(name string) error
 	SyncDir(name string) error
@@ -38,13 +42,17 @@ type FS interface {
 
 type osFS struct{}
 
-func (osFS) ReadFile(name string) ([]byte, error) { return os.ReadFile(name) }
+func (osFS) ReadFile(name string) ([]byte, error)        { return os.ReadFile(name) }
+func (osFS) ReadRegularFile(name string) ([]byte, error) { return rcs.ReadOSHistory(name) }
 func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(name, data, perm)
 }
-func (osFS) MkdirAll(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
+func (osFS) MkdirAll(path string, perm os.FileMode) error { return rcs.MakeDurableDirs(path, perm) }
 func (osFS) Rename(oldpath, newpath string) error         { return os.Rename(oldpath, newpath) }
 func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name) }
+func (osFS) Lstat(name string) (os.FileInfo, error)       { return os.Lstat(name) }
+func (osFS) Getwd() (string, error)                       { return os.Getwd() }
+func (osFS) Lock(name string) (io.Closer, error)          { return rcs.LockOSFile(name) }
 func (osFS) CreateTemp(dir, pattern string) (TempFile, error) {
 	return os.CreateTemp(dir, pattern)
 }
@@ -72,8 +80,12 @@ func (a rcsFSAdapter) Stat(name string) (os.FileInfo, error) {
 	return a.fs.Stat(name)
 }
 
+func (a rcsFSAdapter) Lstat(name string) (os.FileInfo, error) { return a.fs.Lstat(name) }
+func (a rcsFSAdapter) Getwd() (string, error)                 { return a.fs.Getwd() }
+func (a rcsFSAdapter) Lock(name string) (io.Closer, error)    { return a.fs.Lock(name) }
+
 func (a rcsFSAdapter) ReadFile(name string) ([]byte, error) {
-	return a.fs.ReadFile(name)
+	return a.fs.ReadRegularFile(name)
 }
 
 func (a rcsFSAdapter) Rename(oldpath, newpath string) error {
@@ -135,14 +147,13 @@ func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 	defer func() { _ = os.Remove(tempFile.Name()) }()
 	defer func() { _ = tempFile.Close() }()
 
-	src, err := os.Open(cfg.FilePath)
+	source, err := deps.FS.ReadFile(cfg.FilePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return fmt.Errorf("failed to open source file: %w", err)
 		}
 	} else {
-		_, err = io.Copy(tempFile, src)
-		_ = src.Close()
+		_, err = tempFile.Write(source)
 		if err != nil {
 			return fmt.Errorf("failed to copy to temp file: %w", err)
 		}
@@ -364,7 +375,7 @@ func commitEdit(cfg config.Config, content []byte, blockingValidationPassed bool
 	var sysErr error
 	if res.Saved {
 		fmt.Println("Saved successfully.")
-		sysErr = handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed)
+		sysErr = handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed && res.Err == nil)
 	}
 
 	return errors.Join(res.Err, sysErr)
