@@ -16,6 +16,7 @@ import (
 	"github.com/arran4/vifstab/internal/format"
 	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/textinput"
 	"github.com/arran4/vifstab/internal/uefi"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
 )
@@ -139,8 +140,12 @@ func Format(file string, inPlace bool, backupDir string, seen map[string]bool, o
 		return fmt.Errorf("cannot use --in-place when reading from standard input")
 	}
 	var input io.Reader = os.Stdin
-	if !useStdin {
-		f, err := os.Open(file)
+	if useStdin {
+		if err := textinput.Check(os.Stdin); err != nil {
+			return err
+		}
+	} else {
+		f, err := textinput.Open(file)
 		if err != nil {
 			return fmt.Errorf("failed to open file %s: %w", file, err)
 		}
