@@ -32,12 +32,17 @@ sources never cause a host fstab read. Existing RCS recovery/identity work remai
 separate; preserve #188's stronger regular-file and symlink requirements during
 integration.
 
-This root change applies to the current main CLI. The generated #182 CLI and
-#174 snapshot/capture branch need matching calls to the shared helper, including
-their borrowed-stdin paths, before #194 is fully resolved. Regenerate command
-bindings only if their annotated interfaces change; do not hand-edit generated
-files. #193's image parser has a stricter regular-image policy and block diagrams
-continue to use canonical metadata inventory/resolution.
+This root change applies to the current main CLI. Matching calls are implemented
+and tested in the existing #182 generated CLI and #174 snapshot/capture branches;
+they remain unmerged. #188 uses the same helper's strict regular/no-follow policy
+for archive access and existing lock inodes. Select/reconcile the shared source
+once and retain #188's stronger archive adapter. #193's image parser keeps its
+stricter regular-image policy; block diagrams use canonical metadata inventory.
+
+The stable regular descriptor and #184's effective-target resolver are reusable
+foundations for #155. Ownership/ACL/xattr/security-metadata capture, copying and
+its visibility contract are still unresolved. This change does not select a
+reduced metadata guarantee or make the editor production-safe.
 
 Tests use injected block-type metadata, temporary regular files/symlinks/FIFOs
 and anonymous pipes. No real block device or host fstab is opened. Six compiled
