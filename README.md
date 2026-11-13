@@ -139,6 +139,10 @@ Currently built-in rules check for:
 - Format validity (e.g., minimum number of fields)
 - Linux filesystem validity (checking against `/proc/filesystems`)
 
+### Experimental UEFI observations
+
+The explicit `uefi <device> <mountpoint>` command correlates canonical device metadata with firmware observations. Missing filesystem metadata and missing or malformed GPT type metadata remain unknown; the report prints `GPT role: unknown` rather than `Not ESP` without a valid type observation. The optional EFI-directory observation is attempted only for an already-mounted matching device and remains unknown when unavailable. This command does not verify filesystem contents on an unmounted device or guarantee bootability.
+
 ## Environment Variables
 
 - `VISUAL` or `EDITOR`: Defines the text editor to use when opening the fstab file. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is not interpreted. Normal editor arguments are supported. Editor commands are executed directly rather than through a shell.
