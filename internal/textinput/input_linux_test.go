@@ -146,3 +146,10 @@ func TestDescriptorsAreMetadataOnlyThenReadOnlyAndCloseOnExec(t *testing.T) {
 		t.Fatalf("input descriptor can leak: %v", err)
 	}
 }
+
+func TestMissingInputPreservesNativeNotExistClassification(t *testing.T) {
+	_, err := ReadFile(filepath.Join(t.TempDir(), "new-fstab"))
+	if !os.IsNotExist(err) {
+		t.Fatalf("a missing input must remain distinguishable from unavailable access: %v", err)
+	}
+}
