@@ -7,4 +7,4 @@ Executable regression: file-missing; default fstab is a build-time fixture.
 1
 -- stdout --
 -- stderr --
-Error: verify failed: failed to read file for verification: text input metadata unavailable: no such file or directory
+Error: verify failed: failed to read file for verification: open text input metadata missing: no such file or directory

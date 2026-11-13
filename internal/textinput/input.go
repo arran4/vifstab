@@ -12,6 +12,17 @@ import (
 
 var ErrBlockDevice = errors.New("block devices are not text inputs")
 
+var ErrUnavailable = errors.New("text input existence unknown")
+
+// Once a metadata reference exists, ENOENT from a later operation (for example
+// unavailable proc-fd access) is not proof that the selected input is absent.
+func accessError(err error) error {
+	if errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("%w: %v", ErrUnavailable, err)
+	}
+	return err
+}
+
 // metadata is a stable metadata-only reference. Opening it must not invoke a
 // block-device data-open operation. Data may be opened only after classification.
 type metadata interface {
@@ -60,12 +71,13 @@ func open(path string, acquire func(string) (metadata, error)) (fs.File, error) 
 		if m != nil {
 			err = errors.Join(err, m.Close())
 		}
-		return nil, fmt.Errorf("text input metadata unavailable: %w", err)
+		return nil, &os.PathError{Op: "open text input metadata", Path: path, Err: err}
 	}
 	if m == nil {
 		return nil, fmt.Errorf("text input metadata unavailable: no metadata handle")
 	}
 	info, err := m.Stat()
+	err = accessError(err)
 	if err == nil {
 		err = checkInfo(info)
 	}
@@ -74,6 +86,7 @@ func open(path string, acquire func(string) (metadata, error)) (fs.File, error) 
 	}
 	f, err := m.ReadOnly()
 	if err != nil {
+		err = accessError(err)
 		if f != nil {
 			err = errors.Join(err, f.Close())
 		}
@@ -83,6 +96,7 @@ func open(path string, acquire func(string) (metadata, error)) (fs.File, error) 
 		return nil, errors.Join(fmt.Errorf("text input read access unavailable: no data handle"), m.Close())
 	}
 	opened, err := f.Stat()
+	err = accessError(err)
 	if err == nil {
 		err = checkInfo(opened)
 	}

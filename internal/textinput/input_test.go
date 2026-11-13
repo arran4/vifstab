@@ -120,6 +120,19 @@ func TestOpenErrorsRetainCleanupErrors(t *testing.T) {
 	}
 }
 
+func TestLaterUnavailableMetadataIsNotInputAbsence(t *testing.T) {
+	for _, m := range []*fakeMetadata{
+		{statErr: os.ErrNotExist},
+		{info: regularInfo(t), openErr: os.ErrNotExist},
+		{info: regularInfo(t), reader: &fakeFile{statErr: os.ErrNotExist}},
+	} {
+		_, err := open("/fixture", from(m))
+		if !errors.Is(err, ErrUnavailable) || errors.Is(err, os.ErrNotExist) || os.IsNotExist(err) {
+			t.Fatalf("later metadata failure misclassified as input absence: %v", err)
+		}
+	}
+}
+
 func regularInfo(t *testing.T) fs.FileInfo {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "fixture")
