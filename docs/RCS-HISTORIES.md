@@ -97,3 +97,17 @@ recovery API is tested byte-for-byte across ending changes. Do not edit generate
 archives with an external check-in tool without preserving their provenance
 contract. Inspect recovered data in a separate file and revalidate it before
 any intentional replacement of an important configuration.
+
+## Metadata-first archive and lock opens
+
+History reads retain their regular-file, final-symlink refusal and identity checks,
+but now use the shared metadata-first opener before obtaining a data descriptor.
+A changed path cannot redirect that data open to a device. Existing lock files
+use the same strict guard and are reopened read/write through the checked inode;
+new locks use exclusive creation. Persistent names, 0600 permissions, close-on-exec,
+read/write access, advisory lock scope and no-unlink behavior are preserved.
+Linux metadata/proc-fd access is required; unavailable access is an error, with no
+path-based fallback or privilege acquisition. The caller still supplies a trusted
+backup directory; this does not claim race-free behavior against hostile directory
+writers. Shared opener tests cover refusal before any data-open request. Native
+fixtures check independent lock contention, descriptors and unchanged inode/data.

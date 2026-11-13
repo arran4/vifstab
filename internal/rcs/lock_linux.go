@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/arran4/vifstab/internal/textinput"
 	"golang.org/x/sys/unix"
 )
 
@@ -22,21 +23,53 @@ func LockOSFile(name string) (io.Closer, error) {
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
-	fd, err := unix.Open(name, unix.O_RDWR|unix.O_CREAT|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0600)
+	f, err := openOSLock(name)
 	if err != nil {
 		return nil, err
 	}
-	f := os.NewFile(uintptr(fd), name)
 	info, err := f.Stat()
 	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0600 {
 		_ = f.Close()
 		return nil, errors.Join(err, fmt.Errorf("RCS lock must be a private regular file"))
 	}
-	if err := unix.Flock(fd, unix.LOCK_EX); err != nil {
+	if err := unix.Flock(int(f.Fd()), unix.LOCK_EX); err != nil {
 		_ = f.Close()
 		return nil, err
 	}
 	return &historyLock{File: f}, nil
+}
+
+// Exclusive creation guarantees a new regular inode. Existing lock objects
+// must pass the metadata-only no-follow guard before any data descriptor opens.
+func openOSLock(name string) (*os.File, error) {
+	fd, err := unix.Open(name, unix.O_RDWR|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0600)
+	if err == nil {
+		return os.NewFile(uintptr(fd), name), nil
+	}
+	if !errors.Is(err, unix.EEXIST) {
+		return nil, err
+	}
+	checked, err := textinput.OpenRegularNoFollow(name)
+	if err != nil {
+		return nil, err
+	}
+	source, ok := checked.(interface{ Fd() uintptr })
+	if !ok {
+		return nil, errors.Join(fmt.Errorf("RCS lock descriptor unavailable"), checked.Close())
+	}
+	// Preserve read/write access for locking filesystems that require it. The
+	// checked descriptor stays alive until the same inode is reopened; opening
+	// the original pathname here would reintroduce the device-replacement race.
+	fd, err = unix.Open(fmt.Sprintf("/proc/self/fd/%d", source.Fd()), unix.O_RDWR|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
+	closeErr := checked.Close()
+	if err != nil {
+		return nil, errors.Join(err, closeErr)
+	}
+	f := os.NewFile(uintptr(fd), name)
+	if closeErr != nil {
+		return nil, errors.Join(closeErr, f.Close())
+	}
+	return f, nil
 }
 
 type historyLock struct{ *os.File }
@@ -55,7 +88,7 @@ func ReadOSHistory(name string) ([]byte, error) {
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("RCS history must be a regular file")
 	}
-	f, err := os.OpenFile(name, unix.O_NOFOLLOW|unix.O_NONBLOCK|os.O_RDONLY, 0)
+	f, err := textinput.OpenRegularNoFollow(name)
 	if err != nil {
 		return nil, err
 	}
