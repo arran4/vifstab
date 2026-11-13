@@ -2,6 +2,7 @@
 /dev/sda1 /mnt/msdos msdos uid=notanint,gid=9999,umask=invalid,unknownopt 0 0
 -- cache --
 proc_filesystems=msdos
+group_exists:9999=false
 -- input/etc/passwd --
 root:x:0:0:root:/root:/bin/bash
 -- input/etc/group --

@@ -1,0 +1,27 @@
+File observations provide positives. Only explicit cache states provide negatives.
+-- input --
+tmpfs /fixture/one tmpfs uid=1000,gid=1000 0 0
+tmpfs /fixture/two tmpfs uid=2000,gid=2000 0 0
+tmpfs /fixture/three tmpfs uid=-1,gid=4294967295 0 0
+tmpfs /fixture/four tmpfs uid=3000,gid=3000 0 0
+tmpfs /fixture/five tmpfs uid=4000,gid=4000 0 0
+-- cache --
+proc_filesystems=tmpfs
+proc_version=Linux version 6.5.0
+user_exists:3000=false
+group_exists:3000=false
+-- input/etc/passwd --
+example:x:1000:1000::/fixture/home:/bin/false
+truncated:x:4000
+-- input/etc/group --
+example:x:1000:
+truncated:x:4000
+-- expected/validationerrors.txt --
+Info: Unable to determine if user 2000 exists
+Info: Unable to determine if group 2000 exists
+Error: Invalid value '-1' for tmpfs mount option 'uid' on line 3, must be between 0 and 4294967294
+Error: Invalid value '4294967295' for tmpfs mount option 'gid' on line 3, must be between 0 and 4294967294
+Error: User with uid 3000 does not exist
+Error: Group with gid 3000 does not exist
+Info: Unable to determine if user 4000 exists
+Info: Unable to determine if group 4000 exists

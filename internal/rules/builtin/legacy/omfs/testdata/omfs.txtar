@@ -14,3 +14,6 @@ User with uid 1001 does not exist
 Group with gid 1001 does not exist
 Invalid value '999' for omfs mount option 'umask' on line 2, must be an octal integer
 Unknown omfs mount option 'invalidopt' on line 2
+-- cache --
+group_exists:1001=false
+user_exists:1001=false

@@ -173,3 +173,7 @@ streams remain supported. Formatting checks borrowed stdin and retains pipelines
 The Linux pathname reader requires metadata/proc-fd interfaces and keeps caller
 credentials. See `docs/TEXT-INPUTS.md` for the stable-inode boundary,
 platform limits. Generated verification, static input, capture and replay share this guard.
+
+## USER AND GROUP OBSERVATIONS
+
+Numeric UID/GID mount options must be between `0` and `4294967294`. Explicitly supported filesystem enum alternatives remain valid. A structurally valid matching local passwd/group record establishes presence; missing, unreadable, malformed or unmatched local data leaves account availability unknown because NSS may use other sources. Unknown and permission-denied observations produce informational diagnostics. Explicit provider/cache observations may still establish absence. No additional account-discovery command or NSS lookup is performed.

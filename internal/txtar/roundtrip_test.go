@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -56,6 +57,69 @@ func validation(t *testing.T, api rules.API, b []byte) []rules.ValidationIssue {
 	}
 	return v
 }
+
+func TestLocalAccountObservationsSurviveCaptureReplay(t *testing.T) {
+	newAPI := func() *rules.CacheFS {
+		api := fixtureAPI()
+		api.FS = fstest.MapFS{
+			"etc/passwd": {Data: []byte("example:x:1000:1000::/fixture/home:/bin/false\ntruncated:x:2000\n")},
+			"etc/group":  {Data: []byte("example:x:1000:\ntruncated:x:2000\n")},
+		}
+		return api
+	}
+	text := "tmpfs /fixture/one tmpfs uid=1000,gid=1000 0 0\ntmpfs /fixture/two tmpfs uid=2000,gid=2000 0 0\n"
+	before := validation(t, newAPI(), []byte(text))
+	if len(before) != 2 {
+		t.Fatalf("expected two informational unknown observations: %#v", before)
+	}
+	for _, issue := range before {
+		if issue.Level != rules.IssueLevelInfo || !strings.Contains(issue.Message, "Unable to determine") {
+			t.Fatalf("incomplete local data became a definite account finding: %#v", issue)
+		}
+	}
+	for _, raw := range []bool{false, true} {
+		snapshot, err := ParseTXTAR(captureText(t, newAPI(), text, raw))
+		if err != nil {
+			t.Fatal(err)
+		}
+		replay, err := ReplaySnapshot(snapshot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if snapshot.Observations == nil {
+			t.Fatal("account observations were not captured")
+		}
+		for _, observation := range []struct {
+			states map[string]rules.ExistState
+			lookup func(int) rules.ExistState
+		}{{snapshot.Observations.Users, replay.CheckUserExists}, {snapshot.Observations.Groups, replay.CheckGroupExists}} {
+			counts := map[rules.ExistState]int{}
+			for id, state := range observation.states {
+				n, err := strconv.Atoi(id)
+				if err != nil || observation.lookup(n) != state {
+					t.Fatal("capture/replay changed an account observation")
+				}
+				counts[state]++
+			}
+			if counts[rules.Exists] != 1 || counts[rules.Unknown] != 1 || len(observation.states) != 2 {
+				t.Fatalf("capture changed positive/unknown states: %#v", observation.states)
+			}
+		}
+		after := validation(t, replay, snapshot.Fstab)
+		if raw && !reflect.DeepEqual(before, after) {
+			t.Fatalf("raw account findings changed: before=%#v after=%#v", before, after)
+		}
+		if len(after) != 2 {
+			t.Fatalf("account findings lost after capture: %#v", after)
+		}
+		for _, issue := range after {
+			if rules.IsBlockingIssue(issue) {
+				t.Fatalf("unknown account observation became blocking: %#v", issue)
+			}
+		}
+	}
+}
+
 func TestProductionValidationRoundTrip(t *testing.T) {
 	cases := map[string]struct {
 		fstab, finding string
@@ -66,6 +130,7 @@ func TestProductionValidationRoundTrip(t *testing.T) {
 		"partition-role": {"UUID=PRIVATE_UUID /boot/efi ext4 defaults 0 2\n", "GPT partition type is EFI System Partition (ESP) but filesystem is not FAT", true},
 		"kernel-option":  {"/dev/PRIVATE_DISK /mnt/PRIVATE_TARGET btrfs compress=zstd 0 2\n", "", true},
 		"accounts":       {"/dev/PRIVATE_DISK /mnt/PRIVATE_TARGET vfat uid=1234,gid=2345 0 2\n", "does not exist", true},
+		"account-range":  {"tmpfs /fixture/target tmpfs uid=4294967295,gid=4294967296 0 0\n", "Invalid value", true},
 		"files":          {"overlay /mnt/PRIVATE_TARGET overlay lowerdir=/PRIVATE_MISSING,upperdir=/PRIVATE_DENIED,workdir=/PRIVATE_UNKNOWN 0 0\n", "does not exist", true},
 		"devices":        {"/dev/PRIVATE_DISK /mnt/PRIVATE_TARGET btrfs device=/dev/PRIVATE_ABSENT 0 2\n", "does not exist", true},
 	}

@@ -148,7 +148,7 @@ func (r *redactor) options(s string) string {
 		}
 		switch strings.ToLower(key) {
 		case "uid", "gid":
-			if n, err := strconv.Atoi(val); err == nil && n >= 0 {
+			if n, err := strconv.ParseInt(val, 10, 64); err == nil && rules.ValidLinuxAccountID(n) {
 				val = r.account(val)
 			} else {
 				val = r.token("account", val)
