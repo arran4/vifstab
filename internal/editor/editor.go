@@ -135,14 +135,13 @@ func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 	defer func() { _ = os.Remove(tempFile.Name()) }()
 	defer func() { _ = tempFile.Close() }()
 
-	src, err := os.Open(cfg.FilePath)
+	source, err := deps.FS.ReadFile(cfg.FilePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return fmt.Errorf("failed to open source file: %w", err)
 		}
 	} else {
-		_, err = io.Copy(tempFile, src)
-		_ = src.Close()
+		_, err = tempFile.Write(source)
 		if err != nil {
 			return fmt.Errorf("failed to copy to temp file: %w", err)
 		}

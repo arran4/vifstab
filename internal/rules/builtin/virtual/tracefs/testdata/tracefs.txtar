@@ -25,3 +25,6 @@ Invalid value '0888' for tracefs mount option 'mode' on line 6, must be an octal
 Unknown tracefs mount option 'unknown' on line 7
 User with uid 2000 does not exist
 Group with gid 2000 does not exist
+-- cache --
+group_exists:2000=false
+user_exists:2000=false

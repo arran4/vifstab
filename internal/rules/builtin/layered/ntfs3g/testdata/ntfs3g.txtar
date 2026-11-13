@@ -6,6 +6,8 @@
 /dev/sda5 /mnt/ntfs5 ntfs-3g rw,ignore_case 0 0
 /dev/sda6 /mnt/ntfs6 ntfs-3g rw,uid=2000,gid=2000 0 0
 -- cache --
+group_exists:2000=false
+user_exists:2000=false
 -- input/etc/passwd --
 root:x:0:0:root:/root:/bin/bash
 user:x:1000:1000:user,,,:/home/user:/bin/bash
