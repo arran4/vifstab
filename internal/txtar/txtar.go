@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/arran4/vifstab/internal/editor"
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/textinput"
 	x_txtar "golang.org/x/tools/txtar"
 )
 
@@ -475,7 +475,7 @@ func CaptureSystem(ctx context.Context, api rules.API, fstabPath string, unredac
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	f, err := os.Open(fstabPath)
+	f, err := textinput.Open(fstabPath)
 	if err != nil {
 		return nil, fmt.Errorf("read fstab: %w", err)
 	}

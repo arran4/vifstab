@@ -9,6 +9,7 @@ import (
 
 	"github.com/arran4/vifstab/internal/editor"
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/textinput"
 	"github.com/arran4/vifstab/internal/txtar"
 )
 
@@ -75,9 +76,12 @@ func verify(file, snapshot, capture string, static, unredacted bool, seen map[st
 // with this helper, not with the generated I/O bindings.
 func openInput(path string) (io.Reader, func(), error) {
 	if path == "-" {
+		if err := textinput.Check(os.Stdin); err != nil {
+			return nil, func() {}, fmt.Errorf("open stdin: %w", err)
+		}
 		return os.Stdin, func() {}, nil
 	}
-	f, err := os.Open(path)
+	f, err := textinput.Open(path)
 	if err != nil {
 		return nil, func() {}, fmt.Errorf("open input: %w", err)
 	}

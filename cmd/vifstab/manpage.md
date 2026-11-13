@@ -164,3 +164,12 @@ priority order, default `vi`. Arguments `--` and the temporary path are appended
 ## SEE ALSO
 
 fstab(5), mount(8), README.md
+
+## Configuration text input safety
+
+Fstab text inputs are classified before a data open; block-device inputs and
+unavailable classification are refused. Regular files, symlinks and intentional
+streams remain supported. Formatting checks borrowed stdin and retains pipelines.
+The Linux pathname reader requires metadata/proc-fd interfaces and keeps caller
+credentials. See `docs/TEXT-INPUTS.md` for the stable-inode boundary,
+platform limits. Generated verification, static input, capture and replay share this guard.
