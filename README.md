@@ -146,3 +146,12 @@ Currently built-in rules check for:
 ## License
 
 `vifstab` is licensed under the [BSD 3-Clause License](LICENSE).
+
+## Configuration text input safety
+
+Fstab text inputs are classified before a data open; block-device inputs and
+unavailable classification are refused. Regular files, symlinks and intentional
+streams remain supported. Formatting checks borrowed stdin and retains pipelines.
+The Linux pathname reader requires metadata/proc-fd interfaces and keeps caller
+credentials. See [text input sources and limits](docs/TEXT-INPUTS.md) for the stable-inode boundary,
+platform limits and generated CLI/TXTAR integration still pending in review branches.
