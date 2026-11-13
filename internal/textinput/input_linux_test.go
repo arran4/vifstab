@@ -153,3 +153,42 @@ func TestMissingInputPreservesNativeNotExistClassification(t *testing.T) {
 		t.Fatalf("a missing input must remain distinguishable from unavailable access: %v", err)
 	}
 }
+
+func TestStrictRegularNoFollowKeepsArchivePolicy(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive")
+	if err := os.WriteFile(path, []byte("fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	f, err := OpenRegularNoFollow(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := io.ReadAll(f)
+	_ = f.Close()
+	if err != nil || string(got) != "fixture" {
+		t.Fatalf("regular archive: %q %v", got, err)
+	}
+	link, fifo := filepath.Join(dir, "link"), filepath.Join(dir, "fifo")
+	if err := os.Symlink("archive", link); err != nil {
+		t.Fatal(err)
+	}
+	if err := unix.Mkfifo(fifo, 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{link, fifo, dir} {
+		if f, err := OpenRegularNoFollow(name); err == nil {
+			_ = f.Close()
+			t.Fatalf("nonregular archive accepted: %s", name)
+		}
+	}
+	m, err := openNoFollowMetadata(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = m.Close() }()
+	info, err := m.Stat()
+	if err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("metadata acquisition followed the final symlink: %v", err)
+	}
+}

@@ -13,8 +13,16 @@ import (
 type linuxMetadata struct{ file *os.File }
 
 func openMetadata(path string) (metadata, error) {
+	return openMetadataFlags(path, 0)
+}
+
+func openNoFollowMetadata(path string) (metadata, error) {
+	return openMetadataFlags(path, unix.O_NOFOLLOW)
+}
+
+func openMetadataFlags(path string, flags int) (metadata, error) {
 	// O_PATH acquires an inode reference without opening a device for I/O.
-	fd, err := unix.Open(path, unix.O_PATH|unix.O_CLOEXEC, 0)
+	fd, err := unix.Open(path, unix.O_PATH|unix.O_CLOEXEC|flags, 0)
 	if err != nil {
 		return nil, err
 	}
