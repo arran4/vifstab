@@ -110,8 +110,9 @@ its integration into verification is assessed. It uses the canonical device
 inventory and native EFI-variable parsing, without systemd or external boot
 utilities. It correlates firmware boot entries and BootCurrent with a PARTUUID;
 it does not establish every current-loader configuration or bootability.
-Unavailable firmware information and unmounted filesystem contents remain
-unknown. Optional observations of an already-mounted EFI tree do not gate
+Unavailable firmware information, missing filesystem metadata and missing or
+malformed GPT type metadata remain unknown. A definite non-ESP report requires
+a valid obtained GPT type. Unmounted filesystem contents remain unknown. Optional observations of an already-mounted EFI tree do not gate
 verification. There is no `verify --uefi` flag yet.
 
 ### Static verification

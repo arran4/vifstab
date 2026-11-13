@@ -78,7 +78,9 @@ migration; do not use it to claim the normal verifier inspects device contents.
 canonical inventory and native EFI parsing. Firmware boot entries and BootCurrent
 can be correlated with PARTUUID; this is not a complete current-loader or
 bootability guarantee. Unavailable firmware data and unmounted filesystem contents
-remain unknown. Optional already-mounted EFI-tree observations are informational.
+remain unknown. Missing filesystem type and missing or malformed GPT type also
+remain unknown; a definite non-ESP report requires a valid obtained GPT type.
+Optional already-mounted EFI-tree observations are informational.
 No systemd or external boot utility is required. No `verify --uefi` option exists.
 
 **manpage --output PATH**: Explicitly write the manual, default `vifstab.1`.
