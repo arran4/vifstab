@@ -133,6 +133,16 @@ func TestLaterUnavailableMetadataIsNotInputAbsence(t *testing.T) {
 	}
 }
 
+func TestStrictRegularPolicyRefusesBeforeDataOpen(t *testing.T) {
+	for _, mode := range []fs.FileMode{fs.ModeDevice, fs.ModeDevice | fs.ModeCharDevice, fs.ModeNamedPipe, fs.ModeDir, fs.ModeSymlink, fs.ModeSocket} {
+		m := &fakeMetadata{info: modeInfo{mode}}
+		_, err := openChecked("/fixture", from(m), checkRegularInfo)
+		if err == nil || m.dataOpens != 0 || m.closes != 1 {
+			t.Fatalf("strict policy opened a nonregular object: mode=%v metadata=%+v err=%v", mode, m, err)
+		}
+	}
+}
+
 func regularInfo(t *testing.T) fs.FileInfo {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "fixture")

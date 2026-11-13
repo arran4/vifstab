@@ -65,7 +65,28 @@ func checkInfo(info fs.FileInfo) error {
 // could be retargeted after checking. Symlinks retain their normal meaning.
 func Open(path string) (fs.File, error) { return open(path, openMetadata) }
 
+// OpenRegularNoFollow is the stricter policy for history/metadata files whose
+// existing contract rejects streams and final symlinks. Parent links keep their
+// normal meaning. It never opens an unclassified object for data.
+func OpenRegularNoFollow(path string) (fs.File, error) {
+	return openChecked(path, openNoFollowMetadata, checkRegularInfo)
+}
+
+func checkRegularInfo(info fs.FileInfo) error {
+	if err := checkInfo(info); err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("input must be a regular file without a final symlink")
+	}
+	return nil
+}
+
 func open(path string, acquire func(string) (metadata, error)) (fs.File, error) {
+	return openChecked(path, acquire, checkInfo)
+}
+
+func openChecked(path string, acquire func(string) (metadata, error), check func(fs.FileInfo) error) (fs.File, error) {
 	m, err := acquire(path)
 	if err != nil {
 		if m != nil {
@@ -79,7 +100,7 @@ func open(path string, acquire func(string) (metadata, error)) (fs.File, error) 
 	info, err := m.Stat()
 	err = accessError(err)
 	if err == nil {
-		err = checkInfo(info)
+		err = check(info)
 	}
 	if err != nil {
 		return nil, errors.Join(fmt.Errorf("classify text input: %w", err), m.Close())
@@ -98,7 +119,7 @@ func open(path string, acquire func(string) (metadata, error)) (fs.File, error) 
 	opened, err := f.Stat()
 	err = accessError(err)
 	if err == nil {
-		err = checkInfo(opened)
+		err = check(opened)
 	}
 	if err == nil && !os.SameFile(info, opened) {
 		err = fmt.Errorf("text input identity changed")
