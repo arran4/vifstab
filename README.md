@@ -81,6 +81,7 @@ Note: `SUDO_EDITOR` is intentionally ignored because `vifstab` does not infer or
 - `--backup-dir value`: Directory to store RCS backups. If not provided, it defaults to `$XDG_CACHE_HOME/vifstab` or `~/.cache/vifstab` for the current user.
 - `--file value`: File to edit (default: "/etc/fstab")
 - `--generate-manpage`: Generate man page for vifstab to `vifstab.1`
+- `--metadata-policy value`: Metadata preservation policy for save operations (`strict|supported|best-effort`) (default: `strict`). `strict` preserves target file ownership (UID/GID), permissions/mode, and extended attributes (xattrs), refusing replacement and preserving a recovery copy if any attribute cannot be restored. `supported` allows missing xattr filesystem support while strictly enforcing ownership and permissions. `best-effort` applies all preservable metadata and emits user-facing warnings for any attributes that could not be preserved.
 - `--systemd-reload value`: Post-save systemd handling for `/etc/fstab` (`auto|warn|never`) (default: `warn`). `auto` runs `systemctl daemon-reload` only after validation and a committed save; an explicitly saved validation failure is warned instead. `warn` prints a diagnostic; `never` does nothing. In-place formatting of `/etc/fstab` warns conservatively and never reloads automatically.
 - `--verify`: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
 

@@ -153,6 +153,7 @@ func main() {
 		generateManpage bool
 		verifyOnly      bool
 		systemdReload   string
+		metadataPolicy  string
 	)
 
 	flag.StringVar(&backupDir, "backup-dir", "", "Directory to store RCS backups (defaults to a sensible location based on the file being edited and the user running the command)")
@@ -160,6 +161,7 @@ func main() {
 	flag.BoolVar(&generateManpage, "generate-manpage", false, "Generate man page for vifstab to vifstab.1")
 	flag.BoolVar(&verifyOnly, "verify", false, "Verify the file without opening an editor")
 	flag.StringVar(&systemdReload, "systemd-reload", "warn", "Post-save systemd handling for /etc/fstab (auto|warn|never)")
+	flag.StringVar(&metadataPolicy, "metadata-policy", string(config.MetadataPolicyStrict), "Metadata preservation policy for save operations (strict|supported|best-effort)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", os.Args[0])
@@ -192,6 +194,14 @@ func main() {
 		cfg.SystemdReload = config.SystemdReloadAction(systemdReload)
 	default:
 		fmt.Fprintf(os.Stderr, "Error: invalid --systemd-reload value '%s'. Allowed values are: auto, warn, never\n", systemdReload)
+		os.Exit(1)
+	}
+
+	switch config.MetadataPolicy(metadataPolicy) {
+	case config.MetadataPolicyStrict, config.MetadataPolicySupported, config.MetadataPolicyBestEffort:
+		cfg.MetadataPolicy = config.MetadataPolicy(metadataPolicy)
+	default:
+		fmt.Fprintf(os.Stderr, "Error: invalid --metadata-policy value '%s'. Allowed values are: strict, supported, best-effort\n", metadataPolicy)
 		os.Exit(1)
 	}
 

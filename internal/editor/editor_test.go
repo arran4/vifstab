@@ -28,6 +28,9 @@ type mockFS struct {
 
 	faults       map[string]error
 	faultTrigger map[string]bool
+	xattrs       map[string]map[string][]byte
+	uids         map[string]int
+	gids         map[string]int
 }
 
 func (m *mockFS) rawReadFile(name string) ([]byte, error) {
@@ -165,6 +168,67 @@ func (t *mockTempFile) Chmod(mode os.FileMode) error {
 	return nil
 }
 
+func (t *mockTempFile) Chown(uid, gid int) error {
+	if t.closed {
+		return fmt.Errorf("file closed")
+	}
+	if err := t.mfs.injectFault(getOpContext("temp.chown", t.name), t.name); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *mockFS) Chown(name string, uid, gid int) error {
+	if err := m.injectFault(getOpContext("chown", name), name); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *mockFS) Listxattr(path string) ([]string, error) {
+	if err := m.injectFault(getOpContext("listxattr", path), path); err != nil {
+		return nil, err
+	}
+	path = normalizeMockPath(path)
+	if m.xattrs == nil {
+		return nil, nil
+	}
+	attrs := m.xattrs[path]
+	var res []string
+	for k := range attrs {
+		res = append(res, k)
+	}
+	return res, nil
+}
+
+func (m *mockFS) Getxattr(path, name string) ([]byte, error) {
+	if err := m.injectFault(getOpContext("getxattr", path), path); err != nil {
+		return nil, err
+	}
+	path = normalizeMockPath(path)
+	if m.xattrs != nil && m.xattrs[path] != nil {
+		if val, ok := m.xattrs[path][name]; ok {
+			return val, nil
+		}
+	}
+	return nil, os.ErrNotExist
+}
+
+func (m *mockFS) Setxattr(path, name string, value []byte) error {
+	if err := m.injectFault(getOpContext("setxattr", path), path); err != nil {
+		return err
+	}
+	path = normalizeMockPath(path)
+	if m.xattrs == nil {
+		m.xattrs = make(map[string]map[string][]byte)
+	}
+	if m.xattrs[path] == nil {
+		m.xattrs[path] = make(map[string][]byte)
+	}
+	m.xattrs[path][name] = value
+	return nil
+}
+
 func (t *mockTempFile) Sync() error {
 	if t.closed {
 		return fmt.Errorf("file closed")
@@ -187,14 +251,18 @@ func (m *mockFS) CreateTemp(dir, pattern string) (TempFile, error) {
 type dummyFileInfo struct {
 	mode     os.FileMode
 	identity any
+	uid      int
+	gid      int
+	hasUID   bool
 }
 
-func (d dummyFileInfo) Name() string       { return "dummy" }
-func (d dummyFileInfo) Size() int64        { return 0 }
-func (d dummyFileInfo) Mode() os.FileMode  { return d.mode }
-func (d dummyFileInfo) ModTime() time.Time { return time.Time{} }
-func (d dummyFileInfo) IsDir() bool        { return false }
-func (d dummyFileInfo) Sys() interface{}   { return d.identity }
+func (d dummyFileInfo) Name() string              { return "dummy" }
+func (d dummyFileInfo) Size() int64               { return 0 }
+func (d dummyFileInfo) Mode() os.FileMode         { return d.mode }
+func (d dummyFileInfo) ModTime() time.Time        { return time.Time{} }
+func (d dummyFileInfo) IsDir() bool               { return false }
+func (d dummyFileInfo) Sys() interface{}          { return d.identity }
+func (d dummyFileInfo) MockSys() (int, int, bool) { return d.uid, d.gid, d.hasUID }
 
 func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 	if err := m.injectFault(getOpContext("stat", name), name); err != nil {
@@ -202,8 +270,19 @@ func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 	}
 	name = normalizeMockPath(name)
 	if f, ok := m.mfs[name]; ok {
-		// Return a dummy stat with the file mode
-		return dummyFileInfo{mode: f.Mode, identity: f}, nil
+		uid, gid := 0, 0
+		hasUID := true
+		if m.uids != nil {
+			if u, ok := m.uids[name]; ok {
+				uid = u
+			}
+		}
+		if m.gids != nil {
+			if g, ok := m.gids[name]; ok {
+				gid = g
+			}
+		}
+		return dummyFileInfo{mode: f.Mode, identity: f, uid: uid, gid: gid, hasUID: hasUID}, nil
 	}
 	return nil, os.ErrNotExist
 }

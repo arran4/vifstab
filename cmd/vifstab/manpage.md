@@ -4,7 +4,7 @@
 vifstab - Edit fstab files with linting and versioning
 
 ## SYNOPSIS
-vifstab [--backup-dir=<value>] [--file=<value>] [--generate-manpage] [--systemd-reload=<value>] [--verify] [--help|-h]
+vifstab [--backup-dir=<value>] [--file=<value>] [--generate-manpage] [--metadata-policy=<value>] [--systemd-reload=<value>] [--verify] [--help|-h]
 vifstab diagram <device>
 vifstab format [--file=<value>]
 vifstab uefi <device> <mountpoint>
@@ -33,6 +33,8 @@ editing and in-place formatting paths must not yet be treated as production-safe
 **--file**="": The specific file to edit. (default: "/etc/fstab")
 
 **--generate-manpage**: Generates this man page to `vifstab.1` in the current directory.
+
+**--metadata-policy**="strict": Metadata preservation policy for save operations (strict|supported|best-effort). `strict` requires target file ownership (UID/GID), permissions/mode, and extended attributes (xattrs) to be preserved exactly, refusing replacement and leaving edited content at a reported recovery path if any metadata cannot be restored. `supported` permits filesystems lacking xattr support while strictly enforcing ownership and permissions. `best-effort` preserves whatever metadata the environment permits and outputs warning diagnostics for unapplied attributes.
 
 **--systemd-reload**="warn": Post-save systemd handling for `/etc/fstab` (auto|warn|never). `auto` runs `systemctl daemon-reload` only after blocking validation succeeds and the file and backup are committed. If blocking validation is overridden, a diagnostic is printed instead of reloading. `warn` prints a diagnostic without reloading. `never` takes no systemd action and prints no systemd diagnostic. A reload failure is reported after the saved fstab is left in place. In-place formatting of `/etc/fstab` uses the conservative diagnostic and never reloads automatically.
 
