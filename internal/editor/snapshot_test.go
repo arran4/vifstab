@@ -3,6 +3,7 @@ package editor
 import (
 	"bytes"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,8 +115,8 @@ func TestStaleEditFixtures(t *testing.T) {
 				if err != nil || !bytes.Equal(got, files["edited"]) {
 					t.Fatalf("save = %q %v", got, err)
 				}
-				if _, err := os.Stat(filepath.Join(backup, "fstab,v")); err != nil {
-					t.Fatalf("missing successful revision: %v", err)
+				if !hasRCSArchive(backup) {
+					t.Fatalf("missing successful revision under %s", backup)
 				}
 				return
 			}
@@ -339,4 +340,19 @@ func TestRecoveryWriteFailuresRemoveIncompleteCopies(t *testing.T) {
 			}
 		})
 	}
+}
+
+func hasRCSArchive(dir string) bool {
+	found := false
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(d.Name(), ",v") {
+			found = true
+			return fs.SkipAll
+		}
+		return nil
+	})
+	return found
 }
