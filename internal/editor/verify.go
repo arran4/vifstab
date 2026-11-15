@@ -43,7 +43,8 @@ func VerifyAndLint(cfg config.Config, api rules.API) ([]rules.ValidationIssue, e
 	}
 
 	// Run rules
-	return lintEntries(entries, api)
+	ctx := rules.WithTargetFstab(context.Background(), cfg.FilePath)
+	return lintEntriesWithContext(ctx, entries, api)
 }
 
 // lintEntries validates a list of fstab entries against all registered rules.

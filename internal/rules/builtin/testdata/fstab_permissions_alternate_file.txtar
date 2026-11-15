@@ -1,0 +1,11 @@
+-- options.txt --
+rule=fstab_permissions
+format=level_prefix
+-- input/etc/fstab --
+LABEL=root / ext4 defaults 0 1
+-- cache --
+fstab_path=/tmp/custom_fstab
+fstab_mode=0644
+fstab_uid=1000
+fstab_gid=1000
+-- issues --
