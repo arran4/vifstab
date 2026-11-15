@@ -105,6 +105,17 @@ func TestFstabPermissionsRule(t *testing.T) {
 			wantIssues: 0,
 		},
 		{
+			name:       "alternate path ending in /etc/fstab is not system fstab",
+			targetPath: "/tmp/test/etc/fstab",
+			info: rules.FileInfoResult{
+				State: rules.Exists,
+				Mode:  0644,
+				UID:   &userUID,
+				GID:   &userGID,
+			},
+			wantIssues: 0,
+		},
+		{
 			name:       "alternate file world-writable",
 			targetPath: "/tmp/my_fstab",
 			info: rules.FileInfoResult{
@@ -171,6 +182,31 @@ func TestFstabPermissionsRule(t *testing.T) {
 				t.Errorf("line 2 duplicated %d issues, want 0", len(issues2))
 			}
 		})
+	}
+}
+
+func TestFstabPermissionsRule_ValidateFile_EmptyFstab(t *testing.T) {
+	rule := &builtin.FstabPermissionsRule{}
+	rootUID := 0
+	rootGID := 0
+	api := &testFileInfoAPI{
+		info: rules.FileInfoResult{
+			State: rules.Exists,
+			Mode:  0666,
+			UID:   &rootUID,
+			GID:   &rootGID,
+		},
+	}
+	ctx := rules.WithTargetFstab(context.Background(), "/etc/fstab")
+	issues, err := rule.ValidateFile(ctx, api)
+	if err != nil {
+		t.Fatalf("ValidateFile failed: %v", err)
+	}
+	if len(issues) != 1 {
+		t.Fatalf("got %d issues, want 1", len(issues))
+	}
+	if !contains(issues[0].Message, "world-writable") {
+		t.Fatalf("unexpected message: %q", issues[0].Message)
 	}
 }
 

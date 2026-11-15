@@ -2,6 +2,7 @@ package editor
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -184,7 +185,8 @@ func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 		}
 
 		// Run rules
-		allIssues, err := lintEntries(entries, api)
+		ctx := rules.WithTargetFstab(context.Background(), cfg.FilePath)
+		allIssues, err := lintEntriesWithContext(ctx, entries, api)
 		if err != nil {
 			return err
 		}

@@ -50,11 +50,12 @@ Linux 7.3 deprecates the EXT4 `data=journal` mount option. When the running kern
 
 ## TARGET OWNERSHIP AND PERMISSIONS VERIFICATION
 
-During verification and editing, `vifstab` inspects the target file's ownership, mode bits, and ACL write exposure:
-- A system target such as `/etc/fstab` triggers a warning if it is world-writable, owned by an unexpected non-root user, group-writable by a non-root group, or has ACL write access granted to non-root users.
+During verification and editing, `vifstab` inspects the selected effective target (`--file`, following symlinks via `stat`) once per file—including empty fstab files—for ownership, mode bits, and Linux POSIX access ACLs (`system.posix_acl_access`):
+- A system target (`/etc/fstab`) triggers a warning if it is world-writable, owned by an unexpected non-root user, group-writable by a non-root group, or has ACL write access granted to non-root users.
 - Alternate user-specified fstab paths are warned if world-writable or if write ACLs expose write access to non-owners.
 - Secure configurations such as `0644` or `0600` root:root ownership produce no warnings.
-- Unavailable or unreadable metadata remains unknown rather than emitting false positives.
+- Unavailable, unsupported, or unreadable metadata (including ACLs) remains unknown rather than emitting false positives, and `vifstab` never modifies permissions automatically.
+- Permission issues are reported at `warning` severity, which is blocking in `vifstab`: read-only verification exits non-zero, and `vifstab edit` prompts `(e)dit again, (c)ontinue and save anyway, (q)uit without saving`.
 
 
 The default `data=ordered` mode is not an equivalent durability replacement for `data=journal`; review data-integrity implications before changing the option. `vifstab` never rewrites the mount mode automatically.

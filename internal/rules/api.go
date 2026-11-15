@@ -194,6 +194,9 @@ func (a ActualFS) GetFileInfo(path string) (FileInfoResult, error) {
 		Mode:  info.Mode(),
 	}
 	extractOSFileInfo(info, &res)
+	if a.OS == nil {
+		extractLinuxACL(path, &res)
+	}
 	return res, nil
 }
 

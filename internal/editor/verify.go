@@ -62,8 +62,20 @@ func lintEntriesWithContext(ctx context.Context, entries []*rules.FstabEntry, ap
 	memoized := &memoizedAPI{API: api}
 
 	var allIssues []rules.ValidationIssue
+	for _, r := range allRules {
+		if fr, ok := r.(rules.FileRule); ok {
+			issues, err := fr.ValidateFile(ctx, memoized)
+			if err != nil {
+				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)
+			}
+			allIssues = append(allIssues, issues...)
+		}
+	}
 	for _, entry := range entries {
 		for _, r := range allRules {
+			if _, ok := r.(rules.FileRule); ok {
+				continue
+			}
 			issues, err := r.Validate(ctx, memoized, entry)
 			if err != nil {
 				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)
