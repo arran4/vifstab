@@ -63,7 +63,21 @@ type API interface {
 	CheckGroupExists(gid int) ExistState
 	GetBlockDevices() (BlockDeviceInventory, error)
 	ResolveDevicePath(dev string) string
+}
+
+// FileInfoProvider is an optional interface implemented by API providers that
+// can observe target fstab file metadata (ownership, permissions, ACLs).
+type FileInfoProvider interface {
 	GetFileInfo(path string) (FileInfoResult, error)
+}
+
+// GetFileInfo returns target file metadata from api when it implements
+// FileInfoProvider, or Unknown otherwise.
+func GetFileInfo(api API, path string) (FileInfoResult, error) {
+	if p, ok := api.(FileInfoProvider); ok {
+		return p.GetFileInfo(path)
+	}
+	return FileInfoResult{State: Unknown}, nil
 }
 
 type FileInfoResult struct {

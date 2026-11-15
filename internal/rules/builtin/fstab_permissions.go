@@ -52,7 +52,7 @@ func (r *FstabPermissionsRule) validateTarget(ctx context.Context, api rules.API
 		targetPath = "/etc/fstab"
 	}
 
-	info, err := api.GetFileInfo(targetPath)
+	info, err := rules.GetFileInfo(api, targetPath)
 	if err != nil || info.State != rules.Exists {
 		// Unknown or unavailable metadata means unknown, not insecure or safe.
 		return nil, nil

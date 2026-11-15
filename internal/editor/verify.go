@@ -26,6 +26,10 @@ func (m *memoizedAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
 	return m.inv, m.err
 }
 
+func (m *memoizedAPI) GetFileInfo(path string) (rules.FileInfoResult, error) {
+	return rules.GetFileInfo(m.API, path)
+}
+
 // VerifyAndLint reads the given file and lints it against all registered rules.
 // It returns a slice of all suggestions (warnings, errors, etc.) and an error if a technical failure occurred.
 func VerifyAndLint(cfg config.Config, api rules.API) ([]rules.ValidationIssue, error) {
