@@ -107,6 +107,24 @@ func (m *mockFS) Rename(oldpath, newpath string) error {
 	if f, ok := m.mfs[oldpath]; ok {
 		m.mfs[newpath] = f
 		delete(m.mfs, oldpath)
+		if m.uids != nil {
+			if u, ok := m.uids[oldpath]; ok {
+				m.uids[newpath] = u
+				delete(m.uids, oldpath)
+			}
+		}
+		if m.gids != nil {
+			if g, ok := m.gids[oldpath]; ok {
+				m.gids[newpath] = g
+				delete(m.gids, oldpath)
+			}
+		}
+		if m.xattrs != nil {
+			if x, ok := m.xattrs[oldpath]; ok {
+				m.xattrs[newpath] = x
+				delete(m.xattrs, oldpath)
+			}
+		}
 		return nil
 	}
 	return os.ErrNotExist
@@ -151,7 +169,11 @@ func (t *mockTempFile) Close() error {
 		return err
 	}
 	t.closed = true
-	return t.mfs.WriteFile(t.name, t.data, 0600)
+	mode := os.FileMode(0600)
+	if f, ok := t.mfs.mfs[normalizeMockPath(t.name)]; ok {
+		mode = f.Mode
+	}
+	return t.mfs.WriteFile(t.name, t.data, mode)
 }
 
 func (t *mockTempFile) Name() string {
@@ -165,6 +187,10 @@ func (t *mockTempFile) Chmod(mode os.FileMode) error {
 	if err := t.mfs.injectFault(getOpContext("temp.chmod", t.name), t.name); err != nil {
 		return err
 	}
+	norm := normalizeMockPath(t.name)
+	if f, ok := t.mfs.mfs[norm]; ok {
+		f.Mode = mode
+	}
 	return nil
 }
 
@@ -175,6 +201,15 @@ func (t *mockTempFile) Chown(uid, gid int) error {
 	if err := t.mfs.injectFault(getOpContext("temp.chown", t.name), t.name); err != nil {
 		return err
 	}
+	norm := normalizeMockPath(t.name)
+	if t.mfs.uids == nil {
+		t.mfs.uids = make(map[string]int)
+	}
+	if t.mfs.gids == nil {
+		t.mfs.gids = make(map[string]int)
+	}
+	t.mfs.uids[norm] = uid
+	t.mfs.gids[norm] = gid
 	return nil
 }
 
@@ -182,6 +217,15 @@ func (m *mockFS) Chown(name string, uid, gid int) error {
 	if err := m.injectFault(getOpContext("chown", name), name); err != nil {
 		return err
 	}
+	norm := normalizeMockPath(name)
+	if m.uids == nil {
+		m.uids = make(map[string]int)
+	}
+	if m.gids == nil {
+		m.gids = make(map[string]int)
+	}
+	m.uids[norm] = uid
+	m.gids[norm] = gid
 	return nil
 }
 
@@ -229,6 +273,17 @@ func (m *mockFS) Setxattr(path, name string, value []byte) error {
 	return nil
 }
 
+func (m *mockFS) Removexattr(path, name string) error {
+	if err := m.injectFault(getOpContext("removexattr", path), path); err != nil {
+		return err
+	}
+	path = normalizeMockPath(path)
+	if m.xattrs != nil && m.xattrs[path] != nil {
+		delete(m.xattrs[path], name)
+	}
+	return nil
+}
+
 func (t *mockTempFile) Sync() error {
 	if t.closed {
 		return fmt.Errorf("file closed")
@@ -244,8 +299,12 @@ func (m *mockFS) CreateTemp(dir, pattern string) (TempFile, error) {
 		return nil, err
 	}
 	dir = normalizeMockPath(dir)
-	name := filepath.Join(dir, strings.ReplaceAll(pattern, "*", "mock"))
-	return &mockTempFile{name: normalizeMockPath(name), mfs: m}, nil
+	name := normalizeMockPath(filepath.Join(dir, strings.ReplaceAll(pattern, "*", "mock")))
+	if m.mfs == nil {
+		m.mfs = make(fstest.MapFS)
+	}
+	m.mfs[name] = &fstest.MapFile{Mode: 0600}
+	return &mockTempFile{name: name, mfs: m}, nil
 }
 
 type dummyFileInfo struct {

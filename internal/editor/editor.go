@@ -37,6 +37,11 @@ type FS interface {
 	CreateTemp(dir, pattern string) (TempFile, error)
 	Remove(name string) error
 	SyncDir(name string) error
+	Chown(name string, uid, gid int) error
+	Getxattr(path, name string) ([]byte, error)
+	Setxattr(path, name string, value []byte) error
+	Listxattr(path string) ([]string, error)
+	Removexattr(path, name string) error
 }
 
 type osFS struct{}
@@ -67,6 +72,7 @@ func (osFS) Chown(name string, uid, gid int) error          { return os.Chown(na
 func (osFS) Getxattr(path, name string) ([]byte, error)     { return osGetxattr(path, name) }
 func (osFS) Setxattr(path, name string, value []byte) error { return osSetxattr(path, name, value) }
 func (osFS) Listxattr(path string) ([]string, error)        { return osListxattr(path) }
+func (osFS) Removexattr(path, name string) error            { return osRemovexattr(path, name) }
 
 var DefaultFS FS = osFS{}
 
@@ -247,6 +253,9 @@ func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 
 	res, err := commitEditSnapshot(cfg, content, blockingValidationPassed, deps, &original)
 	if err != nil && !res.Saved {
+		if res.RecoveryPath != "" {
+			return &RecoveryError{Path: res.RecoveryPath, Err: err}
+		}
 		path, recoveryErr := preserveRecovery(content, deps.FS)
 		if recoveryErr != nil {
 			// Keep the original editor copy as a last resort if a new private
@@ -292,6 +301,7 @@ type SaveResult struct {
 	Saved             bool
 	VersioningEnabled bool
 	Versioned         bool
+	RecoveryPath      string
 	Warnings          []string
 	Err               error
 }
@@ -345,6 +355,7 @@ func saveAndVersion(cfg config.Config, content []byte, fsLayer FS, original *des
 			_ = fsLayer.Remove(tmpDest.Name())
 			recPath, recErr := preserveRecovery(content, fsLayer)
 			if recErr == nil {
+				res.RecoveryPath = recPath
 				res.Err = fmt.Errorf("%w; edited content recovered at %q", metaErr, recPath)
 			} else {
 				res.Err = metaErr

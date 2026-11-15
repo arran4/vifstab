@@ -49,3 +49,7 @@ func osGetxattr(path, name string) ([]byte, error) {
 func osSetxattr(path, name string, value []byte) error {
 	return unix.Setxattr(path, name, value, 0)
 }
+
+func osRemovexattr(path, name string) error {
+	return unix.Removexattr(path, name)
+}
