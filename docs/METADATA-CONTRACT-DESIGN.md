@@ -1,9 +1,12 @@
-# Metadata preservation contract for issue #155 — draft
+# Metadata preservation contract for issue #155 — owner direction agreed, implementation pending
 
-This is a contract choice for owner review, not an implemented preservation
-guarantee. Current saves replace the inode and preserve only ordinary permission
-bits; ownership, special bits, ACLs, xattrs and security labels can be lost.
-Issue #155 stays open. No default policy, CLI flag or privilege behavior changes.
+**Owner decision: 15 November 2026.** Default to a strict metadata-preservation
+policy, with explicit, documented relaxed modes. This document defines the
+behaviour to implement; it is **not** an implemented preservation guarantee.
+Current saves replace the inode and preserve only ordinary permission bits;
+ownership, special bits, ACLs, xattrs and security labels can be lost.
+Issue #155 remains open. No default policy, CLI flag or privilege behaviour has
+changed in this design-only PR.
 
 ## Implemented foundations
 
@@ -20,7 +23,7 @@ Issue #155 stays open. No default policy, CLI flag or privilege behavior changes
   feature a mandatory linear stack.
 
 These are working, tested path/descriptor foundations. Metadata capture/copy and
-production save integration are still required after choosing the contract.
+production save integration are still required under this agreed policy.
 
 ## Why a successful list is insufficient
 
@@ -39,20 +42,39 @@ list or an attribute disappearing between list and get must not silently become
 an empty metadata set. No getfattr/getfacl/setfattr/chattr subprocess, mounting,
 credential switch or privilege acquisition belongs in this implementation.
 
-## Mutually exclusive default contracts
+## Owner-selected mode hierarchy
 
-| Choice | Promise | Consequence |
+These modes are **complementary**, not competing design PRs. Exact spelling is
+subject to CLI integration, but an interface like
+`--metadata-policy=strict|supported|best-effort` is a candidate for explicit
+`vifstab edit` and `format --in-place` paths.
+
+| Mode | Intended contract | Failure behaviour |
 |---|---|---|
-| Require proven completeness | Reproduce every required metadata class only after obtaining a complete supported observation; otherwise refuse replacement | Ordinary Linux list calls do not themselves establish this proof. Refusal can include root processes. A useful backend proof/scope must be defined; do not pretend this is an already functioning root preflight. |
-| Preserve only metadata visible to the caller | Reproduce uid/gid, required mode bits and every observed supported attribute; fail on any required observed-copy/verification error | Explicitly cannot promise preservation of hidden/unlisted metadata. This is a narrower guarantee and requires owner acceptance before it becomes normal behavior. |
+| **Strict (default)** | Preserve and verify the defined *required supported* ownership, group, ordinary/special mode bits, ACL, xattr and security-label attributes of the original file. Never claim that an ordinary successful xattr enumeration proves global completeness. Explicitly state coverage and unknowns. | If required metadata is unavailable, cannot be safely reproduced or cannot be verified, refuse replacement before rename; retain a recoverable edited copy and explain the exact unknown or loss risk. Never silently downgrade. |
+| **Preserve supported** | Reproduce and verify all metadata actually visible to the caller in the documented supported classes. State that hidden/unlisted metadata cannot be guaranteed. | Fail on any supported *observed* copy/verification failure; allow a deliberate user choice where the only limitation is unprovable completeness, with a clear diagnostic. |
+| **Best effort (explicit opt-in)** | Preserve what the process can, enumerate what could not be copied/verified, and report loss/uncertainty instead of implying success. | Warn with specifics; any irrecoverable corruption of the destination or required safety barriers still refuses save. No invisible automatic fallback. |
 
-Neither choice is silently selected here. Do not implement the second while
-describing it as complete preservation. Do not implement the first as a surprise
-that disables all ordinary editing. No number of successful fixture cases can
-settle the product contract. The prior owner question about these choices remains
-unanswered.
+A successful listing or UID 0 alone does not prove global visibility. Strict
+mode must **not** pretend it has stronger evidence than the kernel supplies.
+If a defined strict requirement cannot be met in a particular environment,
+the tool should provide an actionable explanation and an *explicit* choice of a
+less strict mode rather than simply disabling editor use without explanation.
+No mode can mount, escalate privileges, clear immutable flags, silently strip
+security controls or spawn external xattr/ACL helper tools.
 
-## Common transaction after a choice
+**fstab target versus RCS history:** Apply strict by default to the actual
+fstab target, especially `/etc/fstab`. A backup archive may have a less
+restrictive **inode metadata preservation** policy, with a warning and an
+optional strict policy; it must *still* preserve content integrity, identity,
+collision isolation, revisions, atomicity and recoverability. Do not conflate
+archive metadata policy with permission to lose revision history.
+
+**Independent verification rule:** [issue #202](https://github.com/arran4/vifstab/issues/202)
+tracks a read-only advisory for suspicious file ownership/mode/ACL write
+exposure. It does not change permissions or replace save-time preservation.
+
+## Transaction common to all supported policies
 
 1. Reuse the effective target; observe metadata through an injected editor
    provider on a checked regular descriptor. Record observation scope and file
@@ -71,7 +93,7 @@ unanswered.
    metadata, ACL changes can affect mode masks, and
    [chmod(2)](https://man7.org/linux/man-pages/man2/chmod.2.html) can silently clear
    a set-group-ID bit in some contexts. A syscall success alone is not proof.
-6. Any required unknown/copy/verification failure stops before replacement. Close
+6. Under strict mode, any required unknown/copy/verification failure stops before replacement; reduced modes retain their explicitly defined refusal and warning rules. Close
    and remove incomplete destination temporaries; retain edited-content recovery
    through the editor workflow. Do not create a revision or run systemctl.
 7. Sync data and metadata, close, recheck the selected source observations and
