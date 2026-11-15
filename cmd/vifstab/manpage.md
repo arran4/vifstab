@@ -21,7 +21,10 @@ If the validation fails (for example, if a mount point does not exist or a files
 
 Saves preserve a configured symlink and replace its resolved regular-file
 target. Broken links, loops and missing parent directories are rejected.
-Concurrency, ownership, extended-metadata and RCS limitations remain; the
+Editing compares the pre-editor destination snapshot immediately before rename;
+detected changes refuse the save and retain edited content at a reported recovery
+path. This is optimistic checking; races, in-place formatting conflicts,
+ownership, extended-metadata and RCS limitations remain. The
 editing and in-place formatting paths must not yet be treated as production-safe.
 
 ## OPTIONS
