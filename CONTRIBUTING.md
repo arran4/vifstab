@@ -72,8 +72,18 @@ Use the bug or TXTAR submission template for non-sensitive cases. First follow
 automatically safe to publish. Use [SECURITY.md](SECURITY.md) for vulnerabilities
 or accidentally exposed credentials; do not attach them to a public issue.
 
-Link the relevant issue, explain the behavioral change, and record focused/full
-test results and limitations. Keep unrelated refactors separate. Update README
+Link at least one existing issue to every PR, including documentation/design
+PRs. Each issue has **one** designated resolving PR, and each implementation
+PR may resolve **at most one** issue. Use exactly one `Fixes #N`,
+`Closes #N`, or `Resolves #N` keyword when the issue's complete acceptance
+criteria are satisfied; use `Refs #N` for dependencies, partial work,
+related fixes, and design-only PRs. Do not add competing closing keywords
+for the same issue in stacked or overlapping PR descriptions. When the work
+spans several PRs, designate one final closer and leave the issue open until
+that PR is integrated and verified. Do not mark a speculative issue complete.
+
+Explain the behavioral change, and record focused/full test results and
+limitations. Keep unrelated refactors separate. Update README
 and manual together when changing the CLI, and regenerate generated files from
 their authoritative definitions. Work through a draft PR while scope/tests are
 unfinished, then request review. Merge, visibility, release and announcement
