@@ -223,7 +223,7 @@ func TestPublicWorkflowPermissions(t *testing.T) {
 				t.Errorf("formatting scopes: %v", permissions)
 			}
 		case "goreleaser":
-			if len(writers) != 1 || writers["contents"] != "write" {
+			if len(writers) != 2 || writers["contents"] != "write" || writers["packages"] != "write" {
 				t.Errorf("release scopes: %v", permissions)
 			}
 		default:
@@ -283,6 +283,8 @@ func TestPublicWorkflowPermissions(t *testing.T) {
 		{"workflow_dispatch", "refs/heads/main", "lint-fix", false, false, false},
 		{"workflow_dispatch", "refs/heads/main", "build", true, false, false},
 		{"workflow_dispatch", "refs/heads/main", "release-patch", false, false, true},
+		{"workflow_dispatch", "refs/heads/feature", "release-patch", false, false, false},
+		{"workflow_dispatch", "refs/heads/main", "release-test", false, false, false},
 	}
 	for _, tc := range cases {
 		for _, name := range []string{"go-fmt-pr", "goreleaser"} {

@@ -44,3 +44,8 @@ merges, tags, releases and announcements remain explicit owner actions.
 References: [GitHub secure-use guidance](https://docs.github.com/en/actions/reference/security/secure-use),
 [workflow permissions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions),
 and [private vulnerability reporting](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository).
+
+
+## Container release policy
+
+Only the trusted `goreleaser` release job has `packages: write` for GHCR. The manual snapshot job and separate PR container smoke workflow use read-only repository permissions and never log in to GHCR. Pin actions, reuse GoReleaser's exact binary artifacts, and verify image manifests after publication. A package's anonymous pull visibility is an explicit first-release owner check.

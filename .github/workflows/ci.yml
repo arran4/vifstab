@@ -314,19 +314,14 @@ jobs:
           gh pr create --title "ci: go fmt" --body "Automated go fmt from manual dispatch." --base main --head "$BRANCH" --label "ci-autofix"
 
   goreleaser:
-    # Tag/manual publishing needs repository release writes, not other scopes.
+    # Only real tag releases or explicit dispatches on trusted branches publish.
     permissions:
       contents: write
+      packages: write
     name: GoReleaser
     needs: [route, go-test, go-vet, prepare-release-tag]
-    # A v-tag push intentionally skips prepare-release-tag. An explicit status
-    # check prevents Actions' implicit success() from skipping this job too.
     if: >-
-      ${{ !cancelled() && needs.route.result == 'success' &&
-          needs.go-test.result == 'success' && needs.go-vet.result == 'success' &&
-          needs.route.outputs.run_release == 'true' &&
-          ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.prepare-release-tag.result == 'skipped') ||
-           (github.event_name == 'workflow_dispatch' && startsWith(inputs.mode, 'release-') && needs.prepare-release-tag.result == 'success')) }}
+      ${{ !cancelled() && needs.route.result == 'success' && needs.go-test.result == 'success' && needs.go-vet.result == 'success' && needs.route.outputs.run_release == 'true' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.prepare-release-tag.result == 'skipped') || (github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && startsWith(inputs.mode, 'release-') && !(inputs.mode == 'release-test' || inputs.mode == 'release-rc' || inputs.mode == 'release-alpha') && needs.prepare-release-tag.result == 'success')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -335,24 +330,70 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          # Source compatibility checks above retain the Go1.25 module minimum.
-          # Distribution binaries use a patched supported toolchain.
           go-version: '1.26.x'
       - name: Verify distribution license notices
         run: python3 scripts/update-notices.py --check
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
       - name: Tag commit for release (workflow_dispatch)
-        if: ${{ github.event_name == 'workflow_dispatch' && startsWith(inputs.mode, 'release-') }}
+        if: github.event_name == 'workflow_dispatch'
         env:
           VIFSTAB_RELEASE_TAG: ${{ needs.prepare-release-tag.outputs.release_tag }}
         run: git tag -- "$VIFSTAB_RELEASE_TAG"
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
         with:
           distribution: goreleaser
           version: 'v2.20.0'
-          args: >-
-            release --clean
-            ${{ (github.event_name == 'workflow_dispatch' && (inputs.mode == 'release-test' || inputs.mode == 'release-rc' || inputs.mode == 'release-alpha')) && '--snapshot' || '' }}
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ needs.prepare-release-tag.outputs.release_tag || github.ref_name }}
+      - name: Verify published multi-platform manifest
+        env:
+          VIFSTAB_RELEASE_TAG: ${{ needs.prepare-release-tag.outputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools inspect --raw "ghcr.io/arran4/vifstab:$VIFSTAB_RELEASE_TAG" |
+            python3 -c 'import json,sys; m=json.load(sys.stdin); a={x.get("platform",{}).get("architecture") for x in m["manifests"] if x.get("platform",{}).get("os")=="linux"}; assert {"amd64","arm64"} <= a, a'
+
+  goreleaser-snapshot:
+    # Manual test/rc/alpha modes build local snapshots only.
+    permissions:
+      contents: read
+    name: GoReleaser snapshot
+    needs: [route, go-test, go-vet, prepare-release-tag]
+    if: >-
+      ${{ !cancelled() && needs.route.result == 'success' && needs.go-test.result == 'success' && needs.go-vet.result == 'success' && needs.route.outputs.run_release == 'true' && github.event_name == 'workflow_dispatch' && (inputs.mode == 'release-test' || inputs.mode == 'release-rc' || inputs.mode == 'release-alpha') && needs.prepare-release-tag.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.26.x'
+      - name: Verify distribution license notices
+        run: python3 scripts/update-notices.py --check
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Tag commit for release (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          VIFSTAB_RELEASE_TAG: ${{ needs.prepare-release-tag.outputs.release_tag }}
+        run: git tag -- "$VIFSTAB_RELEASE_TAG"
+      - name: Run GoReleaser snapshot
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        with:
+          distribution: goreleaser
+          version: 'v2.20.0'
+          args: release --snapshot --clean
+        env:
+          GORELEASER_CURRENT_TAG: ${{ needs.prepare-release-tag.outputs.release_tag || github.ref_name }}
+      - name: Smoke-test local images
+        run: bash scripts/test-container-images.sh

@@ -32,3 +32,24 @@ archives:
         info: {owner: root, group: root, mode: 0644, mtime: '{{ .CommitDate }}'}
       - src: THIRD_PARTY_NOTICES.md
         info: {owner: root, group: root, mode: 0644, mtime: '{{ .CommitDate }}'}
+
+# A real prerelease is both a GitHub prerelease and a version-tagged OCI image.
+release:
+  prerelease: auto
+dockers_v2:
+  - id: vifstab
+    ids: [vifstab]
+    dockerfile: Dockerfile
+    images: [ghcr.io/arran4/vifstab]
+    tags:
+      - '{{ if .IsSnapshot }}snapshot{{ else }}{{ .Tag }}{{ end }}'
+      - '{{ if and (not .IsSnapshot) (not .Prerelease) }}latest{{ end }}'
+    platforms: [linux/amd64, linux/arm64]
+    extra_files: [LICENSE, THIRD_PARTY_NOTICES.md]
+    labels:
+      org.opencontainers.image.title: vifstab
+      org.opencontainers.image.description: Linux fstab verification and formatting
+      org.opencontainers.image.source: https://github.com/arran4/vifstab
+      org.opencontainers.image.version: '{{ .Version }}'
+      org.opencontainers.image.revision: '{{ .FullCommit }}'
+      org.opencontainers.image.licenses: BSD-3-Clause
