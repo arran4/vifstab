@@ -1,0 +1,13 @@
+Resolve link before ..; do not lexically clean the configured path first.
+-- path --
+linked/../fstab
+-- link/linked --
+data/sub
+-- file/data/sub/keep --
+untouched
+-- file/fstab --
+wrong lexical target
+-- new --
+edited
+-- expected/data/fstab --
+edited

@@ -1,0 +1,11 @@
+A link loop is rejected before replacement.
+-- path --
+a
+-- link/a --
+b
+-- link/b --
+a
+-- new --
+edited
+-- error --
+failed to resolve destination

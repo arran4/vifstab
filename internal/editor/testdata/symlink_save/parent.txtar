@@ -1,0 +1,11 @@
+A linked parent directory is preserved.
+-- path --
+linked/fstab
+-- link/linked --
+data
+-- file/data/fstab --
+original
+-- new --
+edited
+-- expected/data/fstab --
+edited
