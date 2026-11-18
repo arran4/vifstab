@@ -1,0 +1,11 @@
+baseURL = "https://arran4.github.io/vifstab/"
+languageCode = "en"
+title = "vifstab"
+disableKinds = ["taxonomy", "term", "RSS"]
+enableRobotsTXT = true
+[outputs]
+home = ["HTML"]
+[markup.goldmark.renderer]
+unsafe = false
+[params]
+description = "Linux fstab verification, editing and versioned backups."

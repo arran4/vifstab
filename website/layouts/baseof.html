@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ if .IsHome }}vifstab — Linux fstab verification{{ else }}{{ .Title }} | vifstab{{ end }}</title>
+<meta name="description" content="{{ .Description | default site.Params.description }}">
+<link rel="canonical" href="{{ .Permalink }}">
+<link rel="stylesheet" href="{{ "css/site.css" | relURL }}">
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header><div class="bar"><a class="brand" href="{{ "" | relURL }}">vifstab</a><span class="tag">Linux filesystem configuration</span><nav aria-label="Project links"><a href="https://github.com/arran4/vifstab">GitHub</a><a href="https://github.com/arran4/vifstab/releases">Releases</a></nav></div></header>
+<div class="shell">
+<aside><nav aria-label="Documentation">
+{{ range site.Data.navigation }}
+<a href="{{ .path | relURL }}">{{ .title }}</a>
+{{ end }}
+</nav></aside>
+<main id="content">{{ block "main" . }}{{ end }}</main>
+</div>
+<footer>Experimental Linux utility · <a href="https://github.com/arran4/vifstab/blob/main/LICENSE">BSD 3-Clause</a> · <a href="{{ "security/" | relURL }}">Security</a></footer>
+</body></html>
