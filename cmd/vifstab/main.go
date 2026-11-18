@@ -14,6 +14,7 @@ import (
 	"github.com/arran4/vifstab/internal/format"
 	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/textinput"
 	"github.com/arran4/vifstab/internal/uefi"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
 )
@@ -85,7 +86,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		var in *os.File
+		var in io.ReadCloser
 		var err error
 
 		// If formatting standard input
@@ -95,11 +96,14 @@ func main() {
 		}
 		if piped {
 			in = os.Stdin
+			if err := textinput.Check(os.Stdin); err != nil {
+				handleError(err)
+			}
 			if *inPlaceFlag {
 				handleError(fmt.Errorf("cannot use -i when reading from standard input"))
 			}
 		} else {
-			in, err = os.Open(*fileFlag)
+			in, err = textinput.Open(*fileFlag)
 			if err != nil {
 				handleError(fmt.Errorf("failed to open file %s: %w", *fileFlag, err))
 			}
