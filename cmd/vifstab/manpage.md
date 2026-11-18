@@ -54,6 +54,10 @@ The default `data=ordered` mode is not an equivalent durability replacement for 
 
 Numeric UID/GID mount options must be between `0` and `4294967294`. Explicitly supported filesystem enum alternatives remain valid. A structurally valid matching local passwd/group record establishes presence; missing, unreadable, malformed or unmatched local data leaves account availability unknown because NSS may use other sources. Unknown and permission-denied observations produce informational diagnostics. Explicit provider/cache observations may still establish absence. No additional account-discovery command or NSS lookup is performed.
 
+## EXPERIMENTAL UEFI OBSERVATIONS
+
+The explicit `uefi` command correlates device and firmware metadata. Missing filesystem type and missing or malformed GPT type remain unknown. A definite `Not ESP` report requires a structurally valid obtained GPT type; otherwise the report shows `GPT role: unknown`. Optional EFI-directory information is attempted only for an already-mounted matching device, with unavailable results unknown. This is not filesystem-content verification for an unmounted device or a bootability guarantee.
+
 ## SEE ALSO
 `fstab(5)`, `mount(8)`, `rcs(1)`
 

@@ -143,6 +143,10 @@ Currently built-in rules check for:
 
 Numeric UID/GID mount options must be between `0` and `4294967294`; an option's explicitly supported enum values remain separate. A valid matching local passwd/group record can establish presence. Missing, unreadable, malformed or unmatched local files cannot establish global absence because NSS may use other sources. These unavailable observations produce informational diagnostics. Explicit provider/cache observations can still establish absence. See [account observation limits](docs/ACCOUNT-OBSERVATIONS.md).
 
+### Experimental UEFI observations
+
+The explicit `uefi <device> <mountpoint>` command correlates canonical device metadata with firmware observations. Missing filesystem metadata and missing or malformed GPT type metadata remain unknown; the report prints `GPT role: unknown` rather than `Not ESP` without a valid type observation. The optional EFI-directory observation is attempted only for an already-mounted matching device and remains unknown when unavailable. This command does not verify filesystem contents on an unmounted device or guarantee bootability.
+
 ## Environment Variables
 
 - `VISUAL` or `EDITOR`: Defines the text editor to use when opening the fstab file. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is not interpreted. Normal editor arguments are supported. Editor commands are executed directly rather than through a shell.
