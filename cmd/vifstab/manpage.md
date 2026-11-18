@@ -15,12 +15,12 @@ vifstab uefi <device> <mountpoint>
 
 `vifstab` does not acquire privileges, nor does it invoke or implement sudo, su, doas, run0, setuid/SUID, runas, or other privilege-management mechanisms. It does not switch or infer user identities. All file reads, file writes, temporary-file operations, editor execution, RCS/versioning operations, backups, and final replacement operations run with the credentials of the `vifstab` process. Arranging sufficient permissions or an elevated invocation context is entirely the caller's responsibility.
 
-Additionally, `vifstab` maintains a version history of the edited file using RCS (Revision Control System) backups, ensuring that you can always recover previous functional states if an error occurs.
+Additionally, `vifstab` can maintain RCS revisions of saved content. This is not a guarantee that earlier functional states are available or restorable: backup identity, concurrency and recovery limitations remain under review, along with destination symlink and metadata handling. Treat editing and in-place formatting as experimental.
 
-If the validation fails (for example, if a mount point does not exist or a filesystem is unknown), `vifstab` categorizes the feedback into Suggestions, Warnings, and Errors. It requires critical Errors to be resolved before saving the modifications, thus preventing a system from becoming unbootable due to a malformed `fstab`.
+Findings have info, warning, security and error levels. Info is non-blocking; warnings, security findings and errors fail verification. Editing prompts on blocking findings, and the caller can explicitly override them. Unavailable observations are not proof of absence. Validation does not guarantee successful boot or safe filesystem contents.
 
 ## OPTIONS
-**--backup-dir**="": Directory to store RCS backups. If omitted, `vifstab` defaults to a sensible location. It checks `$XDG_CACHE_HOME/vifstab`, then `$HOME/.cache/vifstab`, and finally falls back to `/tmp/.vifstab`.
+**--backup-dir**="": Directory to store RCS backups. If omitted, it uses `$XDG_CACHE_HOME/vifstab` or the caller's user-cache directory plus `/vifstab` (normally `$HOME/.cache/vifstab`). If that directory cannot be determined, editing requires an explicit `--backup-dir`; there is no `/tmp/.vifstab` fallback.
 
 **--file**="": The specific file to edit. (default: "/etc/fstab")
 
