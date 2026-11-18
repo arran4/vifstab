@@ -1,0 +1,10 @@
+Executable regression: edit-invalid-mode; default fstab is a build-time fixture.
+-- args.json --
+["edit", "--systemd-reload", "invalid"]
+-- fstab --
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: edit failed: invalid --systemd-reload value "invalid"; expected auto, warn or never

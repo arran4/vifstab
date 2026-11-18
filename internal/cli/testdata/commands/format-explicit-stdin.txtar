@@ -1,0 +1,12 @@
+Executable regression: format-explicit-stdin; default fstab is a build-time fixture.
+-- args.json --
+["format", "--file", "-"]
+-- fstab --
+# file
+-- stdin --
+# pipe
+-- status --
+0
+-- stdout --
+# pipe
+-- stderr --

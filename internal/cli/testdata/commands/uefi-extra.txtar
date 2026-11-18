@@ -1,0 +1,10 @@
+Executable regression: uefi-extra; default fstab is a build-time fixture.
+-- args.json --
+["uefi", "one", "two", "three"]
+-- fstab --
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: expected at most 2 arguments for operands, got 3

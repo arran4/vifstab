@@ -1,52 +1,132 @@
 # vifstab(8)
 
 ## NAME
-vifstab - Edit fstab files with linting and versioning
+
+vifstab - Verify Linux fstab configurations and explicitly edit with linting and RCS
 
 ## SYNOPSIS
-vifstab [--backup-dir=<value>] [--file=<value>] [--generate-manpage] [--systemd-reload=<value>] [--verify] [--help|-h]
-vifstab diagram <device>
-vifstab format [--file=<value>]
-vifstab uefi <device> <mountpoint>
+
+vifstab
+
+vifstab verify [--file PATH]
+
+vifstab edit [--file PATH] [--backup-dir DIR] [--systemd-reload auto|warn|never]
+
+vifstab format [--file PATH|-] [--in-place|-i] [--backup-dir DIR]
+
+vifstab diagram DEVICE
+
+vifstab uefi DEVICE MOUNTPOINT
+
+vifstab manpage [--output vifstab.1]
+
+vifstab version
+
+vifstab help [COMMAND]
 
 ## DESCRIPTION
 
-`vifstab` is a utility designed to safely edit the `/etc/fstab` file (or any alternative `fstab` format file), providing a visudo-like safe editing workflow. It acts as a wrapper around your preferred text editor (defined by the `$VISUAL` or `$EDITOR` environment variables), providing a layer of safety by validating and linting the file contents before allowing the changes to be applied.
+Bare invocation always verifies `/etc/fstab` read-only, regardless of credentials.
+`verify` uses the same action. Verification creates no backups, opens no editor,
+performs no systemd reload and needs no cache directory. It uses available live
+metadata, even for an alternative file. Unknown observations are not definite
+absence. Verification does not establish bootability or whether an entry is
+currently mounted. Linux is the immediate platform; general Linux 7-series
+compatibility is a development goal and other fstab dialects are future work.
 
-`vifstab` does not acquire privileges, nor does it invoke or implement sudo, su, doas, run0, setuid/SUID, runas, or other privilege-management mechanisms. It does not switch or infer user identities. All file reads, file writes, temporary-file operations, editor execution, RCS/versioning operations, backups, and final replacement operations run with the credentials of the `vifstab` process. Arranging sufficient permissions or an elevated invocation context is entirely the caller's responsibility.
+The editor is experimental. Validation cannot prevent every boot failure.
+Known save limitations include concurrent edits, symlink replacement, ownership
+and extended metadata loss, and RCS basename collisions (#153–#156).
+Do not describe the current save workflow as production-safe.
 
-Additionally, `vifstab` maintains a version history of the edited file using RCS (Revision Control System) backups, ensuring that you can always recover previous functional states if an error occurs.
+## OPTIONS AND COMMANDS
 
-If the validation fails (for example, if a mount point does not exist or a filesystem is unknown), `vifstab` categorizes the feedback into Suggestions, Warnings, and Errors. It requires critical Errors to be resolved before saving the modifications, thus preventing a system from becoming unbootable due to a malformed `fstab`.
+**--file PATH**: Input fstab, default `/etc/fstab`. For format, explicit file
+selection takes precedence over piped stdin; `-` explicitly selects stdin.
+Without an explicit format file, non-terminal stdin is used if available,
+otherwise the default file is read. Input-probe failures report an error.
 
-## OPTIONS
-**--backup-dir**="": Directory to store RCS backups. If omitted, `vifstab` defaults to a sensible location. It checks `$XDG_CACHE_HOME/vifstab`, then `$HOME/.cache/vifstab`, and finally falls back to `/tmp/.vifstab`.
+**edit**: Explicitly open a temporary copy in the configured editor, validate it,
+then save or prompt to re-edit, override blocking findings or abort.
+An editor or save failure never silently falls back to verification.
 
-**--file**="": The specific file to edit. (default: "/etc/fstab")
+**--backup-dir DIR**: RCS directory for edit and in-place format. Default:
+`$XDG_CACHE_HOME/vifstab`, otherwise the caller's user cache directory (normally
+`$HOME/.cache/vifstab`). If unavailable, an explicit directory is required.
+There is no `/tmp` backup fallback. Histories currently use `<basename>,v`;
+use separate directories for different paths with the same basename.
 
-**--generate-manpage**: Generates this man page to `vifstab.1` in the current directory.
+**--systemd-reload MODE**: Edit-only post-save mode. `warn` (default) prints a
+stale-unit diagnostic for `/etc/fstab` when systemd is active; `never` disables
+handling. Explicit `auto` directly executes `systemctl daemon-reload` only after
+blocking validation passes and the save completes without destination, durability
+or RCS errors. Overrides and post-rename failures warn instead of reloading.
+A reload failure leaves the saved file installed. Reloading does not remount.
 
-**--systemd-reload**="warn": Post-save systemd handling for `/etc/fstab` (auto|warn|never). `auto` runs `systemctl daemon-reload` only after blocking validation succeeds and the file and backup are committed. If blocking validation is overridden, a diagnostic is printed instead of reloading. `warn` prints a diagnostic without reloading. `never` takes no systemd action and prints no systemd diagnostic. A reload failure is reported after the saved fstab is left in place. In-place formatting of `/etc/fstab` uses the conservative diagnostic and never reloads automatically.
+**format**: Print aligned fstab. Only explicit **--in-place** (or **-i**) writes,
+using the existing atomic-save/RCS path and sharing its known limitations.
+In-place formatting requires file input and never automatically reloads systemd.
 
-**--verify**: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
+**diagram DEVICE**: Render the existing ASCII partition-table diagram, not general
+mount-state reporting. Offline disk-image fixtures are supported. The legacy
+block-device opening path remains a policy concern pending metadata-only
+migration; do not use it to claim the normal verifier inspects device contents.
 
-**--help**, **-h**: Show help information.
+**uefi DEVICE MOUNTPOINT**: Explicit experimental live correlation through the
+canonical inventory and native EFI parsing. Firmware boot entries and BootCurrent
+can be correlated with PARTUUID; this is not a complete current-loader or
+bootability guarantee. Unavailable firmware data and unmounted filesystem contents
+remain unknown. Missing filesystem type and missing or malformed GPT type also
+remain unknown; a definite non-ESP report requires a valid obtained GPT type.
+Optional already-mounted EFI-tree observations are informational.
+No systemd or external boot utility is required. No `verify --uefi` option exists.
 
-## SUBCOMMANDS
-**diagram** `<device>`: Generates an ASCII art diagram of the filesystem stack and dependencies for the specified block device.
+**manpage --output PATH**: Explicitly write the manual, default `vifstab.1`.
 
-**format** `[--file=<value>] [-i]`: Reads fstab entries and outputs them in a formatted, column-aligned manner. Defaults to formatting `/etc/fstab` unless `--file` is specified. The `-i` flag writes the formatted output back to the file in-place (cannot be used when reading from standard input).
+**version**: Print build version, commit and date.
 
-**uefi** `<device> <mountpoint>`: Correlates an fstab ESP entry with firmware boot entries and the currently booted EFI partition. Note this subcommand depends on access to `/sys/firmware/efi` to determine EFI boot variables.
+**help COMMAND**, **--help**, **-h**: Show command-specific help without executing
+the action. Verification flags belong after `verify`; root verification flags
+before another command are rejected. Flags precede positional operands. The old root editing/`--verify`
+interface has been replaced. Static verification, TXTAR integration and edit
+preflight are separately tracked work, not flags in this foundation.
+
+## PROCESS AND SAVE BOUNDARIES
+
+All operations inherit the caller's credentials. vifstab never acquires privileges,
+changes UID/GID or launches an elevation helper. Its only subprocess categories
+are the user-configured editor from explicit edit and an eligible post-save
+systemctl reload with explicit auto mode. No shell is used to launch the editor.
+
+The save path writes a same-directory temporary file, applies permission bits,
+syncs the file, closes it, atomically renames it and syncs the directory.
+A later durability, backup or systemd error can return failure after the new fstab
+is installed. Inspect the diagnostic before retrying. Current RCS saves do not
+provide an unconditional guarantee of recovery of an earlier functional system.
+
+## FINDINGS AND STATUS
+
+`warning`, `security` and `error` block verification; `info` does not.
+Suggestions may occur in diagnostic text. Rule families include structure,
+filesystem support, sources/targets, device identity/partition roles and
+filesystem-specific options. Accepted extension options may remain unverified.
+
+Exit 0 means completion, including explicit abort. Exit 1 indicates blocking
+findings, usage errors or operational failure. A post-rename error does not imply
+that the destination still contains its old data.
+
+EXT4 data=journal emits non-blocking deprecation information for a known kernel
+of 7.3 or newer. An unknown kernel version or guessed removal date is not proof
+that the option is unsupported. Review integrity differences before selecting
+data=ordered; vifstab does not rewrite the mode automatically.
 
 ## ENVIRONMENT
-**VISUAL**, **EDITOR**: Determines the text editor to be launched by `vifstab`. The command respects standard arguments provided in these variables. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is ignored. If neither is set, it defaults to `vi`. Editor commands are executed directly rather than through a shell. Note that `vifstab` does not acquire or manage privileges; it executes the editor using the credentials of the invoking process.
 
-**XDG_CACHE_HOME**: Used to determine the default backup directory for RCS versioning if `--backup-dir` is not explicitly set.
+**VISUAL**, **EDITOR**: Direct editor command with quoted arguments, in that
+priority order, default `vi`. Arguments `--` and the temporary path are appended.
+`SUDO_EDITOR` is ignored. Standard streams and caller credentials are inherited.
 
-## EXT4 JOURNAL MODE COMPATIBILITY
-
-Linux 7.3 deprecates the EXT4 `data=journal` mount option. When the running kernel version is 7.3 or newer, `vifstab` reports a non-blocking informational deprecation notice for that option. Before 7.3 it remains valid. Upstream plans to remove it in January 2028, but the specific removal kernel has not been confirmed; `vifstab` does not preemptively report a mount failure on a guessed release. An unknown kernel version does not trigger a deprecation notice.
+**XDG_CACHE_HOME**, **HOME**: Caller cache lookup for writing workflows.
 
 ## TARGET OWNERSHIP AND PERMISSIONS VERIFICATION
 
@@ -57,6 +137,9 @@ During verification and editing, `vifstab` inspects the selected effective targe
 - Unavailable, unsupported, or unreadable metadata (including ACLs) remains unknown rather than emitting false positives, and `vifstab` never modifies permissions automatically.
 - Permission issues are reported at `warning` severity, which is blocking in `vifstab`: read-only verification exits non-zero, and `vifstab edit` prompts `(e)dit again, (c)ontinue and save anyway, (q)uit without saving`.
 
+## EXT4 JOURNAL MODE COMPATIBILITY
+
+Linux 7.3 deprecates the EXT4 `data=journal` mount option. When the running kernel version is 7.3 or newer, `vifstab` reports a non-blocking informational deprecation notice for that option. Before 7.3 it remains valid. Upstream plans to remove it in January 2028, but the specific removal kernel has not been confirmed; `vifstab` does not preemptively report a mount failure on a guessed release. An unknown kernel version does not trigger a deprecation notice.
 
 The default `data=ordered` mode is not an equivalent durability replacement for `data=journal`; review data-integrity implications before changing the option. `vifstab` never rewrites the mount mode automatically.
 
@@ -69,7 +152,7 @@ Numeric UID/GID mount options must be between `0` and `4294967294`. Explicitly s
 The explicit `uefi` command correlates device and firmware metadata. Missing filesystem type and missing or malformed GPT type remain unknown. A definite `Not ESP` report requires a structurally valid obtained GPT type; otherwise the report shows `GPT role: unknown`. Optional EFI-directory information is attempted only for an already-mounted matching device, with unavailable results unknown. This is not filesystem-content verification for an unmounted device or a bootability guarantee.
 
 ## SEE ALSO
-`fstab(5)`, `mount(8)`, `rcs(1)`
+`fstab(5)`, `mount(8)`, `rcs(1)`, `README.md`
 
 ## Configuration text input safety
 
@@ -78,4 +161,4 @@ unavailable classification are refused. Regular files, symlinks and intentional
 streams remain supported. Formatting checks borrowed stdin and retains pipelines.
 The Linux pathname reader requires metadata/proc-fd interfaces and keeps caller
 credentials. See `docs/TEXT-INPUTS.md` for the stable-inode boundary,
-platform limits and integration notes for the unmerged review branches.
+platform limits and generated CLI/TXTAR integration notes.

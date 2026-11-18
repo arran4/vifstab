@@ -1,0 +1,23 @@
+Executable regression: verify-flag-help; default fstab is a build-time fixture.
+-- args.json --
+["verify", "--help"]
+-- fstab --
+-- stdin --
+-- status --
+0
+-- stdout --
+-- stderr --
+Usage: vifstab verify [flags...] [operands...]
+
+Verify fstab read-only with the caller's credentials.
+
+Subcommands:
+    help  Print this help message
+    usage Print this usage message
+
+
+Flags:
+    --file string       (default: "/etc/fstab")   File to verify.
+
+Positional Arguments:
+    [operands...] No positional operands are accepted.

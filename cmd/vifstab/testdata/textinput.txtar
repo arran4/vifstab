@@ -1,10 +1,10 @@
-Compiled legacy CLI inputs use only temporary comments; no rule needs host metadata.
+Compiled generated CLI inputs use only temporary comments; no rule needs host metadata.
 -- cases.json --
 [
-  {"Name":"verify-regular","Args":["--verify","--file","$FILE"],"Exit":0,"Stdout":"Validation successful.\n"},
-  {"Name":"verify-symlink","Args":["--verify","--file","$LINK"],"Exit":0,"Stdout":"Validation successful.\n"},
+  {"Name":"verify-regular","Args":["verify","--file","$FILE"],"Exit":0,"Stdout":"Validation successful.\n"},
+  {"Name":"verify-symlink","Args":["verify","--file","$LINK"],"Exit":0,"Stdout":"Validation successful.\n"},
   {"Name":"format-regular","Args":["format","--file","$FILE"],"Exit":0,"Stdout":"# fixture input\n"},
   {"Name":"format-pipe","Args":["format"],"Pipe":true,"Exit":0,"Stdout":"# fixture input\n"},
-  {"Name":"verify-directory","Args":["--verify","--file","$DIR"],"Exit":1,"Stderr":"Error: failed to read file for verification: classify text input: unsupported text input type d---------\n"},
-  {"Name":"format-directory","Args":["format","--file","$DIR"],"Exit":1,"Stderr":"Error: failed to open file $DIR: classify text input: unsupported text input type d---------\n"}
+  {"Name":"verify-directory","Args":["verify","--file","$DIR"],"Exit":1,"Stderr":"Error: verify failed: failed to read file for verification: classify text input: unsupported text input type d---------\n"},
+  {"Name":"format-directory","Args":["format","--file","$DIR"],"Exit":1,"Stderr":"Error: format failed: failed to open file $DIR: classify text input: unsupported text input type d---------\n"}
 ]
