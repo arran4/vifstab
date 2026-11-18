@@ -34,7 +34,10 @@ func (u UIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rul
 			},
 		}
 	}
-	switch api.CheckUserExists(int(num)) {
+	if issues := accountIDRangeIssues(num, entry, fsName, key, val); len(issues) != 0 {
+		return issues
+	}
+	switch observeAccountID(num, api.CheckUserExists) {
 	case rules.DoesNotExist:
 		msg := fmt.Sprintf("User with uid %d does not exist", num)
 		if u.CustomUserNotFound != "" {
@@ -97,7 +100,10 @@ func (g GIDOption) ValidateOption(ctx context.Context, api rules.API, entry *rul
 			},
 		}
 	}
-	switch api.CheckGroupExists(int(num)) {
+	if issues := accountIDRangeIssues(num, entry, fsName, key, val); len(issues) != 0 {
+		return issues
+	}
+	switch observeAccountID(num, api.CheckGroupExists) {
 	case rules.DoesNotExist:
 		msg := fmt.Sprintf("Group with gid %d does not exist", num)
 		if g.CustomGroupNotFound != "" {
@@ -186,7 +192,10 @@ func (o UIDOrEnumOption) ValidateOption(ctx context.Context, api rules.API, entr
 		}
 	}
 
-	switch api.CheckUserExists(int(num)) {
+	if issues := accountIDRangeIssues(num, entry, fsName, key, val); len(issues) != 0 {
+		return issues
+	}
+	switch observeAccountID(num, api.CheckUserExists) {
 	case rules.DoesNotExist:
 		return []rules.ValidationIssue{
 			{
@@ -213,4 +222,24 @@ func (o UIDOrEnumOption) ValidateOption(ctx context.Context, api rules.API, entr
 		}
 	}
 	return nil
+}
+
+// Account-file availability does not validate numeric mount-option syntax.
+func accountIDRangeIssues(id int64, entry *rules.FstabEntry, fsName, key, value string) []rules.ValidationIssue {
+	if rules.ValidLinuxAccountID(id) {
+		return nil
+	}
+	return []rules.ValidationIssue{{
+		Message: fmt.Sprintf("Invalid value '%s' for %s mount option '%s' on line %d, must be between 0 and %d", value, fsName, key, entry.LineNum, rules.MaxLinuxAccountID),
+		Line:    entry.RawLine,
+		Level:   rules.IssueLevelError,
+	}}
+}
+
+func observeAccountID(id int64, lookup func(int) rules.ExistState) rules.ExistState {
+	converted := int(id)
+	if int64(converted) != id {
+		return rules.Unknown
+	}
+	return lookup(converted)
 }

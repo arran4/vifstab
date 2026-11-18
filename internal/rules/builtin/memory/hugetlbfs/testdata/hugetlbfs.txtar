@@ -36,3 +36,5 @@ Invalid value format 'abc' for size on line 14
 Invalid percentage value '101%' for hugetlbfs mount option 'min_size' on line 15
 Invalid value format 'xyz' for nr_inodes on line 16
 User with uid 9999 does not exist
+-- cache --
+user_exists:9999=false

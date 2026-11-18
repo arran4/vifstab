@@ -2,6 +2,7 @@
 /dev/sda1 /mnt/affs affs uid=notanint,gid=9999,setuid=invalid,setgid=9999,mode=invalid,volume=thisisaverylongvolumenameexceedingthirtycharacters,bs=1023,unknownopt,reserved=abc 0 0
 -- cache --
 proc_filesystems=affs
+group_exists:9999=false
 -- input/etc/passwd --
 root:x:0:0:root:/root:/bin/bash
 -- input/etc/group --
