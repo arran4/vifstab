@@ -1,0 +1,1 @@
+{{ define "main" }}<article><h1>{{ .Title }}</h1>{{ if .Description }}<p>{{ .Description }}</p>{{ end }}{{ if gt (len .TableOfContents) 40 }}<details class="toc"><summary>On this page</summary>{{ .TableOfContents }}</details>{{ end }}{{ .Content }}</article>{{ end }}

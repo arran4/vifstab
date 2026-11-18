@@ -48,22 +48,12 @@ Build a local binary and use an explicitly selected harmless file:
 ```sh
 go build -o ./vifstab ./cmd/vifstab
 printf '# synthetic configuration\n' > example.fstab
-./vifstab --verify --file ./example.fstab
+./vifstab verify --static --file ./example.fstab
 ```
 
-These commands match this branch's legacy CLI. **Bare invocation opens an
-editor.** Verification does not save the selected fstab, but the live verifier
-can read local metadata. For reproducible tests, prefer injected fixtures.
-The generated verification-first CLI in [PR #182](https://github.com/arran4/vifstab/pull/182)
-and capture/static/snapshot support in [PR #174](https://github.com/arran4/vifstab/pull/174)
-are separate review work until merged; use the documentation for the exact
-revision you run. Do not run proposed flags on an older binary by assumption.
+This uses the verification-first CLI. Static verification does not probe host metadata or write the selected file. Use documentation matching the checkout or installed version.
 
-Editing/in-place formatting and RCS remain experimental while save identity,
-concurrency and metadata work is reviewed (#153–#156). The legacy diagram path
-opens devices directly; do not use a real device as a contributor test. UEFI
-correlation is experimental, and unavailable firmware data is not a boot verdict.
-Never use an important configuration or real `/etc/fstab` for a demonstration.
+Editing, in-place formatting, RCS and experimental UEFI correlation have limits. See [save safety](docs/SAVE-SAFETY.md) and [diagram sources](docs/DIAGRAM-SOURCES.md). Never use an important configuration or real `/etc/fstab` for a demonstration.
 
 ## Report a case or submit a PR
 
@@ -92,3 +82,35 @@ decisions remain with the owner.
 Fork PR checks use a read-only token and no retained checkout credentials. A
 maintainer must review changes before running privileged manual automation or
 publishing from that revision. See [workflow security](docs/WORKFLOW-SECURITY.md).
+
+## Development and release checks
+
+
+```sh
+go test ./...
+go vet ./...
+git diff --check
+go test -race ./internal/editor ./internal/rules/... ./internal/cli
+```
+
+Validation fixtures live under `internal/rules/builtin/**/testdata/*.txtar`.
+Compiled command scenarios are in `internal/cli/testdata/commands/*.txtar`;
+these assert exact stdout, stderr and status, read-only file identity, forbidden
+process probes and inherited editor credentials against temporary files.
+They never use the host `/etc/fstab`.
+
+The generated command tree comes from `internal/cli/commands.go`:
+
+```sh
+go generate ./...
+```
+
+Generation pins `go-subcommand` v0.0.32 and needs Go 1.26 (automatically selected
+by Go's toolchain mechanism); generated application code has no runtime
+`go-subcommand` dependency and is tested with Go 1.25. Timestamp and project
+provenance are disabled for deterministic output. `--force` permits existing
+handwritten CLI tests, the manual and legacy template to coexist; generation
+does not run `--clean`. Do not edit generated files.
+
+
+Use a patched distribution toolchain. Validate the release configuration with `goreleaser check`, verify notices with `python3 scripts/update-notices.py --check`, and run `goreleaser release --snapshot --clean` without publishing. Review checksums, contents and workflow permissions. Published releases require owner approval. Website builds: see [website build instructions](website/BUILD.md).

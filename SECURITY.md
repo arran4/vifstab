@@ -1,10 +1,7 @@
 # Security policy
 
-This project is under development. No released version or maintained security
-support window is currently promised. Validation findings are advisory evidence,
-not a guarantee that a machine will boot or a filesystem is safe. Editing and
-in-place formatting still have save/concurrency/metadata/RCS limitations under
-review; do not use them as a production-safety guarantee.
+This project is under development. No maintained security support window is currently promised. Validation findings are advisory evidence,
+not a guarantee that a machine will boot or a filesystem is safe. Editing and in-place formatting have limits; see [save safety](docs/SAVE-SAFETY.md). Do not use them as a production-safety guarantee.
 
 ## Report privately
 

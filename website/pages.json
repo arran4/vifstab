@@ -1,0 +1,80 @@
+[
+  [
+    "",
+    "website/home.md",
+    "vifstab",
+    "Verify Linux filesystem configuration before mounting or editing."
+  ],
+  [
+    "install",
+    "INSTALL.md",
+    "Installation",
+    "Install and verify your Linux binary."
+  ],
+  [
+    "guide",
+    "docs/USER-GUIDE.md",
+    "User guide",
+    "Read-only verification, editing, formatting and support cases."
+  ],
+  [
+    "reference",
+    "cmd/vifstab/manpage.md",
+    "Command reference",
+    "CLI syntax, options and exit status."
+  ],
+  [
+    "validation",
+    "docs/VALIDATION.md",
+    "Validation and limits",
+    "Mount options, identity and text input observations."
+  ],
+  [
+    "options",
+    "docs/EXTENSION-OPTIONS.md",
+    "Extension options",
+    "Understand filesystem-specific extension options."
+  ],
+  [
+    "systemd",
+    "docs/SYSTEMD-OPTIONS.md",
+    "systemd options",
+    "Understand generator option checks and version limits."
+  ],
+  [
+    "diagrams",
+    "docs/DIAGRAM-SOURCES.md",
+    "Diagrams",
+    "Partition metadata and image inspection boundaries."
+  ],
+  [
+    "save-safety",
+    "docs/SAVE-SAFETY.md",
+    "Save safety",
+    "Metadata preservation and recovery limitations."
+  ],
+  [
+    "history",
+    "docs/RCS-HISTORIES.md",
+    "Backup history",
+    "RCS history identity and recovery."
+  ],
+  [
+    "privacy",
+    "docs/CAPTURE-PRIVACY.md",
+    "Support and privacy",
+    "Review support snapshots before sharing."
+  ],
+  [
+    "contributing",
+    "CONTRIBUTING.md",
+    "Contributing",
+    "Build, test and report useful regressions."
+  ],
+  [
+    "security",
+    "SECURITY.md",
+    "Security",
+    "Report security problems privately."
+  ]
+]
