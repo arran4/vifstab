@@ -3,8 +3,9 @@
 `vifstab` verifies Linux fstab configurations and reports validity, safety,
 filesystem compatibility and configuration mistakes. It also provides an explicit
 visudo-inspired editing workflow, pure-Go RCS versioning and optional post-save
-systemd handling. This is work in progress: validation cannot prevent every boot
-failure, and editor save-safety limitations remain under review.
+systemd handling. This repository is in a **verification and expansion** stage,
+not a production-proven safety claim: validation cannot prevent every boot
+failure.
 
 ## Build and run
 
@@ -32,8 +33,8 @@ development goal, not a guarantee. BSD and other fstab dialects are future work.
 vifstab
 vifstab verify [--file PATH|-] [--static] [--capture FILE|-] [--unredacted]
 vifstab verify --snapshot FILE|-
-vifstab edit [--file PATH] [--backup-dir DIR] [--systemd-reload MODE]
-vifstab format [--file PATH|-] [--in-place|-i] [--backup-dir DIR]
+vifstab edit [--file PATH] [--backup-dir DIR] [--systemd-reload MODE] [--metadata-policy MODE]
+vifstab format [--file PATH|-] [--in-place|-i] [--backup-dir DIR] [--metadata-policy MODE]
 vifstab diagram DEVICE
 vifstab uefi DEVICE MOUNTPOINT
 vifstab manpage [--output vifstab.1]
@@ -60,15 +61,17 @@ Information does not block saving. `--backup-dir` overrides the default
 `$XDG_CACHE_HOME/vifstab` or the caller's user cache directory (normally
 `$HOME/.cache/vifstab`). If that directory cannot be determined, editing and
 in-place formatting require an explicit backup directory; there is no shared
-`/tmp` backup fallback. The current RCS history name is `<basename>,v`.
+`/tmp` backup fallback. RCS histories are isolated by resolved target path.
 
-Known editor limitations tracked in #153–#156 include stale concurrent edits,
-symlink replacement, ownership/extended metadata preservation and backup-name
-collisions. Use a separate backup directory for distinct files sharing a basename.
-The save path uses a same-directory temporary file, file sync, atomic rename and
-directory sync. A post-rename error may leave the new content installed even
-though the command returns failure; inspect the diagnostic before retrying.
-Do not treat this experimental editor as a production-safe replacement workflow.
+Saves resolve symlinks to their regular target without replacing the symlink,
+detect concurrent external edits (refusing overwrite and preserving a `0600`
+recovery copy), and preserve ownership, permissions, special bits, and xattrs
+under `--metadata-policy`: `strict` (default, fails before rename if required
+metadata cannot be observed, applied, or reverified), `supported` (allows
+`ENOTSUP` xattrs while still requiring ownership and mode), and `best-effort`
+(applies supported metadata and emits warnings for unpreserved attributes).
+A post-rename error may leave the new content installed even though the command
+returns failure; inspect the diagnostic before retrying.
 
 `--systemd-reload=warn` (default) prints a stale-unit diagnostic after saving the
 real `/etc/fstab` when systemd is active. `never` disables this handling. Explicit
@@ -94,16 +97,33 @@ cat ./fstab | vifstab format
 vifstab format --file ./fstab --in-place --backup-dir ./backups
 ```
 
-`--in-place` (also `-i`) uses the existing atomic save/RCS path and requires file
-input. It shares the editor's known save limitations. It never automatically
-reloads systemd and conservatively warns for `/etc/fstab`.
+`--in-place` (also `-i`) uses the atomic save/RCS path and requires file input.
+`--metadata-policy` (`strict|supported|best-effort`, default `strict`) applies to
+`--in-place` saves and is rejected on read-only `format`. In-place formatting
+never automatically reloads systemd and conservatively warns for `/etc/fstab`.
+
+### Target Ownership and Permissions Verification
+
+During verification and editing, `vifstab` inspects the selected effective target
+(`--file`, following symlinks via `stat`) once per file—including empty fstab
+files—for ownership, mode bits, and Linux POSIX access ACLs (`system.posix_acl_access`):
+- A system target (`/etc/fstab`) triggers a warning if it is world-writable,
+  owned by an unexpected non-root user, group-writable by a non-root group, or
+  has ACL write access granted to non-root users.
+- Alternate user-specified fstab paths are warned if world-writable or if write
+  ACLs expose write access to non-owners.
+- Secure configurations (`0644` or `0600` root:root) produce no warnings.
+- Unavailable, unsupported, or unreadable metadata remains unknown rather than
+  emitting false positives, and `vifstab` never modifies permissions automatically.
+- Permission issues use `warning` severity, which is blocking: verification
+  exits non-zero, and `vifstab edit` prompts to re-edit, override, or abort.
 
 ### Diagrams and experimental UEFI correlation
 
-`diagram DEVICE` currently renders an ASCII partition-table diagram; it is not
-a general filesystem-stack or mount-state inspector. Its existing disk-image
-fixtures are tested offline. The legacy block-device opening path remains a
-policy concern pending migration to metadata-only device observations.
+`diagram DEVICE` renders an ASCII partition-table diagram from kernel metadata
+interfaces without opening live block devices; disk-image file inputs are
+guarded by stable descriptors. It is not a general filesystem-stack or
+mount-state inspector.
 
 `uefi DEVICE MOUNTPOINT` is an explicit experimental live report, retained while
 its integration into verification is assessed. It uses the canonical device
