@@ -35,6 +35,7 @@ type FS interface {
 	Stat(name string) (os.FileInfo, error)
 	Lstat(name string) (os.FileInfo, error)
 	EvalSymlinks(path string) (string, error)
+	SameFile(a, b os.FileInfo) bool
 	CreateTemp(dir, pattern string) (TempFile, error)
 	Remove(name string) error
 	SyncDir(name string) error
@@ -51,6 +52,7 @@ func (osFS) Rename(oldpath, newpath string) error         { return os.Rename(old
 func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name) }
 func (osFS) Lstat(name string) (os.FileInfo, error)       { return os.Lstat(name) }
 func (osFS) EvalSymlinks(path string) (string, error)     { return filepath.EvalSymlinks(path) }
+func (osFS) SameFile(a, b os.FileInfo) bool               { return os.SameFile(a, b) }
 func (osFS) CreateTemp(dir, pattern string) (TempFile, error) {
 	return os.CreateTemp(dir, pattern)
 }
@@ -132,25 +134,26 @@ func (d Dependencies) withDefaults() Dependencies {
 
 func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 	deps = deps.withDefaults()
+	original, content, err := snapshotDestination(cfg.FilePath, deps.FS)
+	if err != nil {
+		return fmt.Errorf("failed to snapshot destination before editing: %w", err)
+	}
 
 	// 1. Copy target file to temp
 	tempFile, err := os.CreateTemp("", "vifstab-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer func() { _ = os.Remove(tempFile.Name()) }()
+	keepTemp := false
+	defer func() {
+		if !keepTemp {
+			_ = os.Remove(tempFile.Name())
+		}
+	}()
 	defer func() { _ = tempFile.Close() }()
 
-	source, err := deps.FS.ReadFile(cfg.FilePath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return fmt.Errorf("failed to open source file: %w", err)
-		}
-	} else {
-		_, err = tempFile.Write(source)
-		if err != nil {
-			return fmt.Errorf("failed to copy to temp file: %w", err)
-		}
+	if _, err := tempFile.Write(content); err != nil {
+		return fmt.Errorf("failed to copy to temp file: %w", err)
 	}
 	_ = tempFile.Close()
 
@@ -236,12 +239,23 @@ func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 	}
 
 	// 5. Save and Version
-	content, err := textinput.ReadFile(tempFile.Name())
+	content, err = textinput.ReadFile(tempFile.Name())
 	if err != nil {
 		return fmt.Errorf("failed to read temp file for saving: %w", err)
 	}
 
-	return commitEdit(cfg, content, blockingValidationPassed, deps)
+	res, err := commitEditSnapshot(cfg, content, blockingValidationPassed, deps, &original)
+	if err != nil && !res.Saved {
+		path, recoveryErr := preserveRecovery(content, deps.FS)
+		if recoveryErr != nil {
+			// Keep the original editor copy as a last resort if a new private
+			// recovery copy cannot be written. Never discard the user's edits.
+			keepTemp = true
+			return fmt.Errorf("%w; failed to create recovery copy: %w; edited file retained at %q", err, recoveryErr, tempFile.Name())
+		}
+		return &RecoveryError{Path: path, Err: err}
+	}
+	return err
 }
 
 func editorCommandFromEnvironment() ([]string, error) {
@@ -289,6 +303,10 @@ type SaveResult struct {
 // atomically renames it over the target, and finally syncs the containing directory to
 // ensure the directory entry metadata is persisted.
 func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
+	return saveAndVersion(cfg, content, fsLayer, nil)
+}
+
+func saveAndVersion(cfg config.Config, content []byte, fsLayer FS, original *destinationSnapshot) SaveResult {
 	if fsLayer == nil {
 		fsLayer = DefaultFS
 	}
@@ -341,8 +359,14 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 		return res
 	}
 	if current.path != target.path {
-		res.Err = fmt.Errorf("destination symlink target changed; reconcile and retry")
+		res.Err = fmt.Errorf("%w: symlink target changed", ErrConflict)
 		return res
+	}
+	if original != nil {
+		if err := original.check(cfg.FilePath, fsLayer); err != nil {
+			res.Err = err
+			return res
+		}
 	}
 	if err := fsLayer.Rename(tmpDest.Name(), target.path); err != nil {
 		res.Err = fmt.Errorf("failed to replace destination file: %w", err)
@@ -372,8 +396,13 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 // A user may save after blocking validation fails, but that save is never
 // eligible for an automatic reload and receives the conservative warning.
 func commitEdit(cfg config.Config, content []byte, blockingValidationPassed bool, deps Dependencies) error {
+	_, err := commitEditSnapshot(cfg, content, blockingValidationPassed, deps, nil)
+	return err
+}
+
+func commitEditSnapshot(cfg config.Config, content []byte, blockingValidationPassed bool, deps Dependencies, original *destinationSnapshot) (SaveResult, error) {
 	deps = deps.withDefaults()
-	res := SaveAndVersion(cfg, content, deps.FS)
+	res := saveAndVersion(cfg, content, deps.FS, original)
 
 	var sysErr error
 	if res.Saved {
@@ -381,7 +410,7 @@ func commitEdit(cfg config.Config, content []byte, blockingValidationPassed bool
 		sysErr = handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed && res.Err == nil)
 	}
 
-	return errors.Join(res.Err, sysErr)
+	return res, errors.Join(res.Err, sysErr)
 }
 
 // SaveWithoutValidation saves content produced by a workflow that has not
