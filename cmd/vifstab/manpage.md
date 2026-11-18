@@ -128,7 +128,7 @@ distinct. Serialization is deterministic; limits are 10 MiB total, 100 sections,
 malformed/duplicate JSON, unsupported versions and delimiters are rejected.
 Legacy fixture forms remain supported. To add a regression, copy a reviewed
 capture to testdata, add expected/validationerrors.txt and optional options.txt
-with rule=all and format=level_prefix. See README for executable examples.
+with rule=all and format=level_prefix. See docs/USER-GUIDE.md and CONTRIBUTING.md for executable examples.
 
 ## PROCESS AND SAVE BOUNDARIES
 
@@ -169,7 +169,7 @@ priority order, default `vi`. Arguments `--` and the temporary path are appended
 
 ## SEE ALSO
 
-fstab(5), mount(8), README.md
+fstab(5), mount(8), README.md, docs/USER-GUIDE.md
 
 ## Configuration text input safety
 
@@ -177,7 +177,7 @@ Fstab text inputs are classified before a data open; block-device inputs and
 unavailable classification are refused. Regular files, symlinks and intentional
 streams remain supported. Formatting checks borrowed stdin and retains pipelines.
 The Linux pathname reader requires metadata/proc-fd interfaces and keeps caller
-credentials. See `docs/TEXT-INPUTS.md` for the stable-inode boundary,
+credentials. See `docs/VALIDATION.md` for the stable-inode boundary,
 platform limits. Generated verification, static input, capture and replay share this guard.
 
 ## USER AND GROUP OBSERVATIONS

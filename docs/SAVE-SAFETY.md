@@ -33,8 +33,4 @@ yet capture a pre-format snapshot and therefore has no session conflict check.
 These path-based checks are optimistic. A writer can still race the final
 comparison and rename; they are not a filesystem transaction or protection from
 hostile directory changes. Do not edit files in directories controlled by
-another user. The existing save copies permission bits only; preserving
-ownership, ACLs, xattrs, security labels
-and special mode bits remains #155. RCS path identity and concurrent history
-updates remain #156. These limitations apply to editing and in-place formatting;
-do not treat this save path as production-safe until they are addressed.
+another user. The save applies and reverifies ownership, mode, special bits and observable xattrs according to the selected metadata policy before rename. Strict mode refuses required metadata loss; supported and best-effort are explicit relaxations. See the [command reference](../cmd/vifstab/manpage.md) and [RCS history guide](RCS-HISTORIES.md). These checks are not a guarantee against every filesystem or concurrency failure.

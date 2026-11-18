@@ -4,11 +4,7 @@ Treat an fstab, a TXTAR archive and command output as potentially private. Nothi
 is uploaded automatically by vifstab. You decide what to share and where. A
 public issue or PR can expose its text and attachments, including earlier edits.
 
-Capture/static/offline replay support is being reviewed in
-[PR #174](https://github.com/arran4/vifstab/pull/174), based on the generated CLI
-[PR #182](https://github.com/arran4/vifstab/pull/182). It is not part of this
-branch's legacy main interface. Use the instructions for your exact revision;
-this guide does not turn a hand-written harness fixture into a captured archive.
+Capture, static verification and offline replay are described in the [user guide](USER-GUIDE.md). Use the help and documentation for your exact revision; default redaction is not an anonymity guarantee.
 
 Before sharing a case:
 
