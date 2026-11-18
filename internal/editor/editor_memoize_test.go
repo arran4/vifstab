@@ -47,6 +47,10 @@ func (c *countingAPI) ResolveDevicePath(dev string) string {
 	return rules.ResolveDevicePath(dev)
 }
 
+func (c *countingAPI) GetFileInfo(path string) (rules.FileInfoResult, error) {
+	return rules.FileInfoResult{State: rules.Exists}, nil
+}
+
 func TestMemoizedAPI_GetBlockDevices(t *testing.T) {
 	expectedErr := errors.New("test inventory error")
 	expectedInv := rules.BlockDeviceInventory{
