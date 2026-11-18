@@ -32,11 +32,13 @@ sources never cause a host fstab read. Existing RCS recovery/identity work remai
 separate; preserve #188's stronger regular-file and symlink requirements during
 integration.
 
-This branch applies the shared guard to the generated CLI's verification and
-formatting actions without changing command annotations or generated bindings.
-The dependent #174 snapshot/capture branch still needs matching helper calls
-before #194 is fully resolved. #193's image parser has a stricter regular-image
-policy, while block diagrams use canonical metadata inventory/resolution.
+The generated CLI and this TXTAR branch use the shared guard for verification,
+formatting, static input, snapshot replay and file-based capture. Borrowed stdin
+is checked before any parsing, capture output or live metadata requests. The
+Reader APIs retain caller-supplied data without host fallback. No command
+annotation or generated binding changes are needed. #193's image parser has a
+stricter regular-image policy, while block diagrams use canonical metadata
+inventory/resolution.
 
 Tests use injected block-type metadata, temporary regular files/symlinks/FIFOs
 and anonymous pipes. No real block device or host fstab is opened. Six compiled

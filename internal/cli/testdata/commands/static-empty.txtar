@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: static-empty.
+-- args.json --
+["verify", "--static"]
+-- fstab --
+-- stdin.json --
+""
+-- status --
+0
+-- stdout.json --
+"Static verification: live observations are unchecked/unknown.\nValidation successful.\n"
+-- stderr.json --
+""

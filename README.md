@@ -20,7 +20,8 @@ Bare invocation always verifies `/etc/fstab` read-only, including when run as ro
 `verify` is an explicit route to the same action. Verification does not launch an
 editor, create backups or reload systemd; it does not require a cache directory.
 It uses available live metadata, so verifying a custom file still compares it
-against this machine. Missing observations are not proof of absence.
+against this machine unless `--static` or `--snapshot` is explicitly selected.
+Missing observations are not proof of absence.
 
 Linux is the immediate platform. General Linux 7-series compatibility is a
 development goal, not a guarantee. BSD and other fstab dialects are future work.
@@ -29,7 +30,8 @@ development goal, not a guarantee. BSD and other fstab dialects are future work.
 
 ```text
 vifstab
-vifstab verify [--file PATH]
+vifstab verify [--file PATH|-] [--static] [--capture FILE|-] [--unredacted]
+vifstab verify --snapshot FILE|-
 vifstab edit [--file PATH] [--backup-dir DIR] [--systemd-reload MODE]
 vifstab format [--file PATH|-] [--in-place|-i] [--backup-dir DIR]
 vifstab diagram DEVICE
@@ -113,8 +115,85 @@ malformed GPT type metadata remain unknown. A definite non-ESP report requires
 a valid obtained GPT type. Unmounted filesystem contents remain unknown. Optional observations of an already-mounted EFI tree do not gate
 verification. There is no `verify --uefi` flag yet.
 
-Static verification, TXTAR capture/replay integration and `edit --check` are
-separately tracked work, not options implemented by this CLI foundation.
+### Static verification
+
+`verify --static` runs the host-independent portions of the production rules.
+Live filesystem support, device inventory, path/account existence and kernel
+version observations remain unchecked/unknown. The CLI prints that limitation;
+unknown data is not a validation failure. Syntax errors still block verification.
+It does not substitute a guessed kernel or this host's `/proc`, `/sys` or accounts.
+`edit --check` is not implemented: edit preflight guarantees remain a separate
+design choice, not another validator.
+
+### Capture, privacy and offline replay
+
+```sh
+vifstab verify --file ./fstab --capture case.txtar
+vifstab verify --snapshot case.txtar
+vifstab verify --static --file ./fstab --capture syntax-case.txtar
+vifstab verify --file - --static < ./fstab
+vifstab verify --file ./fstab --capture - | vifstab verify --snapshot -
+```
+
+Capture records the observations requested by the production validator, the
+relevant inventory and filesystem support, kernel version and selected fstab.
+It does not read device contents, mount devices, read credential files, export
+account databases or elevate privileges. Optional existing mount locations come
+from the inventory. Unavailable observations remain unknown. An unreadable or
+oversized input cannot be captured; ordinary blocking findings and bounded
+technical validation failures still produce the support archive before returning
+failure. Exit status remains meaningful even when the archive was saved.
+
+Capture output files are created privately (`0600`) and exclusively. Existing
+paths, including symlinks, are rejected. With `--capture -`, stdout contains only
+the TXTAR and diagnostics/findings go to stderr. Shell redirection controls its
+own output permissions and overwrite behaviour. `--file -` explicitly borrows
+stdin; it is not selected just because stdin is piped.
+
+Default sanitisation consistently pseudonymises device paths, UUID/PARTUUID/LABEL
+identities, aliases, account IDs, personal paths, network sources and sensitive
+option values. Kernel build identities, comments and diagnostic details are
+sanitised. Public role paths (`/`, `/boot`, `/efi`, `/boot/efi`), filesystem and
+partition types, option names and topology remain visible. **Review the entire
+capture before public sharing.** Redaction is not an anonymity guarantee and can
+change option semantics/findings. An unredacted capture preserves more detail
+for exact reproduction and may contain credentials:
+
+```sh
+vifstab verify --file ./fstab --capture private-case.txtar --unredacted
+```
+
+Keep that explicitly warned capture private. `--unredacted` requires capture.
+
+Replay uses the same parser, production rules and blocking-severity policy. It
+reads the bounded archive only, creates no temporary files or backups and never
+fills missing observations from the replay host. Unrecorded, explicitly absent
+and permission-denied observations remain distinct. Snapshot mode cannot be
+combined with `--file`, `--capture`, `--static`, edit or systemd options. Firmware
+analysis, diagrams, editing and filesystem contents are unsupported replay
+operations. The experimental live `uefi` report is retained separately.
+
+The schema uses `golang.org/x/tools/txtar`: `input/etc/fstab`, optional `kernel`,
+`manifest.json` (`version: "1.0"`, `type: "system"`, `redacted: true/false`),
+`provider/inventory.json` and `provider/observations.json`. Files, blocks, users,
+groups and resolved references have separate observations. Serialization is
+deterministic. Limits: 10 MiB total, 100 sections, 2 MiB per section and 1024 bytes
+per archive name. Unsafe paths, duplicate/conflicting sections, malformed data,
+duplicate JSON fields, unsupported versions and delimiter injection are rejected.
+Legacy `input`, `input/proc/filesystems`, `kernel` and line-based `cache` fixtures
+remain supported without inventing live defaults.
+
+For a regression, copy a manually reviewed capture into the relevant rule's
+`testdata` directory, append `expected/validationerrors.txt`, and optionally add
+`options.txt` with `rule=<name>` and `format=plain`, `level_prefix` or `contains`.
+Use `rule=all` to exercise the complete production registry. The fixture harness
+shares snapshot parsing and provider construction with the CLI; expected output
+and rule selection remain test-only. Run the representative existing case:
+
+```sh
+go test ./internal/rules/builtin -run TestAllTxtarRules/testdata/captured-esp-mismatch.txtar -v
+go test ./internal/txtar ./internal/cli
+```
 
 ## Findings and exit status
 
@@ -126,8 +205,7 @@ An accepted extension option is not necessarily semantically verified.
 
 Exit 0 indicates successful completion (including an explicit abort). Exit 1
 indicates blocking verification findings, usage errors or operational failures.
-Verification and replay use the same blocking-severity policy when replay is
-integrated. Read the diagnostics: a save may already be installed when a later
+Verification and replay use the same blocking-severity policy. Read the diagnostics: a save may already be installed when a later
 RCS/durability/systemd operation fails.
 
 EXT4 `data=journal` emits non-blocking deprecation information for a known Linux
@@ -175,4 +253,8 @@ unavailable classification are refused. Regular files, symlinks and intentional
 streams remain supported. Formatting checks borrowed stdin and retains pipelines.
 The Linux pathname reader requires metadata/proc-fd interfaces and keeps caller
 credentials. See [text input sources and limits](docs/TEXT-INPUTS.md) for the stable-inode boundary,
-platform limits and generated CLI/TXTAR integration still pending in review branches.
+platform limits. Generated verification, static input, capture and replay share this guard.
+
+### User and group observations
+
+Numeric UID/GID mount options must be between `0` and `4294967294`; an option's explicitly supported enum values remain separate. A valid matching local passwd/group record can establish presence. Missing, unreadable, malformed or unmatched local files cannot establish global absence because NSS may use other sources. These unavailable observations produce informational diagnostics. Explicit provider/cache observations can still establish absence. See [account observation limits](docs/ACCOUNT-OBSERVATIONS.md).

@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: snapshot-malformed-entry.
+-- args.json --
+["verify", "--snapshot", "-"]
+-- fstab --
+-- stdin.json --
+"-- input/etc/fstab --\nbad\n"
+-- status --
+1
+-- stdout.json --
+"Snapshot verification: missing observations remain unknown; only recorded host data is used.\nValidation issues found:\n - [error] Line 1 has less than 6 fields (Line: bad)\n"
+-- stderr.json --
+""

@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: root-snapshot-before-edit.
+-- args.json --
+["--snapshot", "-", "edit", "--backup-dir", "backup"]
+-- fstab --
+-- stdin.json --
+"-- input/etc/fstab --\n"
+-- status --
+1
+-- stdout.json --
+""
+-- stderr.json --
+"Error: flag provided but not defined: -snapshot\n"

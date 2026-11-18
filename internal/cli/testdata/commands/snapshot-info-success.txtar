@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: snapshot-info-success.
+-- args.json --
+["verify", "--snapshot", "-"]
+-- fstab --
+-- stdin.json --
+"-- input/etc/fstab --\n/dev/fixture /fixture ext4 defaults,data=journal 0 2\n-- kernel --\n7.3.0\n-- cache --\nproc_filesystems=ext4\nblock_exists:/dev/fixture=true\nfile_exists:/fixture=true\n"
+-- status --
+0
+-- stdout.json --
+"Snapshot verification: missing observations remain unknown; only recorded host data is used.\nValidation successful.\nIssues:\n - [info] ext4 mount option 'data=journal' is deprecated since kernel 7.3 on line 1; removal is planned for January 2028 (removal kernel version not yet confirmed). Consider the default 'data=ordered' after reviewing its different data-integrity guarantees (Line: /dev/fixture /fixture ext4 defaults,data=journal 0 2)\n"
+-- stderr.json --
+""

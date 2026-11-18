@@ -4,18 +4,17 @@ import (
 	"bufio"
 	"context"
 	"embed"
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/arran4/vifstab/internal/rules"
 	_ "github.com/arran4/vifstab/internal/rules/builtin"
 	"github.com/arran4/vifstab/internal/rules/core"
+	snapshotar "github.com/arran4/vifstab/internal/txtar"
 	"golang.org/x/tools/txtar"
 )
 
@@ -104,39 +103,21 @@ func TestAllTxtarRules(t *testing.T) {
 			}
 			ar := txtar.Parse(raw)
 
-			var inputData string
-			var expectedIssues string
-			var optionsData string
-			var kernelVer string
-			cacheVals := map[string]string{}
-			mockFs := fstest.MapFS{}
-
+			snapshot, err := snapshotar.ParseTXTAR(raw)
+			if err != nil {
+				t.Fatalf("parse snapshot: %v", err)
+			}
+			inputData := string(snapshot.Fstab)
+			kernelVer := snapshot.KernelVer
+			cacheVals := snapshot.Cache
+			mockFs := snapshot.MockFS
+			var expectedIssues, optionsData string
 			for _, file := range ar.Files {
-				name := file.Name
-				switch {
-				case name == "input" || name == "input/etc/fstab":
-					inputData = string(file.Data)
-				case name == "issues" || name == "expected/validationerrors.txt":
+				switch file.Name {
+				case "issues", "expected/validationerrors.txt":
 					expectedIssues = string(file.Data)
-				case name == "options.txt" || name == "options":
+				case "options.txt", "options":
 					optionsData = string(file.Data)
-				case name == "kernel":
-					kernelVer = "Linux version " + strings.TrimSpace(string(file.Data))
-				case name == "cache":
-					for _, line := range strings.Split(string(file.Data), "\n") {
-						line = strings.TrimSpace(line)
-						if line == "" {
-							continue
-						}
-						parts := strings.SplitN(line, "=", 2)
-						if len(parts) == 2 {
-							cacheVals[parts[0]] = parts[1]
-						}
-					}
-				case strings.HasPrefix(name, "input/"):
-					mockFs[strings.TrimPrefix(name, "input/")] = &fstest.MapFile{
-						Data: file.Data,
-					}
 				}
 			}
 
@@ -144,7 +125,7 @@ func TestAllTxtarRules(t *testing.T) {
 			if parsedOpts.KernelVer != "" {
 				kernelVer = parsedOpts.KernelVer
 			}
-			if kernelVer == "" {
+			if kernelVer == "" && snapshot.Manifest == nil {
 				if strings.Contains(tcPath, "/legacy/ext3/") {
 					kernelVer = "Linux version 3.0.0"
 				} else {
@@ -157,43 +138,25 @@ func TestAllTxtarRules(t *testing.T) {
 				t.Fatalf("parse input: %v", err)
 			}
 
-			c := rules.NewCache()
-			c.Set("proc_version", kernelVer)
-
-			// Pre-fill default proc/filesystems ONLY if not explicitly provided in mockFs or cache
-			_, hasProcFSFile := mockFs["proc/filesystems"]
-			_, hasProcFSCache := cacheVals["proc_filesystems"]
-			if !hasProcFSFile && !hasProcFSCache {
-				fsMap := make(map[string]bool)
-				for _, fsName := range defaultFSList {
-					fsMap[fsName] = true
-				}
-				c.Set("proc_filesystems", fsMap)
-			}
-
-			for k, v := range cacheVals {
-				if k == "proc_filesystems" {
-					fsMap := make(map[string]bool)
-					for _, item := range strings.Split(v, ",") {
-						item = strings.TrimSpace(item)
-						if item != "" {
-							fsMap[item] = true
-						}
-					}
-					c.Set(rules.CacheKey(k), fsMap)
-				} else if k == "block_devices" {
-					var devs []rules.BlockDevice
-					if err := json.Unmarshal([]byte(v), &devs); err == nil {
-						c.Set(rules.CacheKey(k), devs)
-					}
-				} else if v == "true" {
-					c.Set(rules.CacheKey(k), true)
-				} else if v == "false" {
-					c.Set(rules.CacheKey(k), false)
-				} else {
-					c.Set(rules.CacheKey(k), v)
+			snapshot.KernelVer = kernelVer
+			// These are explicit historical test defaults, never production replay
+			// defaults. Versioned support captures keep all missing data unknown.
+			if snapshot.Manifest == nil {
+				_, hasProcFSFile := mockFs["proc/filesystems"]
+				_, hasProcFSCache := cacheVals["proc_filesystems"]
+				if !hasProcFSFile && !hasProcFSCache {
+					snapshot.Cache["proc_filesystems"] = strings.Join(defaultFSList, ",")
 				}
 			}
+			provider, err := snapshotar.ReplaySnapshot(snapshot)
+			if err != nil {
+				t.Fatalf("snapshot provider: %v", err)
+			}
+			api := provider.(*rules.CacheFS)
+			if snapshot.Manifest == nil {
+				api.OfflineReplay = false
+			}
+			c := api.Cache
 
 			ctx := rules.WithCache(context.Background(), c)
 
@@ -237,7 +200,7 @@ func TestAllTxtarRules(t *testing.T) {
 			var allIssues []rules.ValidationIssue
 			for _, entry := range entries {
 				for _, r := range rulesToRun {
-					issues, err := r.Validate(ctx, rules.NewCacheFS(c, mockFs), entry)
+					issues, err := r.Validate(ctx, api, entry)
 					if err != nil {
 						t.Fatalf("rule %s failed on %s: %v", r.Name(), tcPath, err)
 					}

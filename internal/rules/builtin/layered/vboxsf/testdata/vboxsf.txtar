@@ -24,6 +24,7 @@ user_exists:1000=true
 group_exists:1000=true
 user_exists:9999=false
 group_exists:9999=false
+
 -- issues --
 Unknown vboxsf mount option 'invalidopt' on line 5
 Invalid value 'invalid' for vboxsf mount option 'cache' on line 8

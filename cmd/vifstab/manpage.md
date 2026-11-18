@@ -8,7 +8,9 @@ vifstab - Verify Linux fstab configurations and explicitly edit with linting and
 
 vifstab
 
-vifstab verify [--file PATH]
+vifstab verify [--file PATH|-] [--static] [--capture FILE|-] [--unredacted]
+
+vifstab verify --snapshot FILE|-
 
 vifstab edit [--file PATH] [--backup-dir DIR] [--systemd-reload auto|warn|never]
 
@@ -88,8 +90,41 @@ No systemd or external boot utility is required. No `verify --uefi` option exist
 **help COMMAND**, **--help**, **-h**: Show command-specific help without executing
 the action. Verification flags belong after `verify`; root verification flags
 before another command are rejected. Flags precede positional operands. The old root editing/`--verify`
-interface has been replaced. Static verification, TXTAR integration and edit
-preflight are separately tracked work, not flags in this foundation.
+interface has been replaced. **verify --static** runs host-independent rule checks while all live filesystem,
+device, path/account and kernel observations remain unchecked/unknown.
+The mode is printed explicitly; unknown is not a failure and no host fallback
+is used. Structural/option errors still block. Edit preflight is not implemented.
+
+**verify --capture FILE** saves a bounded support archive from the same validation
+pass, even when blocking findings or a bounded parser failure cause exit 1.
+Unreadable/oversized input or archive-output failures are errors. `--file -`
+explicitly borrows stdin. Capture files use private 0600 exclusive creation;
+existing files and symlinks are rejected. `--capture -` writes only TXTAR to stdout
+and sends findings/diagnostics to stderr; shell redirection controls permissions.
+Static capture is supported without live observations.
+
+Capture uses the canonical metadata provider; it does not inspect block contents,
+mount devices, export account databases, read credentials or elevate privileges.
+Default redaction pseudonymises identities, paths, network sources and sensitive
+options; topology and public role paths remain visible. **Manually review every
+capture before sharing.** Redaction can alter validation semantics/findings.
+**--unredacted** requires capture, prints an explicit warning and may retain
+credentials. Keep such artifacts private.
+
+**verify --snapshot FILE** (or `-` for stdin) runs the production validator offline.
+Missing observations remain unknown and never fall back to the current host.
+It does not create temporary files, backups or target writes, open an editor or
+launch systemd. Snapshot mode rejects file/capture/static/unredacted combinations.
+UEFI, diagram, editing and content inspection are unsupported replay operations.
+
+TXTAR schema 1.0 includes manifest.json, input/etc/fstab, optional kernel and
+provider inventory/observations JSON. Negative/unknown/permission states remain
+distinct. Serialization is deterministic; limits are 10 MiB total, 100 sections,
+2 MiB per section and 1024-byte names. Unsafe paths, ambiguous/duplicate sections,
+malformed/duplicate JSON, unsupported versions and delimiters are rejected.
+Legacy fixture forms remain supported. To add a regression, copy a reviewed
+capture to testdata, add expected/validationerrors.txt and optional options.txt
+with rule=all and format=level_prefix. See README for executable examples.
 
 ## PROCESS AND SAVE BOUNDARIES
 
@@ -128,31 +163,9 @@ priority order, default `vi`. Arguments `--` and the temporary path are appended
 
 **XDG_CACHE_HOME**, **HOME**: Caller cache lookup for writing workflows.
 
-## TARGET OWNERSHIP AND PERMISSIONS VERIFICATION
-
-During verification and editing, `vifstab` inspects the selected effective target (`--file`, following symlinks via `stat`) once per file—including empty fstab files—for ownership, mode bits, and Linux POSIX access ACLs (`system.posix_acl_access`):
-- A system target (`/etc/fstab`) triggers a warning if it is world-writable, owned by an unexpected non-root user, group-writable by a non-root group, or has ACL write access granted to non-root users.
-- Alternate user-specified fstab paths are warned if world-writable or if write ACLs expose write access to non-owners.
-- Secure configurations such as `0644` or `0600` root:root ownership produce no warnings.
-- Unavailable, unsupported, or unreadable metadata (including ACLs) remains unknown rather than emitting false positives, and `vifstab` never modifies permissions automatically.
-- Permission issues are reported at `warning` severity, which is blocking in `vifstab`: read-only verification exits non-zero, and `vifstab edit` prompts `(e)dit again, (c)ontinue and save anyway, (q)uit without saving`.
-
-## EXT4 JOURNAL MODE COMPATIBILITY
-
-Linux 7.3 deprecates the EXT4 `data=journal` mount option. When the running kernel version is 7.3 or newer, `vifstab` reports a non-blocking informational deprecation notice for that option. Before 7.3 it remains valid. Upstream plans to remove it in January 2028, but the specific removal kernel has not been confirmed; `vifstab` does not preemptively report a mount failure on a guessed release. An unknown kernel version does not trigger a deprecation notice.
-
-The default `data=ordered` mode is not an equivalent durability replacement for `data=journal`; review data-integrity implications before changing the option. `vifstab` never rewrites the mount mode automatically.
-
-## USER AND GROUP OBSERVATIONS
-
-Numeric UID/GID mount options must be between `0` and `4294967294`. Explicitly supported filesystem enum alternatives remain valid. A structurally valid matching local passwd/group record establishes presence; missing, unreadable, malformed or unmatched local data leaves account availability unknown because NSS may use other sources. Unknown and permission-denied observations produce informational diagnostics. Explicit provider/cache observations may still establish absence. No additional account-discovery command or NSS lookup is performed.
-
-## EXPERIMENTAL UEFI OBSERVATIONS
-
-The explicit `uefi` command correlates device and firmware metadata. Missing filesystem type and missing or malformed GPT type remain unknown. A definite `Not ESP` report requires a structurally valid obtained GPT type; otherwise the report shows `GPT role: unknown`. Optional EFI-directory information is attempted only for an already-mounted matching device, with unavailable results unknown. This is not filesystem-content verification for an unmounted device or a bootability guarantee.
-
 ## SEE ALSO
-`fstab(5)`, `mount(8)`, `rcs(1)`, `README.md`
+
+fstab(5), mount(8), README.md
 
 ## Configuration text input safety
 
@@ -161,4 +174,8 @@ unavailable classification are refused. Regular files, symlinks and intentional
 streams remain supported. Formatting checks borrowed stdin and retains pipelines.
 The Linux pathname reader requires metadata/proc-fd interfaces and keeps caller
 credentials. See `docs/TEXT-INPUTS.md` for the stable-inode boundary,
-platform limits and generated CLI/TXTAR integration notes.
+platform limits. Generated verification, static input, capture and replay share this guard.
+
+## USER AND GROUP OBSERVATIONS
+
+Numeric UID/GID mount options must be between `0` and `4294967294`. Explicitly supported filesystem enum alternatives remain valid. A structurally valid matching local passwd/group record establishes presence; missing, unreadable, malformed or unmatched local data leaves account availability unknown because NSS may use other sources. Unknown and permission-denied observations produce informational diagnostics. Explicit provider/cache observations may still establish absence. No additional account-discovery command or NSS lookup is performed.
