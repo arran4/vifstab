@@ -17,13 +17,18 @@ Subcommands:
 
 
 Flags:
-    --file string             (default: "/etc/fstab")   File to edit.
-    --backup-dir string       (default: "")             RCS backup directory;
-                                                        defaults to the caller's
-                                                        cache.
-    --systemd-reload string   (default: "warn")         Post-save systemd
-                                                        handling: auto, warn or
-                                                        never.
+    --file string              (default: "/etc/fstab")   File to edit.
+    --backup-dir string        (default: "")             RCS backup directory;
+                                                         defaults to the
+                                                         caller's cache.
+    --systemd-reload string    (default: "warn")         Post-save systemd
+                                                         handling: auto, warn or
+                                                         never.
+    --metadata-policy string   (default: "strict")       Metadata preservation
+                                                         policy for save
+                                                         operations: strict,
+                                                         supported or
+                                                         best-effort.
 
 Positional Arguments:
     [operands...] No positional operands are accepted.

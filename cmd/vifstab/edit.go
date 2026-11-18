@@ -17,14 +17,15 @@ var _ Cmd = (*Edit)(nil)
 
 type Edit struct {
 	*RootCmd
-	Flags         *flag.FlagSet
-	file          string
-	backupDir     string
-	systemdReload string
-	seen          map[string]bool
-	operands      []string
-	SubCommands   map[string]func() Cmd
-	CommandAction func(c *Edit) error
+	Flags          *flag.FlagSet
+	file           string
+	backupDir      string
+	systemdReload  string
+	metadataPolicy string
+	seen           map[string]bool
+	operands       []string
+	SubCommands    map[string]func() Cmd
+	CommandAction  func(c *Edit) error
 }
 
 type UsageDataEdit struct {
@@ -72,6 +73,9 @@ func (c *Edit) Execute(args []string) (err error) {
 	fs.StringVar(&c.systemdReload, "systemdReload", c.systemdReload, "Post-save systemd handling: auto, warn or never.")
 	fs.StringVar(&c.systemdReload, "systemd-reload", c.systemdReload, "Post-save systemd handling: auto, warn or never.")
 
+	fs.StringVar(&c.metadataPolicy, "metadataPolicy", c.metadataPolicy, "Metadata preservation policy for save operations: strict, supported or best-effort.")
+	fs.StringVar(&c.metadataPolicy, "metadata-policy", c.metadataPolicy, "Metadata preservation policy for save operations: strict, supported or best-effort.")
+
 	remainingArgs, dashDashSeen, err = parseGoFlags(fs, args, c.commandPath())
 	if err != nil {
 		if err == flag.ErrHelp {
@@ -101,6 +105,15 @@ func (c *Edit) Execute(args []string) (err error) {
 		}
 		if f.Name == "systemd-reload" {
 			seenFlags["systemdReload"] = true
+		}
+	})
+
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "metadataPolicy" {
+			seenFlags["metadataPolicy"] = true
+		}
+		if f.Name == "metadata-policy" {
+			seenFlags["metadataPolicy"] = true
 		}
 	})
 
@@ -144,11 +157,13 @@ func (c *RootCmd) NewEdit() *Edit {
 	set.StringVar(&v.backupDir, "backup-dir", "", "RCS backup directory; defaults to the caller's cache.")
 
 	set.StringVar(&v.systemdReload, "systemd-reload", "warn", "Post-save systemd handling: auto, warn or never.")
+
+	set.StringVar(&v.metadataPolicy, "metadata-policy", "strict", "Metadata preservation policy for save operations: strict, supported or best-effort.")
 	set.Usage = v.Usage
 
 	v.CommandAction = func(c *Edit) error {
 
-		err := cli.Edit(c.file, c.backupDir, c.systemdReload, c.seen, c.operands...)
+		err := cli.Edit(c.file, c.backupDir, c.systemdReload, c.metadataPolicy, c.seen, c.operands...)
 		if err != nil {
 			var exitCode *cmd.ErrExitCode
 			if errors.As(err, &exitCode) {

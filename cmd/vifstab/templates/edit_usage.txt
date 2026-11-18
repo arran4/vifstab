@@ -9,9 +9,10 @@ Subcommands:
 
 
 Flags:
-    {{formatFlagRow 25 25 "--file string" "(default: \"/etc/fstab\")" "File to edit."}}
-    {{formatFlagRow 25 25 "--backup-dir string" "(default: \"\")" "RCS backup directory; defaults to the caller's cache."}}
-    {{formatFlagRow 25 25 "--systemd-reload string" "(default: \"warn\")" "Post-save systemd handling: auto, warn or never."}}
+    {{formatFlagRow 26 25 "--file string" "(default: \"/etc/fstab\")" "File to edit."}}
+    {{formatFlagRow 26 25 "--backup-dir string" "(default: \"\")" "RCS backup directory; defaults to the caller's cache."}}
+    {{formatFlagRow 26 25 "--systemd-reload string" "(default: \"warn\")" "Post-save systemd handling: auto, warn or never."}}
+    {{formatFlagRow 26 25 "--metadata-policy string" "(default: \"strict\")" "Metadata preservation policy for save operations: strict, supported or best-effort."}}
 
 Positional Arguments:
     {{formatHelpRow 13 "[operands...]" "No positional operands are accepted."}}

@@ -9,9 +9,10 @@ Subcommands:
 
 
 Flags:
-    {{formatFlagRow 21 25 "--file string" "(default: \"/etc/fstab\")" "Input file; an explicit path takes precedence over piped stdin. Use - for stdin."}}
-    {{formatFlagRow 21 25 "--in-place, -i" "(default: false)" "Replace the selected file using the save and recovery workflow."}}
-    {{formatFlagRow 21 25 "--backup-dir string" "(default: \"\")" "RCS directory for in-place formatting."}}
+    {{formatFlagRow 26 25 "--file string" "(default: \"/etc/fstab\")" "Input file; an explicit path takes precedence over piped stdin. Use - for stdin."}}
+    {{formatFlagRow 26 25 "--in-place, -i" "(default: false)" "Replace the selected file using the save and recovery workflow."}}
+    {{formatFlagRow 26 25 "--backup-dir string" "(default: \"\")" "RCS directory for in-place formatting."}}
+    {{formatFlagRow 26 25 "--metadata-policy string" "(default: \"strict\")" "Metadata preservation policy for in-place saves: strict, supported or best-effort."}}
 
 Positional Arguments:
     {{formatHelpRow 13 "[operands...]" "No positional operands are accepted."}}

@@ -28,6 +28,8 @@ func TestEdit_Execute(t *testing.T) {
 	args = append(args, "test")
 	args = append(args, "--systemd-reload")
 	args = append(args, "test")
+	args = append(args, "--metadata-policy")
+	args = append(args, "test")
 
 	err := cmd.Execute(args)
 	if err != nil {
@@ -46,6 +48,9 @@ func TestEdit_Execute(t *testing.T) {
 	}
 	if cmd.systemdReload != "test" {
 		t.Errorf("Expected systemdReload to be 'test', got '%v'", cmd.systemdReload)
+	}
+	if cmd.metadataPolicy != "test" {
+		t.Errorf("Expected metadataPolicy to be 'test', got '%v'", cmd.metadataPolicy)
 	}
 }
 

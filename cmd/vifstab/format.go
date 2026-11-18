@@ -17,14 +17,15 @@ var _ Cmd = (*Format)(nil)
 
 type Format struct {
 	*RootCmd
-	Flags         *flag.FlagSet
-	file          string
-	inPlace       bool
-	backupDir     string
-	seen          map[string]bool
-	operands      []string
-	SubCommands   map[string]func() Cmd
-	CommandAction func(c *Format) error
+	Flags          *flag.FlagSet
+	file           string
+	inPlace        bool
+	backupDir      string
+	metadataPolicy string
+	seen           map[string]bool
+	operands       []string
+	SubCommands    map[string]func() Cmd
+	CommandAction  func(c *Format) error
 }
 
 type UsageDataFormat struct {
@@ -73,6 +74,9 @@ func (c *Format) Execute(args []string) (err error) {
 	fs.StringVar(&c.backupDir, "backupDir", c.backupDir, "RCS directory for in-place formatting.")
 	fs.StringVar(&c.backupDir, "backup-dir", c.backupDir, "RCS directory for in-place formatting.")
 
+	fs.StringVar(&c.metadataPolicy, "metadataPolicy", c.metadataPolicy, "Metadata preservation policy for in-place saves: strict, supported or best-effort.")
+	fs.StringVar(&c.metadataPolicy, "metadata-policy", c.metadataPolicy, "Metadata preservation policy for in-place saves: strict, supported or best-effort.")
+
 	remainingArgs, dashDashSeen, err = parseGoFlags(fs, args, c.commandPath())
 	if err != nil {
 		if err == flag.ErrHelp {
@@ -105,6 +109,15 @@ func (c *Format) Execute(args []string) (err error) {
 		}
 		if f.Name == "backup-dir" {
 			seenFlags["backupDir"] = true
+		}
+	})
+
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "metadataPolicy" {
+			seenFlags["metadataPolicy"] = true
+		}
+		if f.Name == "metadata-policy" {
+			seenFlags["metadataPolicy"] = true
 		}
 	})
 
@@ -149,11 +162,13 @@ func (c *RootCmd) NewFormat() *Format {
 	set.BoolVar(&v.inPlace, "i", false, "Replace the selected file using the save and recovery workflow.")
 
 	set.StringVar(&v.backupDir, "backup-dir", "", "RCS directory for in-place formatting.")
+
+	set.StringVar(&v.metadataPolicy, "metadata-policy", "strict", "Metadata preservation policy for in-place saves: strict, supported or best-effort.")
 	set.Usage = v.Usage
 
 	v.CommandAction = func(c *Format) error {
 
-		err := cli.Format(c.file, c.inPlace, c.backupDir, c.seen, c.operands...)
+		err := cli.Format(c.file, c.inPlace, c.backupDir, c.metadataPolicy, c.seen, c.operands...)
 		if err != nil {
 			var exitCode *cmd.ErrExitCode
 			if errors.As(err, &exitCode) {

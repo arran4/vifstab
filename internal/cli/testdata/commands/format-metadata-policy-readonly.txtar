@@ -1,0 +1,11 @@
+Executable regression: format-metadata-policy-readonly; rejects write-only flag without --in-place.
+-- args.json --
+["format", "--metadata-policy", "best-effort"]
+-- fstab --
+# fixture
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: format failed: --metadata-policy requires --in-place

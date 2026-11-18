@@ -81,9 +81,10 @@ func Report(w io.Writer, issues []rules.ValidationIssue) error {
 //	file: --file (default: "/etc/fstab") File to edit.
 //	backupDir: --backup-dir (default: "") RCS backup directory; defaults to the caller's cache.
 //	systemdReload: --systemd-reload (default: "warn") Post-save systemd handling: auto, warn or never.
+//	metadataPolicy: --metadata-policy (default: "strict") Metadata preservation policy for save operations: strict, supported or best-effort.
 //	seen: (flag presence) Explicitly supplied flags.
 //	operands: ... No positional operands are accepted.
-func Edit(file, backupDir, systemdReload string, seen map[string]bool, operands ...string) error {
+func Edit(file, backupDir, systemdReload, metadataPolicy string, seen map[string]bool, operands ...string) error {
 	if !seen["file"] {
 		file = vifstab.DefaultFile
 	}
@@ -96,12 +97,27 @@ func Edit(file, backupDir, systemdReload string, seen map[string]bool, operands 
 	default:
 		return fmt.Errorf("invalid --systemd-reload value %q; expected auto, warn or never", systemdReload)
 	}
+	policy, err := parseMetadataPolicy(metadataPolicy)
+	if err != nil {
+		return err
+	}
 	cfg, err := writingConfig(file, backupDir)
 	if err != nil {
 		return err
 	}
 	cfg.SystemdReload = mode
+	cfg.MetadataPolicy = policy
 	return applicationError(editor.EditAndLint(cfg, rules.ActualFS{}, editor.DefaultDependencies()))
+}
+
+func parseMetadataPolicy(val string) (config.MetadataPolicy, error) {
+	policy := config.MetadataPolicy(val)
+	switch policy {
+	case config.MetadataPolicyStrict, config.MetadataPolicySupported, config.MetadataPolicyBestEffort:
+		return policy, nil
+	default:
+		return "", fmt.Errorf("invalid --metadata-policy value %q; expected strict, supported or best-effort", val)
+	}
 }
 
 func writingConfig(file, backupDir string) (config.Config, error) {
@@ -120,14 +136,26 @@ func writingConfig(file, backupDir string) (config.Config, error) {
 //	file: --file (default: "/etc/fstab") Input file; an explicit path takes precedence over piped stdin. Use - for stdin.
 //	inPlace: --in-place -i (default: false) Replace the selected file using the save and recovery workflow.
 //	backupDir: --backup-dir (default: "") RCS directory for in-place formatting.
+//	metadataPolicy: --metadata-policy (default: "strict") Metadata preservation policy for in-place saves: strict, supported or best-effort.
 //	seen: (flag presence) Explicitly supplied flags.
 //	operands: ... No positional operands are accepted.
-func Format(file string, inPlace bool, backupDir string, seen map[string]bool, operands ...string) error {
+func Format(file string, inPlace bool, backupDir, metadataPolicy string, seen map[string]bool, operands ...string) error {
 	if !seen["file"] {
 		file = vifstab.DefaultFile
 	}
 	if err := noOperands("vifstab format", operands); err != nil {
 		return err
+	}
+	if !inPlace && (seen["metadata-policy"] || seen["metadataPolicy"]) {
+		return fmt.Errorf("--metadata-policy requires --in-place")
+	}
+	var policy config.MetadataPolicy
+	if inPlace {
+		var err error
+		policy, err = parseMetadataPolicy(metadataPolicy)
+		if err != nil {
+			return err
+		}
 	}
 	useStdin := file == "-"
 	if !seen["file"] {
@@ -164,6 +192,7 @@ func Format(file string, inPlace bool, backupDir string, seen map[string]bool, o
 	if err != nil {
 		return err
 	}
+	cfg.MetadataPolicy = policy
 	return applicationError(editor.SaveWithoutValidation(cfg, formatted.Bytes(), editor.DefaultDependencies()))
 }
 

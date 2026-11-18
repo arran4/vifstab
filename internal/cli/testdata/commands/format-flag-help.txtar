@@ -17,14 +17,20 @@ Subcommands:
 
 
 Flags:
-    --file string         (default: "/etc/fstab")   Input file; an explicit path
-                                                    takes precedence over piped
-                                                    stdin. Use - for stdin.
-    --in-place, -i        (default: false)          Replace the selected file
-                                                    using the save and recovery
-                                                    workflow.
-    --backup-dir string   (default: "")             RCS directory for in-place
-                                                    formatting.
+    --file string              (default: "/etc/fstab")   Input file; an explicit
+                                                         path takes precedence
+                                                         over piped stdin. Use -
+                                                         for stdin.
+    --in-place, -i             (default: false)          Replace the selected
+                                                         file using the save and
+                                                         recovery workflow.
+    --backup-dir string        (default: "")             RCS directory for
+                                                         in-place formatting.
+    --metadata-policy string   (default: "strict")       Metadata preservation
+                                                         policy for in-place
+                                                         saves: strict,
+                                                         supported or
+                                                         best-effort.
 
 Positional Arguments:
     [operands...] No positional operands are accepted.

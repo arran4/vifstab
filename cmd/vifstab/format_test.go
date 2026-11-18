@@ -27,6 +27,8 @@ func TestFormat_Execute(t *testing.T) {
 	args = append(args, "--in-place")
 	args = append(args, "--backup-dir")
 	args = append(args, "test")
+	args = append(args, "--metadata-policy")
+	args = append(args, "test")
 
 	err := cmd.Execute(args)
 	if err != nil {
@@ -45,6 +47,9 @@ func TestFormat_Execute(t *testing.T) {
 	}
 	if cmd.backupDir != "test" {
 		t.Errorf("Expected backupDir to be 'test', got '%v'", cmd.backupDir)
+	}
+	if cmd.metadataPolicy != "test" {
+		t.Errorf("Expected metadataPolicy to be 'test', got '%v'", cmd.metadataPolicy)
 	}
 }
 
