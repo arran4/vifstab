@@ -3,7 +3,6 @@ package options
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/arran4/vifstab/internal/rules"
 )

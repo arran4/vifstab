@@ -27,9 +27,11 @@ and report both values without duplicating the same cross-option finding. This
 foundation does not add systemd semantic rules, infer an installed systemd version
 or change existing validators' conflict policies. Existing explicit
 `ExclusiveGroup` checks still reject their configured conflicts; their policy is
-separate from option storage. Unknown `x-` and `X-` extensions currently bypass
-unknown-option errors; acceptance does not mean their semantics were checked.
-Issues #172 and #171 track namespace and systemd policy separately.
+separate from option storage. Unknown `x-` and `X-` extensions produce nonblocking unverified information;
+acceptance does not mean their semantics were checked. The independent #172
+policy is described in [extension validation](EXTENSION-OPTIONS.md). The dedicated
+[systemd policy](SYSTEMD-OPTIONS.md) uses the ordered representation across all
+filesystem types.
 
 Run the deterministic API/TXTAR regression cases with:
 

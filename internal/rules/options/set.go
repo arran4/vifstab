@@ -13,15 +13,19 @@ import (
 type OptionSet struct {
 	ordered []OptionState
 	byKey   map[string][]OptionState
+	first   map[string]int
 }
 
 // ParseOptionSet shares the existing quote/escape handling of rules.SplitOptions.
 // In particular, a flag and an explicitly empty value remain different shapes.
 func ParseOptionSet(raw string) OptionSet {
-	set := OptionSet{byKey: make(map[string][]OptionState)}
+	set := OptionSet{byKey: make(map[string][]OptionState), first: make(map[string]int)}
 	for _, rawOption := range rules.SplitOptions(raw) {
 		key, value, hasValue := strings.Cut(rawOption, "=")
 		option := OptionState{Key: key, Value: value, HasVal: hasValue}
+		if !set.Has(key) {
+			set.first[key] = len(set.ordered)
+		}
 		set.ordered = append(set.ordered, option)
 		set.byKey[key] = append(set.byKey[key], option)
 	}
@@ -38,6 +42,12 @@ func (s OptionSet) All(key string) []OptionState {
 
 // Has reports whether key occurs, including bare flags and empty values.
 func (s OptionSet) Has(key string) bool { return len(s.byKey[key]) != 0 }
+
+// FirstIndex returns a key's first position in Ordered, for once-per-key checks.
+func (s OptionSet) FirstIndex(key string) (int, bool) {
+	i, ok := s.first[key]
+	return i, ok
+}
 
 // Last returns the final occurrence of key, for explicitly last-value policies.
 func (s OptionSet) Last(key string) (OptionState, bool) {
