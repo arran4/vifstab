@@ -149,10 +149,47 @@ func (f *targetFaultFS) CreateTemp(dir, pattern string) (TempFile, error) {
 	}
 	return &targetCloseFile{TempFile: tmp, beforeClose: f.beforeClose}, nil
 }
+func (f *targetFaultFS) Chown(name string, uid, gid int) error {
+	if ch, ok := f.FS.(Chowner); ok {
+		return ch.Chown(name, uid, gid)
+	}
+	return errors.New("chown unsupported")
+}
+func (f *targetFaultFS) Getxattr(path, name string) ([]byte, error) {
+	if xh, ok := f.FS.(XattrHandler); ok {
+		return xh.Getxattr(path, name)
+	}
+	return nil, errors.New("xattr unsupported")
+}
+func (f *targetFaultFS) Setxattr(path, name string, value []byte) error {
+	if xh, ok := f.FS.(XattrHandler); ok {
+		return xh.Setxattr(path, name, value)
+	}
+	return errors.New("xattr unsupported")
+}
+func (f *targetFaultFS) Listxattr(path string) ([]string, error) {
+	if xh, ok := f.FS.(XattrHandler); ok {
+		return xh.Listxattr(path)
+	}
+	return nil, errors.New("xattr unsupported")
+}
+func (f *targetFaultFS) Removexattr(path, name string) error {
+	if xr, ok := f.FS.(XattrRemover); ok {
+		return xr.Removexattr(path, name)
+	}
+	return errors.New("xattr remove unsupported")
+}
 
 type targetCloseFile struct {
 	TempFile
 	beforeClose func()
+}
+
+func (f *targetCloseFile) Chown(uid, gid int) error {
+	if ch, ok := f.TempFile.(TempFileChowner); ok {
+		return ch.Chown(uid, gid)
+	}
+	return errors.New("chown unsupported")
 }
 
 func (f *targetCloseFile) Close() error {

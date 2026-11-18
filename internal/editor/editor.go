@@ -39,6 +39,11 @@ type FS interface {
 	CreateTemp(dir, pattern string) (TempFile, error)
 	Remove(name string) error
 	SyncDir(name string) error
+	Chown(name string, uid, gid int) error
+	Getxattr(path, name string) ([]byte, error)
+	Setxattr(path, name string, value []byte) error
+	Listxattr(path string) ([]string, error)
+	Removexattr(path, name string) error
 }
 
 type osFS struct{}
@@ -65,6 +70,11 @@ func (osFS) SyncDir(name string) error {
 	defer func() { _ = d.Close() }()
 	return d.Sync()
 }
+func (osFS) Chown(name string, uid, gid int) error          { return os.Chown(name, uid, gid) }
+func (osFS) Getxattr(path, name string) ([]byte, error)     { return osGetxattr(path, name) }
+func (osFS) Setxattr(path, name string, value []byte) error { return osSetxattr(path, name, value) }
+func (osFS) Listxattr(path string) ([]string, error)        { return osListxattr(path) }
+func (osFS) Removexattr(path, name string) error            { return osRemovexattr(path, name) }
 
 var DefaultFS FS = osFS{}
 
@@ -246,6 +256,9 @@ func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 
 	res, err := commitEditSnapshot(cfg, content, blockingValidationPassed, deps, &original)
 	if err != nil && !res.Saved {
+		if res.RecoveryPath != "" {
+			return &RecoveryError{Path: res.RecoveryPath, Err: err}
+		}
 		path, recoveryErr := preserveRecovery(content, deps.FS)
 		if recoveryErr != nil {
 			// Keep the original editor copy as a last resort if a new private
@@ -291,6 +304,8 @@ type SaveResult struct {
 	Saved             bool
 	VersioningEnabled bool
 	Versioned         bool
+	RecoveryPath      string
+	Warnings          []string
 	Err               error
 }
 
@@ -333,9 +348,21 @@ func saveAndVersion(cfg config.Config, content []byte, fsLayer FS, original *des
 		return res
 	}
 	if target.info != nil {
-		if err := tmpDest.Chmod(target.info.Mode().Perm()); err != nil {
+		meta := extractTargetMetadata(target.path, target.info, fsLayer)
+		warnings, metaErr := applyAndVerifyMetadata(tmpDest.Name(), tmpDest, meta, cfg.MetadataPolicy, fsLayer)
+		if len(warnings) > 0 {
+			res.Warnings = append(res.Warnings, warnings...)
+		}
+		if metaErr != nil {
 			_ = tmpDest.Close()
-			res.Err = fmt.Errorf("failed to chmod temporary destination file: %w", err)
+			_ = fsLayer.Remove(tmpDest.Name())
+			recPath, recErr := preserveRecovery(content, fsLayer)
+			if recErr == nil {
+				res.RecoveryPath = recPath
+				res.Err = fmt.Errorf("%w; edited content recovered at %q", metaErr, recPath)
+			} else {
+				res.Err = metaErr
+			}
 			return res
 		}
 	}
@@ -407,6 +434,9 @@ func commitEditSnapshot(cfg config.Config, content []byte, blockingValidationPas
 	var sysErr error
 	if res.Saved {
 		fmt.Println("Saved successfully.")
+		for _, w := range res.Warnings {
+			fmt.Printf("warning: %s\n", w)
+		}
 		sysErr = handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed && res.Err == nil)
 	}
 

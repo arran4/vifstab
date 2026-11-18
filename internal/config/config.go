@@ -13,10 +13,19 @@ const (
 	SystemdReloadNever SystemdReloadAction = "never"
 )
 
+type MetadataPolicy string
+
+const (
+	MetadataPolicyStrict     MetadataPolicy = "strict"
+	MetadataPolicySupported  MetadataPolicy = "supported"
+	MetadataPolicyBestEffort MetadataPolicy = "best-effort"
+)
+
 type Config struct {
-	BackupDir     string
-	FilePath      string
-	SystemdReload SystemdReloadAction
+	BackupDir      string
+	FilePath       string
+	SystemdReload  SystemdReloadAction
+	MetadataPolicy MetadataPolicy
 }
 
 func GetDefaultConfig(filePath string) (Config, error) {
@@ -27,14 +36,16 @@ func GetDefaultConfig(filePath string) (Config, error) {
 		backupDir = userCache + "/vifstab"
 	} else {
 		return Config{
-			FilePath:      filePath,
-			SystemdReload: SystemdReloadWarn,
+			FilePath:       filePath,
+			SystemdReload:  SystemdReloadWarn,
+			MetadataPolicy: MetadataPolicyStrict,
 		}, fmt.Errorf("could not determine user cache directory: %w. Please specify an explicit backup directory via --backup-dir", err)
 	}
 
 	return Config{
-		BackupDir:     backupDir,
-		FilePath:      filePath,
-		SystemdReload: SystemdReloadWarn,
+		BackupDir:      backupDir,
+		FilePath:       filePath,
+		SystemdReload:  SystemdReloadWarn,
+		MetadataPolicy: MetadataPolicyStrict,
 	}, nil
 }
