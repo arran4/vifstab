@@ -9,9 +9,26 @@ builds:
     goarch:
       - amd64
       - arm64
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    ldflags:
+      - -s -w -X main.version={{ .Version }} -X main.commit={{ .Commit }} -X main.date={{ .CommitDate }}
 archives:
-  - format: tar.gz
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- .Os }}_
-      {{- .Arch }}
+  - formats: [tar.gz]
+    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}'
+    builds_info:
+      owner: root
+      group: root
+      mtime: '{{ .CommitDate }}'
+    files:
+      - src: LICENSE
+        info: {owner: root, group: root, mode: 0644, mtime: '{{ .CommitDate }}'}
+      - src: README.md
+        info: {owner: root, group: root, mode: 0644, mtime: '{{ .CommitDate }}'}
+      - src: INSTALL.md
+        info: {owner: root, group: root, mode: 0644, mtime: '{{ .CommitDate }}'}
+      - src: THIRD_PARTY_NOTICES.md
+        info: {owner: root, group: root, mode: 0644, mtime: '{{ .CommitDate }}'}
