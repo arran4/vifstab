@@ -6,7 +6,7 @@ new fstab content
 /var/backup
 -- fault/rcs.rename --
 rcs rename error
--- input/var/backup/fstab,v --
+-- input/${RCS_PATH} --
 head     1.1;
 access   ;
 symbols  ;
@@ -21,7 +21,7 @@ next     ;
 
 
 desc
-@@
+@{"vifstab_rcs":1,"source_base64":"L2V0Yy9mc3RhYg==","revisions":{"1.1":{"sha256":"2d431f33688076db6678fa815355b5ff3f4e10d1a11bd32350b6bb978cc387ee","size":18,"newline":true}}}@
 
 
 1.1
@@ -31,7 +31,7 @@ log
 text
 @old fstab content
 @
--- expected/var/backup/fstab,v --
+-- expected/${RCS_PATH} --
 head     1.1;
 access   ;
 symbols  ;
@@ -46,7 +46,7 @@ next     ;
 
 
 desc
-@@
+@{"vifstab_rcs":1,"source_base64":"L2V0Yy9mc3RhYg==","revisions":{"1.1":{"sha256":"2d431f33688076db6678fa815355b5ff3f4e10d1a11bd32350b6bb978cc387ee","size":18,"newline":true}}}@
 
 
 1.1

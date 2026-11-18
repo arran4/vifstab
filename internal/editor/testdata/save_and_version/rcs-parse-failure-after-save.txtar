@@ -4,11 +4,11 @@ old fstab content
 new fstab content
 -- config/BackupDir --
 /var/backup
--- input/var/backup/fstab,v --
+-- input/${RCS_PATH} --
 malformed rcs file
 -- expected/etc/fstab --
 new fstab content
--- expected/var/backup/fstab,v --
+-- expected/${RCS_PATH} --
 malformed rcs file
 -- expected/rcs_exists --
 true

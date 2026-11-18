@@ -2,9 +2,10 @@ package rcs
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"github.com/arran4/vifstab/internal/textinput"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -29,6 +30,9 @@ type TempFile interface {
 type FS interface {
 	MkdirAll(path string, perm os.FileMode) error
 	Stat(name string) (os.FileInfo, error)
+	Lstat(name string) (os.FileInfo, error)
+	Getwd() (string, error)
+	Lock(name string) (io.Closer, error)
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte, perm os.FileMode) error
 	CreateTemp(dir, pattern string) (TempFile, error)
@@ -39,9 +43,12 @@ type FS interface {
 
 type osFS struct{}
 
-func (osFS) MkdirAll(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
+func (osFS) MkdirAll(path string, perm os.FileMode) error { return MakeDurableDirs(path, perm) }
 func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name) }
-func (osFS) ReadFile(name string) ([]byte, error)         { return textinput.ReadFile(name) }
+func (osFS) Lstat(name string) (os.FileInfo, error)       { return os.Lstat(name) }
+func (osFS) Getwd() (string, error)                       { return os.Getwd() }
+func (osFS) Lock(name string) (io.Closer, error)          { return LockOSFile(name) }
+func (osFS) ReadFile(name string) ([]byte, error)         { return ReadOSHistory(name) }
 func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(name, data, perm)
 }
@@ -61,7 +68,7 @@ func (osFS) SyncDir(name string) error {
 
 var DefaultFS FS = osFS{}
 
-func Update(filePath string, content []byte, config Config, opts ...any) error {
+func Update(filePath string, content []byte, config Config, opts ...any) (resultErr error) {
 	if config.Dir == "" {
 		return nil
 	}
@@ -73,28 +80,47 @@ func Update(filePath string, content []byte, config Config, opts ...any) error {
 		}
 	}
 
-	if err := fsLayer.MkdirAll(config.Dir, 0700); err != nil {
+	identity, rcsFilepath, err := historyIdentity(filePath, config.Dir, fsLayer)
+	if err != nil {
+		return err
+	}
+	if err := fsLayer.MkdirAll(historyParent(rcsFilepath), 0700); err != nil {
 		return fmt.Errorf("failed to create rcs dir: %w", err)
 	}
-
-	baseName := filepath.Base(filePath)
-	rcsFilepath := filepath.Join(config.Dir, baseName+",v")
+	lock, err := fsLayer.Lock(rcsFilepath + ".lock")
+	if err != nil {
+		return fmt.Errorf("failed to lock rcs history: %w", err)
+	}
+	defer func() {
+		if err := lock.Close(); err != nil {
+			resultErr = errors.Join(resultErr, fmt.Errorf("failed to release rcs lock: %w", err))
+		}
+	}()
 
 	var f *rcs.File
 
-	_, err := fsLayer.Stat(rcsFilepath)
+	info, err := fsLayer.Lstat(rcsFilepath)
 	if err != nil {
 		if os.IsNotExist(err) {
+			legacy := joinHistoryPath(config.Dir, filepath.Base(filePath)+",v")
+			if _, err := fsLayer.Lstat(legacy); err == nil {
+				return &LegacyHistoryError{LegacyPath: legacy, HistoryPath: rcsFilepath}
+			} else if !os.IsNotExist(err) {
+				return fmt.Errorf("failed to inspect legacy rcs history: %w", err)
+			}
 			// Treat as new file
 			f = rcs.NewFile()
 			f.Head = "1.1"
 			f.Access = true
 			f.Strict = true
+			if err := setProvenance(f, identity, "1.1", content, nil); err != nil {
+				return err
+			}
 
 			f.RevisionHeads = append(f.RevisionHeads, &rcs.RevisionHead{
 				Revision: "1.1",
 				Date:     rcs.DateTime(time.Now().UTC().Format(rcs.DateFormat)),
-				Author:   rcs.ID(os.Getenv("USER")),
+				Author:   archiveAuthor(),
 				State:    "Exp",
 			})
 
@@ -107,6 +133,9 @@ func Update(filePath string, content []byte, config Config, opts ...any) error {
 			return fmt.Errorf("failed to stat rcs file: %w", err)
 		}
 	} else {
+		if info == nil || !info.Mode().IsRegular() {
+			return fmt.Errorf("RCS history must be a regular file")
+		}
 		rcsData, err := fsLayer.ReadFile(rcsFilepath)
 		if err != nil {
 			return fmt.Errorf("failed to open rcs file: %w", err)
@@ -116,22 +145,41 @@ func Update(filePath string, content []byte, config Config, opts ...any) error {
 		if err != nil {
 			return fmt.Errorf("failed to parse rcs file: %w", err)
 		}
+		provenance, err := parseProvenance(f, identity)
+		if err != nil {
+			return err
+		}
+		previous, err := restoreRevision(f, provenance, f.Head)
+		if err != nil {
+			return fmt.Errorf("failed to verify previous rcs head: %w", err)
+		}
 
 		headParts := strings.Split(f.Head, ".")
-		if len(headParts) == 2 {
+		if len(headParts) == 2 && headParts[0] == "1" {
 			minor := headParts[1]
 			newMinor, err := strconv.Atoi(minor)
 			if err != nil {
 				return fmt.Errorf("failed to parse minor revision %q: %w", minor, err)
 			}
+			if newMinor < 1 || newMinor == math.MaxInt {
+				return fmt.Errorf("RCS revision counter is out of range")
+			}
 			newHead := fmt.Sprintf("%s.%d", headParts[0], newMinor+1)
+			oldHead := f.Head
+			if err := linkPreviousRevision(f, content, previous); err != nil {
+				return err
+			}
 			f.Head = newHead
+			if err := setProvenance(f, identity, newHead, content, provenance); err != nil {
+				return err
+			}
 
 			f.RevisionHeads = append([]*rcs.RevisionHead{{
-				Revision: rcs.Num(newHead),
-				Date:     rcs.DateTime(time.Now().UTC().Format(rcs.DateFormat)),
-				Author:   rcs.ID(os.Getenv("USER")),
-				State:    "Exp",
+				Revision:     rcs.Num(newHead),
+				Date:         rcs.DateTime(time.Now().UTC().Format(rcs.DateFormat)),
+				Author:       archiveAuthor(),
+				State:        "Exp",
+				NextRevision: rcs.Num(oldHead),
 			}}, f.RevisionHeads...)
 
 			f.RevisionContents = append([]*rcs.RevisionContent{{
@@ -144,15 +192,36 @@ func Update(filePath string, content []byte, config Config, opts ...any) error {
 		}
 	}
 
-	dir := filepath.Dir(rcsFilepath)
+	data := []byte(f.String())
+	// Verify the serialization and complete recovery chain before replacing any
+	// archive. A successful parse alone does not prove older bytes are recoverable.
+	encoded, err := rcs.ParseFile(bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("failed to verify encoded RCS history: %w", err)
+	}
+	provenance, err := parseProvenance(encoded, identity)
+	if err != nil {
+		return err
+	}
+	restored, err := restoreRevision(encoded, provenance, encoded.Head)
+	if err != nil {
+		return fmt.Errorf("failed to verify encoded RCS recovery: %w", err)
+	}
+	if !bytes.Equal(restored, content) {
+		return fmt.Errorf("encoded RCS head did not preserve content")
+	}
+	dir := historyParent(rcsFilepath)
 	tmpDest, writeErr := fsLayer.CreateTemp(dir, "rcs-tmp-*")
 	if writeErr != nil {
 		return fmt.Errorf("failed to create temporary rcs file: %w", writeErr)
 	}
 	defer func() { _ = fsLayer.Remove(tmpDest.Name()) }()
 
-	if _, err := tmpDest.Write([]byte(f.String())); err != nil {
+	if n, err := tmpDest.Write(data); err != nil || n != len(data) {
 		_ = tmpDest.Close()
+		if err == nil {
+			err = io.ErrShortWrite
+		}
 		return fmt.Errorf("failed to write to temporary rcs file: %w", err)
 	}
 

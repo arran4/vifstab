@@ -10,6 +10,7 @@ import (
 	"testing/fstest"
 
 	"github.com/arran4/vifstab/internal/config"
+	"github.com/arran4/vifstab/internal/rcs"
 	"github.com/arran4/vifstab/internal/rules"
 )
 
@@ -159,7 +160,11 @@ func TestCommitEditDestinationFailureBeforeRCSSuccessDoesNotReload(t *testing.T)
 	if err == nil || !strings.Contains(err.Error(), "destination create temp failed") {
 		t.Fatalf("got error %v, want destination failure", err)
 	}
-	if _, rcsErr := fsLayer.ReadFile("/backup/fstab,v"); !os.IsNotExist(rcsErr) {
+	history, pathErr := rcs.HistoryPath(cfg.FilePath, cfg.BackupDir, rcsFSAdapter{fs: fsLayer})
+	if pathErr != nil {
+		t.Fatal(pathErr)
+	}
+	if _, rcsErr := fsLayer.ReadFile(history); !os.IsNotExist(rcsErr) {
 		t.Fatalf("RCS file should not exist, got err: %v", rcsErr)
 	}
 	if sm.reloadCount != 0 {

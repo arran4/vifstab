@@ -1,0 +1,18 @@
+Restore empty, CRLF, missing-final-LF, blank, at-quoted and byte content exactly.
+-- cases.json --
+[
+  {
+    "source": "/fixtures/endings/fstab",
+    "revisions_base64": [
+      "",
+      "bm8gbmV3bGluZQ==",
+      "d2l0aCBuZXdsaW5lCg==",
+      "",
+      "Cg==",
+      "DQoNCg==",
+      "bGluZQ0KbmV4dA0K",
+      "AEByYXf/Ynl0ZXMK",
+      "ZmluYWwKCg=="
+    ]
+  }
+]

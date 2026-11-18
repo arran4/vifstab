@@ -3,6 +3,7 @@ package editor
 import (
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/arran4/vifstab/internal/config"
+	"github.com/arran4/vifstab/internal/rcs"
 	"golang.org/x/tools/txtar"
 )
 
@@ -79,6 +81,8 @@ func (m *mockFS) ReadFile(name string) ([]byte, error) {
 	}
 	return nil, os.ErrNotExist
 }
+
+func (m *mockFS) ReadRegularFile(name string) ([]byte, error) { return m.ReadFile(name) }
 
 func (m *mockFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	if err := m.injectFault(getOpContext("write", name), name); err != nil {
@@ -351,6 +355,8 @@ func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 func (m *mockFS) Lstat(name string) (os.FileInfo, error)   { return m.Stat(name) }
 func (m *mockFS) EvalSymlinks(name string) (string, error) { return name, nil }
 func (m *mockFS) SameFile(a, b os.FileInfo) bool           { return a.Sys() == b.Sys() }
+func (m *mockFS) Getwd() (string, error)                   { return "/fixture", nil }
+func (m *mockFS) Lock(string) (io.Closer, error)           { return io.NopCloser(strings.NewReader("")), nil }
 
 func TestSaveAndVersionRealFS(t *testing.T) {
 	// Create a temporary directory
@@ -490,7 +496,7 @@ func TestSaveAndVersion(t *testing.T) {
 					expectedVersioned = strings.TrimSpace(string(file.Data))
 				} else if file.Name == "expected/Err" {
 					expectedErr = strings.TrimSpace(string(file.Data))
-				} else if strings.HasPrefix(file.Name, "expected/") && strings.HasSuffix(file.Name, ",v") {
+				} else if strings.HasPrefix(file.Name, "expected/") && (strings.HasSuffix(file.Name, ",v") || file.Name == "expected/${RCS_PATH}") {
 					expectedRcsContent = string(file.Data)
 					expectedRcsPath = strings.TrimPrefix(file.Name, "expected/")
 				} else if strings.HasPrefix(file.Name, "env/") {
@@ -516,11 +522,20 @@ func TestSaveAndVersion(t *testing.T) {
 				faults:       faults,
 				faultTrigger: make(map[string]bool),
 			}
+			var archivePath string
+			if backupDir != "" {
+				archivePath, err = rcs.HistoryPath(testFile, backupDir, rcsFSAdapter{fs: mfs})
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			expectedRcsPath = strings.ReplaceAll(expectedRcsPath, "${RCS_PATH}", archivePath)
 
 			// Setup full initial file state dynamically
 			for _, file := range archive.Files {
 				if strings.HasPrefix(file.Name, "input/") && file.Name != "input/new_fstab" && file.Name != "input/update_fstab" {
 					p := strings.TrimPrefix(file.Name, "input/")
+					p = strings.ReplaceAll(p, "${RCS_PATH}", archivePath)
 					p = normalizeMockPath(p)
 					mfs.mfs[p] = &fstest.MapFile{Data: file.Data, Mode: 0644}
 				}
@@ -592,7 +607,7 @@ func TestSaveAndVersion(t *testing.T) {
 						t.Fatalf("cfg.BackupDir is empty when expectedRcsExists=true")
 					}
 				} else {
-					rcsPath := filepath.Join(cfg.BackupDir, filepath.Base(testFile)+",v")
+					rcsPath := archivePath
 					actualExists := mfs.rawExists(rcsPath)
 					if actualExists != expectedRcsExists {
 						t.Errorf("expected RCS file exists=%v, got %v at %s", expectedRcsExists, actualExists, rcsPath)
