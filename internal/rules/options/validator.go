@@ -75,7 +75,9 @@ func ValidateOptionsMap(ctx context.Context, api rules.API, entry *rules.FstabEn
 		key, val, hasVal := opt.Key, opt.Value, opt.HasVal
 		validator, ok := optsMap[key]
 		if !ok {
-			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
+			if extensionIssues, handled := ValidateExtensionOption(ctx, api, entry, fsName, key, val, hasVal); handled {
+				issues = append(issues, extensionIssues...)
+			} else {
 				issues = append(issues, rules.ValidationIssue{
 					Message: fmt.Sprintf("Unknown %s mount option '%s' on line %d", fsName, key, entry.LineNum),
 					Line:    entry.RawLine,
