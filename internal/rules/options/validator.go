@@ -62,29 +62,17 @@ func ValidateOptionsMap(ctx context.Context, api rules.API, entry *rules.FstabEn
 	}
 
 	var issues []rules.ValidationIssue
-	parsedOpts := rules.SplitOptions(entry.Fields[3])
-
-	allOpts := make(map[string]OptionState, len(parsedOpts))
-	for _, opt := range parsedOpts {
-		parts := strings.SplitN(opt, "=", 2)
-		key := parts[0]
-		var val string
-		hasVal := len(parts) > 1
-		if hasVal {
-			val = parts[1]
-		}
-		allOpts[key] = OptionState{Key: key, Value: val, HasVal: hasVal}
+	set := ParseOptionSet(entry.Fields[3])
+	// Keep the last-occurrence view for existing validators. New cross-option
+	// checks use OptionSetValidator rather than this deliberately lossy adapter.
+	allOpts := make(map[string]OptionState, len(set.byKey))
+	for _, opt := range set.ordered {
+		allOpts[opt.Key] = opt
 	}
 
-	for _, opt := range parsedOpts {
-		parts := strings.SplitN(opt, "=", 2)
-		key := parts[0]
-		var val string
-		hasVal := len(parts) > 1
-		if hasVal {
-			val = parts[1]
-		}
-
+	checked := make(map[string]bool)
+	for _, opt := range set.ordered {
+		key, val, hasVal := opt.Key, opt.Value, opt.HasVal
 		validator, ok := optsMap[key]
 		if !ok {
 			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
@@ -99,6 +87,10 @@ func ValidateOptionsMap(ctx context.Context, api rules.API, entry *rules.FstabEn
 
 		if validator != nil {
 			issues = append(issues, validator.ValidateOption(ctx, api, entry, fsName, key, val, hasVal, allOpts)...)
+			if check, ok := validator.(OptionSetValidator); ok && !checked[key] {
+				issues = append(issues, check.ValidateOptionSet(ctx, api, entry, fsName, key, set)...)
+				checked[key] = true
+			}
 		}
 	}
 
