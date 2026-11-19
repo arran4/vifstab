@@ -31,6 +31,8 @@ type FS interface {
 	MkdirAll(path string, perm os.FileMode) error
 	Rename(oldpath, newpath string) error
 	Stat(name string) (os.FileInfo, error)
+	Lstat(name string) (os.FileInfo, error)
+	EvalSymlinks(path string) (string, error)
 	CreateTemp(dir, pattern string) (TempFile, error)
 	Remove(name string) error
 	SyncDir(name string) error
@@ -45,6 +47,8 @@ func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 func (osFS) MkdirAll(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
 func (osFS) Rename(oldpath, newpath string) error         { return os.Rename(oldpath, newpath) }
 func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name) }
+func (osFS) Lstat(name string) (os.FileInfo, error)       { return os.Lstat(name) }
+func (osFS) EvalSymlinks(path string) (string, error)     { return filepath.EvalSymlinks(path) }
 func (osFS) CreateTemp(dir, pattern string) (TempFile, error) {
 	return os.CreateTemp(dir, pattern)
 }
@@ -288,16 +292,13 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 
 	var res SaveResult
 
-	var targetMode *os.FileMode
-	if info, err := fsLayer.Stat(cfg.FilePath); err == nil {
-		m := info.Mode().Perm()
-		targetMode = &m
-	} else if !os.IsNotExist(err) {
-		res.Err = fmt.Errorf("failed to stat destination file: %w", err)
+	target, err := resolveTarget(cfg.FilePath, fsLayer)
+	if err != nil {
+		res.Err = err
 		return res
 	}
 
-	dir := filepath.Dir(cfg.FilePath)
+	dir := filepath.Dir(target.path)
 	tmpDest, err := fsLayer.CreateTemp(dir, "vifstab-tmp-*")
 	if err != nil {
 		res.Err = fmt.Errorf("failed to create temporary destination file: %w", err)
@@ -310,8 +311,8 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 		res.Err = fmt.Errorf("failed to write to temporary destination file: %w", err)
 		return res
 	}
-	if targetMode != nil {
-		if err := tmpDest.Chmod(*targetMode); err != nil {
+	if target.info != nil {
+		if err := tmpDest.Chmod(target.info.Mode().Perm()); err != nil {
 			_ = tmpDest.Close()
 			res.Err = fmt.Errorf("failed to chmod temporary destination file: %w", err)
 			return res
@@ -329,7 +330,18 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 		return res
 	}
 
-	if err := fsLayer.Rename(tmpDest.Name(), cfg.FilePath); err != nil {
+	// Refuse a detected link retargeting while preparing the replacement. This
+	// is an optimistic check, not protection from hostile directory races.
+	current, err := resolveTarget(cfg.FilePath, fsLayer)
+	if err != nil {
+		res.Err = fmt.Errorf("failed to recheck destination before replacement: %w", err)
+		return res
+	}
+	if current.path != target.path {
+		res.Err = fmt.Errorf("destination symlink target changed; reconcile and retry")
+		return res
+	}
+	if err := fsLayer.Rename(tmpDest.Name(), target.path); err != nil {
 		res.Err = fmt.Errorf("failed to replace destination file: %w", err)
 		return res
 	}

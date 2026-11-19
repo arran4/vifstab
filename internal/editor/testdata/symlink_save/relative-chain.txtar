@@ -1,0 +1,13 @@
+Resolve each relative target from the link's own directory.
+-- path --
+links/fstab
+-- link/links/fstab --
+../middle
+-- link/middle --
+data/fstab
+-- file/data/fstab --
+original
+-- new --
+edited
+-- expected/data/fstab --
+edited

@@ -207,6 +207,11 @@ func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 	return nil, os.ErrNotExist
 }
 
+// Existing save fault fixtures contain regular files only. Symlink regressions
+// below use osFS through the production resolver, never a test-only resolver.
+func (m *mockFS) Lstat(name string) (os.FileInfo, error)   { return m.Stat(name) }
+func (m *mockFS) EvalSymlinks(name string) (string, error) { return name, nil }
+
 func TestSaveAndVersionRealFS(t *testing.T) {
 	// Create a temporary directory
 	dir := t.TempDir()

@@ -1,0 +1,9 @@
+Directories are rejected rather than replaced or edited as regular files.
+-- path --
+data
+-- file/data/keep --
+untouched
+-- new --
+edited
+-- error --
+regular file

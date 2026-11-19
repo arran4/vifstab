@@ -1,0 +1,9 @@
+Do not implicitly create parents or repair a dangling directory link.
+-- path --
+linked/fstab
+-- link/linked --
+missing
+-- new --
+edited
+-- error --
+destination parent
