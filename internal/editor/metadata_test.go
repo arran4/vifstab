@@ -11,18 +11,6 @@ import (
 	"github.com/arran4/vifstab/internal/config"
 )
 
-type mockMetaFileInfo struct {
-	os.FileInfo
-	mode os.FileMode
-	uid  int
-	gid  int
-}
-
-func (m mockMetaFileInfo) Mode() os.FileMode { return m.mode }
-func (m mockMetaFileInfo) MockSys() (int, int, bool) {
-	return m.uid, m.gid, true
-}
-
 func TestMetadata_Strict_ChownFailure(t *testing.T) {
 	dest := "/etc/fstab"
 	fs := &mockFS{
