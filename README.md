@@ -9,6 +9,8 @@ failure.
 
 ## Build and run
 
+For isolated testing without installing Go, see [Docker and Podman images](INSTALL.md#container-testing-docker-and-podman).
+
 The application targets Go 1.25. Use a patched Go toolchain when building binaries.
 
 ```sh

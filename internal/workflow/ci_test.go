@@ -142,6 +142,7 @@ func TestReleaseEventGraph(t *testing.T) {
 	text := string(data)
 	route := workflowJob(t, text, "route")
 	release := workflowJob(t, text, "goreleaser")
+	snapshotJob := workflowJob(t, text, "goreleaser-snapshot")
 	scriptStart := strings.Index(route, "        run: |\n")
 	if scriptStart < 0 {
 		t.Fatal("missing route shell")
@@ -152,6 +153,7 @@ func TestReleaseEventGraph(t *testing.T) {
 	}
 	script := strings.Join(lines, "\n")
 	condition := expression(t, release)
+	snapshotCondition := expression(t, snapshotJob)
 	// These are intentionally required gates; skipped release preparation is the
 	// sole supported skipped dependency for an ordinary v-tag push.
 	for _, name := range []string{"route", "go-test", "go-vet", "prepare-release-tag"} {
@@ -171,6 +173,7 @@ func TestReleaseEventGraph(t *testing.T) {
 		{name: "closed PR", event: "pull_request", action: "closed"},
 		{name: "published release validates without republishing", event: "release", action: "published", code: true},
 		{name: "manual patch", event: "workflow_dispatch", mode: "release-patch", prep: "success", code: true, publish: true},
+		{name: "manual publish from feature branch", event: "workflow_dispatch", ref: "refs/heads/feature", mode: "release-patch", prep: "success", code: true},
 		{name: "manual major", event: "workflow_dispatch", mode: "release-major", prep: "success", code: true, publish: true},
 		{name: "manual minor", event: "workflow_dispatch", mode: "release-minor", prep: "success", code: true, publish: true},
 		{name: "manual test snapshot", event: "workflow_dispatch", mode: "release-test", prep: "success", code: true, publish: true},
@@ -190,6 +193,9 @@ func TestReleaseEventGraph(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.event == "workflow_dispatch" && tc.ref == "" {
+				tc.ref = "refs/heads/main"
+			}
 			values := map[string]any{"github.event_name": tc.event, "github.ref": tc.ref, "inputs.mode": tc.mode, "github.event.action": tc.action, "github.event.schedule": tc.schedule}
 			run := script
 			for field, value := range values {
@@ -247,11 +253,21 @@ func TestReleaseEventGraph(t *testing.T) {
 			values["needs.route.outputs.run_release"] = outputs["run_release"]
 			success := routeStatus == "success" && test == "success" && vet == "success" && prep == "success"
 			admitted := truth(evaluate(t, condition, values, tc.cancel, success))
+			snapshot := truth(evaluate(t, snapshotCondition, values, tc.cancel, success))
+			wantSnapshot := tc.event == "workflow_dispatch" && (tc.mode == "release-test" || tc.mode == "release-rc" || tc.mode == "release-alpha")
+			if snapshot != (tc.publish && wantSnapshot) || (admitted && snapshot) {
+				t.Fatalf("snapshot admission=%v; publish admission=%v", snapshot, admitted)
+			}
+			selectedJob := release
+			if snapshot {
+				selectedJob = snapshotJob
+			}
+			admitted = admitted || snapshot
 			if !regexp.MustCompile(`\b(always|cancelled|success|failure)\s*\(`).MatchString(condition) {
 				admitted = admitted && success
 			}
 			if admitted {
-				tagLine := release[strings.Index(release, "GORELEASER_CURRENT_TAG:"):]
+				tagLine := selectedJob[strings.Index(selectedJob, "GORELEASER_CURRENT_TAG:"):]
 				tag := "v2.3.4"
 				if tc.event == "push" {
 					tag = strings.TrimPrefix(tc.ref, "refs/tags/")
@@ -267,12 +283,6 @@ func TestReleaseEventGraph(t *testing.T) {
 			}
 			if admitted != tc.publish {
 				t.Fatalf("release admitted=%v want %v; route=%s condition=%s", admitted, tc.publish, b, condition)
-			}
-			step := release[strings.Index(release, "      - name: Run GoReleaser"):]
-			snapshot := truth(evaluate(t, expression(t, step), values, tc.cancel, success))
-			wantSnapshot := tc.event == "workflow_dispatch" && (tc.mode == "release-test" || tc.mode == "release-rc" || tc.mode == "release-alpha")
-			if snapshot != wantSnapshot {
-				t.Fatalf("snapshot selection=%v want %v", snapshot, wantSnapshot)
 			}
 			if tc.event == "pull_request" && outputs["run_pr_meta_checks"] != fmt.Sprint(tc.action != "closed") {
 				t.Fatal("PR metadata routing changed")
