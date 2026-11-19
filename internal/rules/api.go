@@ -38,6 +38,8 @@ type BlockDevice struct {
 	SysfsName   string   `json:"sysfs_name"`
 	DeviceID    string   `json:"device_id"`
 	Aliases     []string `json:"aliases"`
+	// Layout is optional live diagram enrichment, not part of capture schema v1.
+	Layout *BlockLayout `json:"-"`
 }
 
 type BlockDeviceDiagnostic struct {
@@ -65,6 +67,29 @@ type API interface {
 	ResolveDevicePath(dev string) string
 }
 
+// FileInfoProvider is an optional interface implemented by API providers that
+// can observe target fstab file metadata (ownership, permissions, ACLs).
+type FileInfoProvider interface {
+	GetFileInfo(path string) (FileInfoResult, error)
+}
+
+// GetFileInfo returns target file metadata from api when it implements
+// FileInfoProvider, or Unknown otherwise.
+func GetFileInfo(api API, path string) (FileInfoResult, error) {
+	if p, ok := api.(FileInfoProvider); ok {
+		return p.GetFileInfo(path)
+	}
+	return FileInfoResult{State: Unknown}, nil
+}
+
+type FileInfoResult struct {
+	State       ExistState
+	Mode        fs.FileMode
+	UID         *int
+	GID         *int
+	HasWriteACL *bool
+}
+
 // OSProvider abstracts operating system operations to allow mocking
 type OSProvider interface {
 	ReadDir(name string) ([]fs.DirEntry, error)
@@ -83,8 +108,12 @@ func (defaultOSProvider) Readlink(name string) (string, error)       { return os
 func (defaultOSProvider) Stat(name string) (fs.FileInfo, error)      { return os.Stat(name) }
 
 type ActualFS struct {
-	OS OSProvider
+	OS              OSProvider
+	IncludeTopology bool // Metadata only; normal validation does not request it.
 }
+
+// Provider returns the canonical filesystem/kernel metadata provider.
+func (a ActualFS) Provider() OSProvider { return a.getOS() }
 
 func (a ActualFS) getOS() OSProvider {
 	if a.OS == nil {
@@ -113,6 +142,28 @@ func (a ActualFS) CheckFileExists(path string) FileExistsResult {
 		return FileDoesNotExist
 	}
 	return Unknown
+}
+
+func (a ActualFS) GetFileInfo(path string) (FileInfoResult, error) {
+	info, err := a.getOS().Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return FileInfoResult{State: DoesNotExist}, nil
+		}
+		if os.IsPermission(err) {
+			return FileInfoResult{State: PermissionDenied}, nil
+		}
+		return FileInfoResult{State: Unknown}, nil
+	}
+	res := FileInfoResult{
+		State: Exists,
+		Mode:  info.Mode(),
+	}
+	extractOSFileInfo(info, &res)
+	if a.OS == nil {
+		extractLinuxACL(path, &res)
+	}
+	return res, nil
 }
 
 func (a ActualFS) CheckBlockDeviceExists(dev string) ExistState {
@@ -210,6 +261,7 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 				parttype := ""
 				fstype := ""
 				devnameStr := ""
+				tableType := ""
 				for scanner.Scan() {
 					line := scanner.Text()
 					if strings.HasPrefix(line, "E:ID_PART_ENTRY_TYPE=") {
@@ -220,6 +272,9 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 					}
 					if strings.HasPrefix(line, "E:DEVNAME=") {
 						devnameStr = strings.TrimPrefix(line, "E:DEVNAME=")
+					}
+					if strings.HasPrefix(line, "E:ID_PART_TABLE_TYPE=") {
+						tableType = strings.TrimPrefix(line, "E:ID_PART_TABLE_TYPE=")
 					}
 				}
 				if err := scanner.Err(); err != nil {
@@ -251,6 +306,15 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 				}
 				if fstype != "" {
 					dev.FSType = fstype
+				}
+				if a.IncludeTopology && scanner.Err() == nil && tableType != "" {
+					dev.Layout = &BlockLayout{}
+					switch tableType {
+					case "gpt", "dos", "mbr":
+						dev.Layout.TableType = tableType
+					default:
+						diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: "/run/udev/data/" + file.Name(), Error: "partition-table type metadata unrecognized; unknown"})
+					}
 				}
 			}
 		}
@@ -379,6 +443,11 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 		}
 		return result[i].DeviceID < result[j].DeviceID
 	})
+	if a.IncludeTopology {
+		for i := range result {
+			diagnostics = append(diagnostics, enrichBlockLayout(osProv, &result[i])...)
+		}
+	}
 
 	return BlockDeviceInventory{
 		Devices:     result,
@@ -465,6 +534,92 @@ func (c *CacheFS) CheckFileExists(path string) FileExistsResult {
 		return Unknown
 	}
 	panic("CacheFS must be initialized with a valid fs.FS")
+}
+
+func (c *CacheFS) GetFileInfo(path string) (FileInfoResult, error) {
+	if c.Cache != nil {
+		if v, ok := c.Cache.Get(CacheKey("fstab_state")); ok {
+			if s, ok := v.(string); ok && strings.ToLower(s) == "unknown" {
+				return FileInfoResult{State: Unknown}, nil
+			}
+		}
+		res := FileInfoResult{State: Exists}
+		found := false
+		if v, ok := c.Cache.Get(CacheKey("fstab_mode")); ok {
+			var mode uint64
+			var err error
+			switch val := v.(type) {
+			case string:
+				mode, err = strconv.ParseUint(val, 8, 32)
+			case int:
+				mode = uint64(val)
+			}
+			if err == nil {
+				res.Mode = fs.FileMode(mode)
+				found = true
+			}
+		}
+		if v, ok := c.Cache.Get(CacheKey("fstab_uid")); ok {
+			switch val := v.(type) {
+			case string:
+				if u, err := strconv.Atoi(val); err == nil {
+					res.UID = &u
+					found = true
+				}
+			case int:
+				res.UID = &val
+				found = true
+			}
+		}
+		if v, ok := c.Cache.Get(CacheKey("fstab_gid")); ok {
+			switch val := v.(type) {
+			case string:
+				if g, err := strconv.Atoi(val); err == nil {
+					res.GID = &g
+					found = true
+				}
+			case int:
+				res.GID = &val
+				found = true
+			}
+		}
+		if v, ok := c.Cache.Get(CacheKey("fstab_write_acl")); ok {
+			switch val := v.(type) {
+			case bool:
+				res.HasWriteACL = &val
+				found = true
+			case string:
+				b := strings.ToLower(val) == "true" || val == "1"
+				res.HasWriteACL = &b
+				found = true
+			}
+		}
+		if found {
+			return res, nil
+		}
+	}
+	if c.FS != nil {
+		p := path
+		if p != "" && p[0] == '/' {
+			p = p[1:]
+		}
+		info, err := fs.Stat(c.FS, p)
+		if err == nil {
+			res := FileInfoResult{
+				State: Exists,
+				Mode:  info.Mode(),
+			}
+			extractOSFileInfo(info, &res)
+			return res, nil
+		}
+		if os.IsNotExist(err) {
+			return FileInfoResult{State: DoesNotExist}, nil
+		}
+		if os.IsPermission(err) {
+			return FileInfoResult{State: PermissionDenied}, nil
+		}
+	}
+	return FileInfoResult{State: Unknown}, nil
 }
 
 func (c *CacheFS) CheckUserExists(uid int) ExistState {
