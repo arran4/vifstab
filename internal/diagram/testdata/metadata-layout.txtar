@@ -1,0 +1,94 @@
+Canonical sysfs/udev enrichment, alias resolution and incomplete observations.
+No fixture is a real device, and device/image openers must never be called.
+-- scenarios.json --
+[
+  {"Name":"path","Reference":"/dev/vda","Expected":"expected/full.txt"},
+  {"Name":"uuid","Reference":"UUID=fixture-disk","Expected":"expected/full.txt"},
+  {"Name":"unreadable-size","Reference":"/dev/vda","Expected":"expected/partial.txt","Faults":{"read:/sys/class/block/vda/size":"permission"}},
+  {"Name":"unknown-parent","Reference":"/dev/vda","Expected":"expected/uncorrelated.txt","Faults":{"readlink:/sys/class/block/vda2":"permission"}}
+]
+-- links.json --
+{
+  "/sys/class/block/vda1":"../../devices/virtual/block/vda/vda1",
+  "/sys/class/block/vda2":"../../devices/virtual/block/vda/vda2",
+  "/dev/disk/by-uuid/fixture-disk":"../../vda"
+}
+-- fs/sys/class/block/vda/dev --
+8:0
+-- fs/sys/class/block/vda/size --
+100
+-- fs/sys/class/block/vda1/dev --
+8:1
+-- fs/sys/class/block/vda1/size --
+20
+-- fs/sys/class/block/vda1/start --
+10
+-- fs/sys/class/block/vda1/partition --
+1
+-- fs/sys/class/block/vda2/dev --
+8:2
+-- fs/sys/class/block/vda2/size --
+10
+-- fs/sys/class/block/vda2/start --
+60
+-- fs/sys/class/block/vda2/partition --
+2
+-- fs/sys/devices/virtual/block/vda/dev --
+8:0
+-- fs/run/udev/data/b8:0 --
+E:DEVNAME=/dev/vda
+E:ID_PART_TABLE_TYPE=gpt
+-- fs/run/udev/data/b8:1 --
+E:DEVNAME=/dev/vda1
+E:ID_PART_ENTRY_TYPE=0fc63daf-8483-4772-8e79-3d69d8477de4
+E:ID_FS_TYPE=ext4
+-- fs/run/udev/data/b8:2 --
+E:DEVNAME=/dev/vda2
+E:ID_PART_ENTRY_TYPE=0fc63daf-8483-4772-8e79-3d69d8477de4
+E:ID_FS_TYPE=xfs
+-- fs/proc/mounts --
+-- expected/full.txt --
+Source: kernel/udev metadata; no block-device contents read
+Device: /dev/vda
+Partition table type (udev metadata): gpt
+Size (kernel metadata): 51200 bytes
+Observed child partitions (may be incomplete):
+A /dev/vda1: Start 5120 bytes, Size 10240 bytes
+  Partition type (udev metadata): 0fc63daf-8483-4772-8e79-3d69d8477de4
+  Filesystem type (metadata): ext4
+B /dev/vda2: Start 30720 bytes, Size 5120 bytes
+  Partition type (udev metadata): 0fc63daf-8483-4772-8e79-3d69d8477de4
+  Filesystem type (metadata): xfs
+Approximate kernel-view positions (? unknown; * multiple observations per cell):
+[??????AAAAAAAAAAAA??????????????????BBBBBB??????????????????]
+Unmarked space is unknown, not proof of free space or a complete on-disk table.
+-- expected/partial.txt --
+Source: kernel/udev metadata; no block-device contents read
+Device: /dev/vda
+Partition table type (udev metadata): gpt
+Size (kernel metadata): unknown
+Observed child partitions (may be incomplete):
+A /dev/vda1: Start 5120 bytes, Size 10240 bytes
+  Partition type (udev metadata): 0fc63daf-8483-4772-8e79-3d69d8477de4
+  Filesystem type (metadata): ext4
+B /dev/vda2: Start 30720 bytes, Size 5120 bytes
+  Partition type (udev metadata): 0fc63daf-8483-4772-8e79-3d69d8477de4
+  Filesystem type (metadata): xfs
+Approximate kernel-view positions (? unknown; * multiple observations per cell):
+[????????????????????????????????????????????????????????????]
+Unmarked space is unknown, not proof of free space or a complete on-disk table.
+Metadata diagnostic: /sys/class/block/vda/partition: topology unknown: file does not exist
+Metadata diagnostic: /sys/class/block/vda/size: topology unknown: permission denied
+-- expected/uncorrelated.txt --
+Source: kernel/udev metadata; no block-device contents read
+Device: /dev/vda
+Partition table type (udev metadata): gpt
+Size (kernel metadata): 51200 bytes
+Observed child partitions (may be incomplete):
+A /dev/vda1: Start 5120 bytes, Size 10240 bytes
+  Partition type (udev metadata): 0fc63daf-8483-4772-8e79-3d69d8477de4
+  Filesystem type (metadata): ext4
+Approximate kernel-view positions (? unknown; * multiple observations per cell):
+[??????AAAAAAAAAAAA??????????????????????????????????????????]
+Unmarked space is unknown, not proof of free space or a complete on-disk table.
+Metadata diagnostic: /sys/class/block/vda2: topology unknown: permission denied

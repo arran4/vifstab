@@ -14,6 +14,7 @@ import (
 	"github.com/arran4/vifstab/internal/format"
 	"github.com/arran4/vifstab/internal/outcome"
 	"github.com/arran4/vifstab/internal/rules"
+	"github.com/arran4/vifstab/internal/textinput"
 	"github.com/arran4/vifstab/internal/uefi"
 	"github.com/cpuguy83/go-md2man/v2/md2man"
 )
@@ -85,18 +86,24 @@ func main() {
 			os.Exit(1)
 		}
 
-		var in *os.File
+		var in io.ReadCloser
 		var err error
 
 		// If formatting standard input
-		stat, _ := os.Stdin.Stat()
-		if (stat.Mode() & os.ModeCharDevice) == 0 {
+		piped, err := stdinIsPiped(os.Stdin)
+		if err != nil {
+			handleError(err)
+		}
+		if piped {
 			in = os.Stdin
+			if err := textinput.Check(os.Stdin); err != nil {
+				handleError(err)
+			}
 			if *inPlaceFlag {
 				handleError(fmt.Errorf("cannot use -i when reading from standard input"))
 			}
 		} else {
-			in, err = os.Open(*fileFlag)
+			in, err = textinput.Open(*fileFlag)
 			if err != nil {
 				handleError(fmt.Errorf("failed to open file %s: %w", *fileFlag, err))
 			}
@@ -247,4 +254,14 @@ func handleError(err error) {
 	}
 	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	os.Exit(1)
+}
+
+// stdinIsPiped distinguishes terminal input from a pipe or regular file.
+// A failed probe is an operational error, never evidence that stdin is a pipe.
+func stdinIsPiped(input interface{ Stat() (os.FileInfo, error) }) (bool, error) {
+	info, err := input.Stat()
+	if err != nil {
+		return false, fmt.Errorf("failed to inspect standard input: %w", err)
+	}
+	return info.Mode()&os.ModeCharDevice == 0, nil
 }

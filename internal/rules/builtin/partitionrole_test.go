@@ -46,6 +46,10 @@ func (m mockAPIPartition) ResolveDevicePath(dev string) string {
 	return rules.ResolveDevicePath(dev)
 }
 
+func (m mockAPIPartition) GetFileInfo(path string) (rules.FileInfoResult, error) {
+	return rules.FileInfoResult{State: rules.Exists}, nil
+}
+
 func TestPartitionRoleRule(t *testing.T) {
 	rule := &builtin.PartitionRoleRule{}
 
