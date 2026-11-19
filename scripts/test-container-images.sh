@@ -9,6 +9,7 @@ cleanup() {
   rm -rf -- "$tmp"
 }
 trap cleanup EXIT
+chmod 755 "$tmp"  # synthetic fixtures must be traversable by UID 65532
 mkdir -m 755 "$tmp/fixtures"
 : > "$tmp/fixtures/valid.fstab"
 printf 'UUID=fixture /fixture ext4 invalid-option 0 2\n' > "$tmp/fixtures/invalid.fstab"
@@ -38,7 +39,7 @@ image=ghcr.io/arran4/vifstab:snapshot-amd64
 run=(docker run --pull never --rm --network none --cap-drop ALL
      --security-opt no-new-privileges --read-only)
 mount=(--mount "type=bind,src=$tmp/fixtures,dst=/fixtures,readonly")
-"${run[@]}" "$image" --help > "$tmp/help"
+"${run[@]}" "$image" --help > "$tmp/help" 2>&1
 grep -q verify "$tmp/help"
 "${run[@]}" "$image" version > "$tmp/version"
 "$tmp/amd64-vifstab" version > "$tmp/native-version"
