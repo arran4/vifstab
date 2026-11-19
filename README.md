@@ -174,3 +174,12 @@ Block diagrams do not open device contents. Regular images retain read-only GPT/
 parsing through a checked stable file handle. Btrfs subvolume contents are not
 inferred from host paths. See [diagram sources and unknown states](docs/DIAGRAM-SOURCES.md)
 for platform limits, fixture tests and output privacy.
+
+## Configuration text input safety
+
+Fstab text inputs are classified before a data open; block-device inputs and
+unavailable classification are refused. Regular files, symlinks and intentional
+streams remain supported. Formatting checks borrowed stdin and retains pipelines.
+The Linux pathname reader requires metadata/proc-fd interfaces and keeps caller
+credentials. See [text input sources and limits](docs/TEXT-INPUTS.md) for the stable-inode boundary,
+platform limits and integration notes for the unmerged review branches.
