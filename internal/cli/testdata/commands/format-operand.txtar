@@ -1,0 +1,10 @@
+Executable regression: format-operand; default fstab is a build-time fixture.
+-- args.json --
+["format", "bogus"]
+-- fstab --
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: unexpected arguments: ["bogus"]

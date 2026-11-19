@@ -13,15 +13,15 @@ import (
 )
 
 type EFIInfo struct {
-	DevicePath     string
-	UUID           string
-	PartUUID       string
-	MountPoint     string
-	IsFAT          bool
-	IsESP          bool
-	HasEFITree     *bool
-	NVRAMRefs      *[]NVRAMRef
-	BootedMatch    *bool
+	DevicePath  string
+	UUID        string
+	PartUUID    string
+	MountPoint  string
+	IsFAT       *bool // nil when filesystem-type metadata is unavailable
+	IsESP       *bool // nil when GPT-type metadata is missing or malformed
+	HasEFITree  *bool
+	NVRAMRefs   *[]NVRAMRef
+	BootedMatch *bool
 }
 
 type NVRAMRef struct {
@@ -37,8 +37,8 @@ type EFIProvider interface {
 
 type ActualEFIProvider struct{}
 
-func (ActualEFIProvider) Stat(name string) (fs.FileInfo, error) { return os.Stat(name) }
-func (ActualEFIProvider) ReadFile(name string) ([]byte, error) { return os.ReadFile(name) }
+func (ActualEFIProvider) Stat(name string) (fs.FileInfo, error)      { return os.Stat(name) }
+func (ActualEFIProvider) ReadFile(name string) ([]byte, error)       { return os.ReadFile(name) }
 func (ActualEFIProvider) ReadDir(name string) ([]fs.DirEntry, error) { return os.ReadDir(name) }
 
 func Analyze(api rules.API, efiProv EFIProvider, dev string, mountPoint string) (*EFIInfo, error) {
@@ -63,12 +63,14 @@ func Analyze(api rules.API, efiProv EFIProvider, dev string, mountPoint string) 
 		MountPoint: mountPoint,
 	}
 
-	if matched.FSType == "vfat" || matched.FSType == "fat" || matched.FSType == "msdos" {
-		info.IsFAT = true
+	if strings.TrimSpace(matched.FSType) != "" {
+		isFAT := matched.FSType == "vfat" || matched.FSType == "fat" || matched.FSType == "msdos"
+		info.IsFAT = &isFAT
 	}
 
-	if strings.EqualFold(matched.PartType, "c12a7328-f81f-11d2-ba4b-00a0c93ec93b") {
-		info.IsESP = true
+	if canonicalGUID(matched.PartType) {
+		isESP := strings.EqualFold(matched.PartType, "c12a7328-f81f-11d2-ba4b-00a0c93ec93b")
+		info.IsESP = &isESP
 	}
 
 	if mountPoint != "" {
@@ -167,6 +169,16 @@ func Analyze(api rules.API, efiProv EFIProvider, dev string, mountPoint string) 
 	}
 
 	return info, nil
+}
+
+// Kernel/udev GPT type observations use the canonical GUID representation.
+// Reject malformed observations before making any definite role assertion.
+func canonicalGUID(s string) bool {
+	if len(s) != 36 || s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-' {
+		return false
+	}
+	_, err := parseUUID(s)
+	return err == nil
 }
 
 func parseUUID(s string) ([]byte, error) {
@@ -330,7 +342,9 @@ func FormatReport(info *EFIInfo, originalSource string) string {
 	fmt.Fprintf(&sb, "  UUID:     %s\n", info.UUID)
 	fmt.Fprintf(&sb, "  PARTUUID: %s\n", info.PartUUID)
 
-	if info.IsESP {
+	if info.IsESP == nil {
+		sb.WriteString("  GPT role: unknown\n")
+	} else if *info.IsESP {
 		sb.WriteString("  GPT role: EFI System Partition\n")
 	} else {
 		sb.WriteString("  GPT role: Not ESP\n")

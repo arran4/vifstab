@@ -1,0 +1,13 @@
+Compiled, isolated support/verification regression: static-unknown-host.
+-- args.json --
+["verify", "--static"]
+-- fstab --
+UUID=fixture /fixture ext4 defaults,data=journal 0 2
+-- stdin.json --
+""
+-- status --
+0
+-- stdout.json --
+"Static verification: live observations are unchecked/unknown.\nValidation successful.\nIssues:\n - [info] Kernel filesystem support unknown: metadata unavailable (Line: UUID=fixture /fixture ext4 defaults,data=journal 0 2)\n"
+-- stderr.json --
+""

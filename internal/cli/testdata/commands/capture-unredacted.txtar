@@ -1,0 +1,13 @@
+Compiled, isolated support/verification regression: capture-unredacted.
+-- args.json --
+["verify", "--static", "--capture", "-", "--unredacted"]
+-- fstab --
+# PRIVATE_FIXTURE_COMMENT
+-- stdin.json --
+""
+-- status --
+0
+-- stdout.json --
+"-- input/etc/fstab --\n# PRIVATE_FIXTURE_COMMENT\n-- manifest.json --\n{\"version\":\"1.0\",\"type\":\"system\",\"redacted\":false}\n-- provider/inventory.json --\n{\"Devices\":null,\"Diagnostics\":null,\"Available\":false}\n-- provider/observations.json --\n{\"filesystems\":null,\"filesystem_error\":\"static verification: live observation unchecked\",\"inventory_error\":\"static verification: live observation unchecked\"}\n"
+-- stderr.json --
+"Static verification: live observations are unchecked/unknown.\nWarning: unredacted capture includes sensitive identifiers, paths and credentials. Review before sharing.\nValidation successful.\n"

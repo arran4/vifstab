@@ -1,0 +1,23 @@
+Executable regression: manpage-flag-help; default fstab is a build-time fixture.
+-- args.json --
+["manpage", "--help"]
+-- fstab --
+-- stdin --
+-- status --
+0
+-- stdout --
+-- stderr --
+Usage: vifstab manpage [flags...] [operands...]
+
+Generate the manual page explicitly.
+
+Subcommands:
+    help  Print this help message
+    usage Print this usage message
+
+
+Flags:
+    --output string     (default: "vifstab.1")   Destination file.
+
+Positional Arguments:
+    [operands...] No positional operands are accepted.

@@ -1,0 +1,16 @@
+A redacted support capture with test-only expectations added.
+-- manifest.json --
+{"version":"1.0","type":"system","redacted":true}
+-- input/etc/fstab --
+UUID=00000000-0000-0000-0000-000000000001 /boot/efi ext4 defaults 0 2
+-- kernel --
+Linux version 6.5.0
+-- provider/inventory.json --
+{"Devices":[{"path":"/dev/sanitized-device-2","fstype":"ext4","uuid":"00000000-0000-0000-0000-000000000001","parttype":"c12a7328-f81f-11d2-ba4b-00a0c93ec93b","aliases":["/dev/disk/by-uuid/00000000-0000-0000-0000-000000000001"]}],"Available":true,"Diagnostics":[]}
+-- provider/observations.json --
+{"files":{"/boot/efi":0},"blocks":{"UUID=00000000-0000-0000-0000-000000000001":0},"filesystems":{"ext4":true}}
+-- options.txt --
+rule=all
+format=level_prefix
+-- expected/validationerrors.txt --
+Error: GPT partition type is EFI System Partition (ESP) but filesystem is not FAT

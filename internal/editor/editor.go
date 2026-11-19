@@ -366,7 +366,7 @@ func commitEdit(cfg config.Config, content []byte, blockingValidationPassed bool
 	var sysErr error
 	if res.Saved {
 		fmt.Println("Saved successfully.")
-		sysErr = handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed)
+		sysErr = handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed && res.Err == nil)
 	}
 
 	return errors.Join(res.Err, sysErr)

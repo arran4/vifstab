@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: snapshot-unsupported-schema.
+-- args.json --
+["verify", "--snapshot", "-"]
+-- fstab --
+-- stdin.json --
+"-- input/etc/fstab --\n-- manifest.json --\n{\"version\":\"99\",\"type\":\"system\",\"redacted\":true}\n"
+-- status --
+1
+-- stdout.json --
+""
+-- stderr.json --
+"Error: verify failed: failed to parse txtar file: unsupported manifest version: 99\n"

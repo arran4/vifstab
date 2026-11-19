@@ -121,7 +121,7 @@ type mockAPI struct {
 
 func (m mockAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
 	return rules.BlockDeviceInventory{
-		Devices: m.devices,
+		Devices:   m.devices,
 		Available: true,
 	}, nil
 }
@@ -177,7 +177,7 @@ func TestAnalyze_HappyPath(t *testing.T) {
 	if info == nil {
 		t.Fatalf("info is nil")
 	}
-	if !info.IsESP {
+	if info.IsESP == nil || !*info.IsESP {
 		t.Errorf("Expected IsESP true")
 	}
 	if info.HasEFITree == nil || !*info.HasEFITree {
@@ -296,8 +296,8 @@ func TestAnalyze_MismatchBootCurrent(t *testing.T) {
 	}
 }
 
+type customErr struct{ msg string }
 
-type customErr struct { msg string }
 func (e customErr) Error() string { return e.msg }
 
 func TestAnalyze_PermissionDeniedEFI(t *testing.T) {
