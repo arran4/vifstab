@@ -86,16 +86,16 @@ vifstab --file /path/to/custom/fstab --backup-dir /var/backups/vifstab
 
 `vifstab` provides several subcommands for specific tasks:
 
-- `diagram <device>`: Generates an ASCII art diagram of the filesystem stack and dependencies for the given block device.
+- `diagram <device-or-image>`: Shows a kernel/udev metadata diagram for a block device, or parses the partition table of a regular disk image. Unknown space is not proof of free space.
 - `format [options]`: Formats the `fstab` entries into a column-aligned format.
 - `uefi <device> <mountpoint>`: Correlates an fstab ESP entry with firmware boot entries and the currently booted EFI partition.
 
 Examples:
 
-Generate a diagram for a block device:
+Show the available kernel/udev layout for a block device:
 
 ```bash
-vifstab diagram /dev/sda1
+vifstab diagram /dev/sda
 ```
 
 Format an existing `fstab` file:
@@ -160,3 +160,8 @@ reviewed. Validation cannot guarantee a successful boot.
 ## License
 
 `vifstab` is licensed under the [BSD 3-Clause License](LICENSE).
+
+Block diagrams do not open device contents. Regular images retain read-only GPT/MBR
+parsing through a checked stable file handle. Btrfs subvolume contents are not
+inferred from host paths. See [diagram sources and unknown states](docs/DIAGRAM-SOURCES.md)
+for platform limits, fixture tests and output privacy.

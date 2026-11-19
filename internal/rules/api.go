@@ -38,6 +38,8 @@ type BlockDevice struct {
 	SysfsName   string   `json:"sysfs_name"`
 	DeviceID    string   `json:"device_id"`
 	Aliases     []string `json:"aliases"`
+	// Layout is optional live diagram enrichment, not part of capture schema v1.
+	Layout *BlockLayout `json:"-"`
 }
 
 type BlockDeviceDiagnostic struct {
@@ -83,8 +85,12 @@ func (defaultOSProvider) Readlink(name string) (string, error)       { return os
 func (defaultOSProvider) Stat(name string) (fs.FileInfo, error)      { return os.Stat(name) }
 
 type ActualFS struct {
-	OS OSProvider
+	OS              OSProvider
+	IncludeTopology bool // Metadata only; normal validation does not request it.
 }
+
+// Provider returns the canonical filesystem/kernel metadata provider.
+func (a ActualFS) Provider() OSProvider { return a.getOS() }
 
 func (a ActualFS) getOS() OSProvider {
 	if a.OS == nil {
@@ -264,6 +270,7 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 				parttype := ""
 				fstype := ""
 				devnameStr := ""
+				tableType := ""
 				for scanner.Scan() {
 					line := scanner.Text()
 					if strings.HasPrefix(line, "E:ID_PART_ENTRY_TYPE=") {
@@ -274,6 +281,9 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 					}
 					if strings.HasPrefix(line, "E:DEVNAME=") {
 						devnameStr = strings.TrimPrefix(line, "E:DEVNAME=")
+					}
+					if strings.HasPrefix(line, "E:ID_PART_TABLE_TYPE=") {
+						tableType = strings.TrimPrefix(line, "E:ID_PART_TABLE_TYPE=")
 					}
 				}
 				if err := scanner.Err(); err != nil {
@@ -305,6 +315,15 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 				}
 				if fstype != "" {
 					dev.FSType = fstype
+				}
+				if a.IncludeTopology && scanner.Err() == nil && tableType != "" {
+					dev.Layout = &BlockLayout{}
+					switch tableType {
+					case "gpt", "dos", "mbr":
+						dev.Layout.TableType = tableType
+					default:
+						diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: "/run/udev/data/" + file.Name(), Error: "partition-table type metadata unrecognized; unknown"})
+					}
 				}
 			}
 		}
@@ -433,6 +452,11 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 		}
 		return result[i].DeviceID < result[j].DeviceID
 	})
+	if a.IncludeTopology {
+		for i := range result {
+			diagnostics = append(diagnostics, enrichBlockLayout(osProv, &result[i])...)
+		}
+	}
 
 	return BlockDeviceInventory{
 		Devices:     result,

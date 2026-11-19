@@ -5,7 +5,7 @@ vifstab - Edit fstab files with linting and versioning
 
 ## SYNOPSIS
 vifstab [--backup-dir=<value>] [--file=<value>] [--generate-manpage] [--systemd-reload=<value>] [--verify] [--help|-h]
-vifstab diagram <device>
+vifstab diagram <device-or-image>
 vifstab format [--file=<value>]
 vifstab uefi <device> <mountpoint>
 
@@ -33,7 +33,7 @@ Findings have info, warning, security and error levels. Info is non-blocking; wa
 **--help**, **-h**: Show help information.
 
 ## SUBCOMMANDS
-**diagram** `<device>`: Generates an ASCII art diagram of the filesystem stack and dependencies for the specified block device.
+**diagram** `<device-or-image>`: Shows the available kernel/udev partition layout for a block device without opening device contents. Missing or malformed observations remain unknown; unmarked ranges do not prove free space. Regular images retain read-only GPT/MBR table parsing through a checked stable file handle. This is not a complete filesystem-stack or filesystem-content verifier. See docs/DIAGRAM-SOURCES.md for Linux interface requirements and fixture tests.
 
 **format** `[--file=<value>] [-i]`: Reads fstab entries and outputs them in a formatted, column-aligned manner. Defaults to formatting `/etc/fstab` unless `--file` is specified. The `-i` flag writes the formatted output back to the file in-place (cannot be used when reading from standard input).
 
@@ -52,3 +52,6 @@ The default `data=ordered` mode is not an equivalent durability replacement for 
 
 ## SEE ALSO
 `fstab(5)`, `mount(8)`, `rcs(1)`
+
+Btrfs subvolume contents are not inferred from host VFS paths. Unobserved contents
+remain unknown; explicit offline fixture observations retain their meaning.
