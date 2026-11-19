@@ -22,7 +22,7 @@ user:x:1000:
 Missing value for hfsplus mount option 'creator' on line 6
 Invalid value 'TEX' for hfsplus mount option 'type' on line 6, must be 4 characters long
 Invalid value 'root' for hfsplus mount option 'uid' on line 6, must be an integer
-Group with gid -1 does not exist
+Invalid value '-1' for hfsplus mount option 'gid' on line 6, must be between 0 and 4294967294
 Invalid value '999' for hfsplus mount option 'umask' on line 6, must be an octal integer
 Invalid value 'abc' for hfsplus mount option 'session' on line 6, must be an integer
 Invalid value 'xyz' for hfsplus mount option 'part' on line 6, must be an integer

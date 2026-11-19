@@ -12,5 +12,5 @@ efivarfs /sys/firmware/efi/efivars efivarfs foo 0 0
 -- issues --
 Invalid value 'root' for efivarfs mount option 'uid' on line 1, must be an integer
 Invalid value 'root' for efivarfs mount option 'gid' on line 2, must be an integer
-User with uid -1 does not exist
+Invalid value '-1' for efivarfs mount option 'uid' on line 3, must be between 0 and 4294967294
 Unknown efivarfs mount option 'foo' on line 4

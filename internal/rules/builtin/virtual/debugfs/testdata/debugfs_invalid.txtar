@@ -3,6 +3,7 @@ debugfs /sys/kernel/debug debugfs uid=notanint,gid=9999,mode=invalid,unknownopt 
 debugfs /sys/kernel/debug debugfs mode 0 0
 -- cache --
 proc_filesystems=debugfs
+group_exists:9999=false
 -- input/etc/passwd --
 root:x:0:0:root:/root:/bin/bash
 -- input/etc/group --
