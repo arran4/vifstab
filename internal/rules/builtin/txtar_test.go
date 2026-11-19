@@ -159,6 +159,13 @@ func TestAllTxtarRules(t *testing.T) {
 			c := api.Cache
 
 			ctx := rules.WithCache(context.Background(), c)
+			fstabPath := "/etc/fstab"
+			if v, ok := c.Get(rules.CacheKey("fstab_path")); ok {
+				if s, ok := v.(string); ok && s != "" {
+					fstabPath = s
+				}
+			}
+			ctx = rules.WithTargetFstab(ctx, fstabPath)
 
 			// Determine which rules to run
 			targetRuleName := parsedOpts.RuleName

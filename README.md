@@ -26,6 +26,15 @@ Missing observations are not proof of absence.
 Linux is the immediate platform. General Linux 7-series compatibility is a
 development goal, not a guarantee. BSD and other fstab dialects are future work.
 
+## Target Ownership and Permissions Verification
+
+During verification and editing, `vifstab` inspects the selected effective target (`--file`, following symlinks via `stat`) once per file—including empty fstab files—for ownership, mode bits, and Linux POSIX access ACLs (`system.posix_acl_access`):
+- A system target (`/etc/fstab`) triggers a warning if it is world-writable, owned by an unexpected non-root user, group-writable by a non-root group, or has ACL write access granted to non-root users.
+- Alternate user-specified fstab paths are warned if world-writable or if write ACLs expose write access to non-owners.
+- Secure configurations such as `0644` or `0600` root:root ownership produce no warnings.
+- Unavailable, unsupported, or unreadable metadata (including ACLs) remains unknown rather than emitting false positives, and `vifstab` never modifies permissions automatically.
+- Permission issues are reported at `warning` severity, which is blocking in `vifstab`: read-only verification exits non-zero, and `vifstab edit` prompts `(e)dit again, (c)ontinue and save anyway, (q)uit without saving`.
+
 ## Commands
 
 ```text
@@ -102,8 +111,9 @@ reloads systemd and conservatively warns for `/etc/fstab`.
 
 `diagram DEVICE` currently renders an ASCII partition-table diagram; it is not
 a general filesystem-stack or mount-state inspector. Its existing disk-image
-fixtures are tested offline. The legacy block-device opening path remains a
-policy concern pending migration to metadata-only device observations.
+fixtures are tested offline. Block-device diagrams use canonical kernel/udev metadata without opening
+block-device contents. Regular image files retain read-only GPT/MBR parsing
+through a checked regular-file descriptor. Unknown space is not proof of free space.
 
 `uefi DEVICE MOUNTPOINT` is an explicit experimental live report, retained while
 its integration into verification is assessed. It uses the canonical device

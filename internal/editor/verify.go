@@ -3,8 +3,9 @@ package editor
 import (
 	"context"
 	"fmt"
-	"github.com/arran4/vifstab/internal/textinput"
 	"io"
+
+	"github.com/arran4/vifstab/internal/textinput"
 
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/rules"
@@ -27,6 +28,10 @@ func (m *memoizedAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
 	return m.inv, m.err
 }
 
+func (m *memoizedAPI) GetFileInfo(path string) (rules.FileInfoResult, error) {
+	return rules.GetFileInfo(m.API, path)
+}
+
 func (m *memoizedAPI) GetSupportedFilesystems() (map[string]bool, error) {
 	return rules.SupportedFilesystems(m.API)
 }
@@ -41,18 +46,21 @@ func VerifyAndLint(cfg config.Config, api rules.API) ([]rules.ValidationIssue, e
 	defer func() {
 		_ = f.Close()
 	}()
-	return VerifyAndLintReader(f, api)
+	return verifyAndLintReaderContext(f, api, rules.WithTargetFstab(context.Background(), cfg.FilePath))
 }
 
 // VerifyAndLintReader lints fstab entries directly from an io.Reader.
+// The caller supplied data does not imply a host fstab path.
 func VerifyAndLintReader(r io.Reader, api rules.API) ([]rules.ValidationIssue, error) {
+	return verifyAndLintReaderContext(r, api, context.Background())
+}
+
+func verifyAndLintReaderContext(r io.Reader, api rules.API, ctx context.Context) ([]rules.ValidationIssue, error) {
 	entries, err := core.ParseFstab(r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse: %w", err)
 	}
-
-	// Run rules
-	return lintEntries(entries, api)
+	return lintEntriesWithContext(ctx, entries, api)
 }
 
 // lintEntries validates a list of fstab entries against all registered rules.
@@ -76,8 +84,20 @@ func lintEntriesWithContext(ctx context.Context, entries []*rules.FstabEntry, ap
 	memoized := &memoizedAPI{API: api}
 
 	var allIssues []rules.ValidationIssue
+	for _, rule := range allRules {
+		if fileRule, ok := rule.(rules.FileRule); ok {
+			issues, err := fileRule.ValidateFile(ctx, memoized)
+			if err != nil {
+				return nil, fmt.Errorf("rule %s failed: %w", rule.Name(), err)
+			}
+			allIssues = append(allIssues, issues...)
+		}
+	}
 	for _, entry := range entries {
 		for _, r := range allRules {
+			if _, ok := r.(rules.FileRule); ok {
+				continue
+			}
 			issues, err := r.Validate(ctx, memoized, entry)
 			if err != nil {
 				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)

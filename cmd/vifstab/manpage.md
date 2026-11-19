@@ -69,10 +69,9 @@ A reload failure leaves the saved file installed. Reloading does not remount.
 using the existing atomic-save/RCS path and sharing its known limitations.
 In-place formatting requires file input and never automatically reloads systemd.
 
-**diagram DEVICE**: Render the existing ASCII partition-table diagram, not general
-mount-state reporting. Offline disk-image fixtures are supported. The legacy
-block-device opening path remains a policy concern pending metadata-only
-migration; do not use it to claim the normal verifier inspects device contents.
+**diagram DEVICE**: Show canonical kernel/udev partition metadata without
+reading block-device contents, or read a regular image's GPT/MBR table through
+a checked read-only descriptor. Unknown/unmarked ranges do not prove free space.
 
 **uefi DEVICE MOUNTPOINT**: Explicit experimental live correlation through the
 canonical inventory and native EFI parsing. Firmware boot entries and BootCurrent
@@ -154,6 +153,16 @@ EXT4 data=journal emits non-blocking deprecation information for a known kernel
 of 7.3 or newer. An unknown kernel version or guessed removal date is not proof
 that the option is unsupported. Review integrity differences before selecting
 data=ordered; vifstab does not rewrite the mode automatically.
+
+## TARGET OWNERSHIP AND PERMISSIONS VERIFICATION
+
+During verification and editing, `vifstab` inspects the selected effective target (`--file`, following symlinks via `stat`) once per file—including empty fstab files—for ownership, mode bits, and Linux POSIX access ACLs (`system.posix_acl_access`):
+- A system target (`/etc/fstab`) triggers a warning if it is world-writable, owned by an unexpected non-root user, group-writable by a non-root group, or has ACL write access granted to non-root users.
+- Alternate user-specified fstab paths are warned if world-writable or if write ACLs expose write access to non-owners.
+- Secure configurations such as `0644` or `0600` root:root ownership produce no warnings.
+- Unavailable, unsupported, or unreadable metadata (including ACLs) remains unknown rather than emitting false positives, and `vifstab` never modifies permissions automatically.
+- Permission issues are reported at `warning` severity, which is blocking in `vifstab`: read-only verification exits non-zero, and `vifstab edit` prompts `(e)dit again, (c)ontinue and save anyway, (q)uit without saving`.
+
 
 ## ENVIRONMENT
 
