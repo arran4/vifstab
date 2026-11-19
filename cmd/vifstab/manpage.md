@@ -19,6 +19,14 @@ Additionally, `vifstab` can maintain RCS revisions of saved content. This is not
 
 Findings have info, warning, security and error levels. Info is non-blocking; warnings, security findings and errors fail verification. Editing prompts on blocking findings, and the caller can explicitly override them. Unavailable observations are not proof of absence. Validation does not guarantee successful boot or safe filesystem contents.
 
+RCS histories are stored under `<backup-dir>/v1/<name>--<source-path-sha256>,v`.
+Each archive records its source identity, and updates use a per-history advisory
+lock. An unlabelled legacy `<basename>,v` file requires explicit review and
+retention before a new labelled history starts; it is not automatically imported
+or overwritten. The first revision records saved content, not the original
+pre-edit file. A versioning error may occur after the fstab itself was saved.
+See `docs/RCS-HISTORIES.md` for mapping, migration and tested recovery scope.
+
 ## OPTIONS
 **--backup-dir**="": Directory to store RCS backups. If omitted, it uses `$XDG_CACHE_HOME/vifstab` or the caller's user-cache directory plus `/vifstab` (normally `$HOME/.cache/vifstab`). If that directory cannot be determined, editing requires an explicit `--backup-dir`; there is no `/tmp/.vifstab` fallback.
 

@@ -8,7 +8,7 @@ new fstab content
 new fstab content
 -- expected/rcs_exists --
 true
--- expected/var/backup/fstab,v --
+-- expected/${RCS_PATH} --
 head	1.2;
 access;
 symbols;
@@ -28,7 +28,7 @@ next	;
 
 
 desc
-@@
+@{"vifstab_rcs":1,"source_base64":"L2V0Yy9mc3RhYg==","revisions":{"1.2":{"sha256":"2c488154ad0fa7e0f0c9368d260e713412ad1cf4b5915baa40c7a4f030b96793","size":25,"newline":true}}}@
 
 
 1.2

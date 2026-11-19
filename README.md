@@ -11,6 +11,11 @@
 - **Versioning:** Automatically backs up changes using RCS.
 - **Manpage generation:** Can generate its own man page.
 
+New RCS histories use a source-path digest under the backup directory's `v1/`
+namespace, keeping different `fstab` paths separate. Ambiguous legacy basename
+histories require explicit review before starting a new history; they are never
+silently imported or overwritten. See [RCS identity, migration and recovery](docs/RCS-HISTORIES.md).
+
 ## Installation
 
 ### Using Go
