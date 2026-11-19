@@ -22,6 +22,9 @@ func (m mockAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
 	return rules.BlockDeviceInventory{}, nil
 }
 func (m mockAPI) ResolveDevicePath(dev string) string { return rules.ResolveDevicePath(dev) }
+func (m mockAPI) GetFileInfo(path string) (rules.FileInfoResult, error) {
+	return rules.FileInfoResult{State: rules.Exists}, nil
+}
 
 func BenchmarkNfsOptions(b *testing.B) {
 	rule := &NfsRule{}

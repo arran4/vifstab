@@ -2,6 +2,7 @@ package editor
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
 	"github.com/arran4/vifstab/internal/rules/core"
 	"github.com/arran4/vifstab/internal/systemd"
+	"github.com/arran4/vifstab/internal/textinput"
 )
 
 type TempFile interface {
@@ -42,7 +44,7 @@ type FS interface {
 
 type osFS struct{}
 
-func (osFS) ReadFile(name string) ([]byte, error)        { return os.ReadFile(name) }
+func (osFS) ReadFile(name string) ([]byte, error)        { return textinput.ReadFile(name) }
 func (osFS) ReadRegularFile(name string) ([]byte, error) { return rcs.ReadOSHistory(name) }
 func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(name, data, perm)
@@ -183,7 +185,7 @@ func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 		}
 
 		// 3. Read and Lint
-		f, err := os.Open(tempFile.Name())
+		f, err := textinput.Open(tempFile.Name())
 		if err != nil {
 			return fmt.Errorf("failed to read edited file: %w", err)
 		}
@@ -195,7 +197,8 @@ func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 		}
 
 		// Run rules
-		allIssues, err := lintEntries(entries, api)
+		ctx := rules.WithTargetFstab(context.Background(), cfg.FilePath)
+		allIssues, err := lintEntriesWithContext(ctx, entries, api)
 		if err != nil {
 			return err
 		}
@@ -241,7 +244,7 @@ func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 	}
 
 	// 5. Save and Version
-	content, err := os.ReadFile(tempFile.Name())
+	content, err := textinput.ReadFile(tempFile.Name())
 	if err != nil {
 		return fmt.Errorf("failed to read temp file for saving: %w", err)
 	}

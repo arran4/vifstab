@@ -1,0 +1,48 @@
+name: Privacy-reviewed TXTAR regression case
+description: Submit a minimal synthetic or manually reviewed non-sensitive case.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read docs/CAPTURE-PRIVACY.md before sharing anything. Redaction is not anonymity.
+        Capture/replay flags depend on the revision; PR #174 is separate review work.
+        Harness fixtures and captured archives have different schemas. Keep secrets private.
+  - type: input
+    id: revision
+    attributes:
+      label: Exact revision and test command
+      description: State which binary or harness produced/replayed this case, including any flags.
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Case format
+      options:
+        - Synthetic rule-harness TXTAR fixture
+        - Manually privacy-reviewed captured archive
+        - Capture withheld pending a private channel
+    validations:
+      required: true
+  - type: textarea
+    id: case
+    attributes:
+      label: Minimal reviewed case
+      description: Paste or attach only the reviewed copy. If withholding it, say so without revealing private data.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual findings
+      description: Give exact findings/status and explain any missing observations, substitutions or redaction effects.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Manual privacy review
+      options:
+        - label: I inspected every included section, output and attachment, and removed credentials and identifying data; I am not relying only on automatic redaction.
+          required: true
