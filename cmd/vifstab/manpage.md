@@ -60,6 +60,10 @@ During verification and editing, `vifstab` inspects the selected effective targe
 
 The default `data=ordered` mode is not an equivalent durability replacement for `data=journal`; review data-integrity implications before changing the option. `vifstab` never rewrites the mount mode automatically.
 
+## EXPERIMENTAL UEFI OBSERVATIONS
+
+The explicit `uefi` command correlates device and firmware metadata. Missing filesystem type and missing or malformed GPT type remain unknown. A definite `Not ESP` report requires a structurally valid obtained GPT type; otherwise the report shows `GPT role: unknown`. Optional EFI-directory information is attempted only for an already-mounted matching device, with unavailable results unknown. This is not filesystem-content verification for an unmounted device or a bootability guarantee.
+
 ## SEE ALSO
 `fstab(5)`, `mount(8)`, `rcs(1)`
 
