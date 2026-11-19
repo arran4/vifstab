@@ -24,6 +24,12 @@ func TestVerify_Execute(t *testing.T) {
 	args := []string{}
 	args = append(args, "--file")
 	args = append(args, "test")
+	args = append(args, "--snapshot")
+	args = append(args, "test")
+	args = append(args, "--capture")
+	args = append(args, "test")
+	args = append(args, "--static")
+	args = append(args, "--unredacted")
 
 	err := cmd.Execute(args)
 	if err != nil {
@@ -36,6 +42,18 @@ func TestVerify_Execute(t *testing.T) {
 
 	if cmd.file != "test" {
 		t.Errorf("Expected file to be 'test', got '%v'", cmd.file)
+	}
+	if cmd.snapshot != "test" {
+		t.Errorf("Expected snapshot to be 'test', got '%v'", cmd.snapshot)
+	}
+	if cmd.capture != "test" {
+		t.Errorf("Expected capture to be 'test', got '%v'", cmd.capture)
+	}
+	if cmd.static != true {
+		t.Errorf("Expected static to be true, got '%v'", cmd.static)
+	}
+	if cmd.unredacted != true {
+		t.Errorf("Expected unredacted to be true, got '%v'", cmd.unredacted)
 	}
 }
 

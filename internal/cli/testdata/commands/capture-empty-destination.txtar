@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: capture-empty-destination.
+-- args.json --
+["verify", "--capture", ""]
+-- fstab --
+-- stdin.json --
+""
+-- status --
+1
+-- stdout.json --
+""
+-- stderr.json --
+"Error: verify failed: --capture requires a non-empty output path\n"

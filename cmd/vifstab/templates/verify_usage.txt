@@ -9,7 +9,11 @@ Subcommands:
 
 
 Flags:
-    {{formatFlagRow 19 25 "--file string" "(default: \"/etc/fstab\")" "File to verify."}}
+    {{formatFlagRow 19 25 "--file string" "(default: \"/etc/fstab\")" "File to verify or capture; - selects stdin."}}
+    {{formatFlagRow 19 25 "--snapshot string" "(default: \"\")" "Verify an isolated TXTAR snapshot; - selects stdin."}}
+    {{formatFlagRow 19 25 "--capture string" "(default: \"\")" "Save a private TXTAR support case, including failed verification; - selects stdout."}}
+    {{formatFlagRow 19 25 "--static" "(default: false)" "Run host-independent checks; live observations remain unchecked/unknown."}}
+    {{formatFlagRow 19 25 "--unredacted" "(default: false)" "Retain sensitive values in an explicit capture."}}
 
 Positional Arguments:
     {{formatHelpRow 13 "[operands...]" "No positional operands are accepted."}}

@@ -55,6 +55,17 @@ func TestExecutableTXTAR(t *testing.T) {
 			if err := json.Unmarshal(sections["args.json"], &args); err != nil {
 				t.Fatal(err)
 			}
+			// JSON string sections embed nested TXTAR without introducing
+			// section delimiters into the outer executable fixture.
+			for _, name := range []string{"stdin", "stdout", "stderr"} {
+				if data, ok := sections[name+".json"]; ok {
+					var value string
+					if err := json.Unmarshal(data, &value); err != nil {
+						t.Fatal(err)
+					}
+					sections[name] = []byte(value)
+				}
+			}
 			dir := t.TempDir()
 			fstab := filepath.Join(dir, "fstab")
 			if err := os.WriteFile(fstab, sections["fstab"], 0640); err != nil {
@@ -117,8 +128,29 @@ func TestExecutableTXTAR(t *testing.T) {
 					t.Fatal("read-only route modified fstab")
 				}
 				files, err := os.ReadDir(dir)
-				if err != nil || len(files) != 1 || files[0].Name() != "fstab" {
-					t.Fatalf("read-only route created files: %v, %v", files, err)
+				wantFiles := 1
+				if data, ok := sections["capture.json"]; ok {
+					wantFiles = 2
+					var expected string
+					if err := json.Unmarshal(data, &expected); err != nil {
+						t.Fatal(err)
+					}
+					archive, err := os.ReadFile(filepath.Join(dir, "case.txtar"))
+					if err != nil || string(archive) != expected {
+						t.Fatalf("capture artifact mismatch: %v\ngot %q\nwant %q", err, archive, expected)
+					}
+					info, err := os.Stat(filepath.Join(dir, "case.txtar"))
+					if err != nil || info.Mode().Perm() != 0600 {
+						t.Fatalf("capture permissions: %v, %v", info, err)
+					}
+				}
+				if err != nil || len(files) != wantFiles {
+					t.Fatalf("unexpected files: %v, %v", files, err)
+				}
+				for _, file := range files {
+					if file.Name() != "fstab" && (wantFiles != 2 || file.Name() != "case.txtar") {
+						t.Fatalf("unexpected file %s", file.Name())
+					}
 				}
 			}
 		})

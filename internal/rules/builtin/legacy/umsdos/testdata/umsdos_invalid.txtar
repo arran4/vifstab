@@ -2,6 +2,7 @@
 /dev/sda1 /mnt/umsdos umsdos uid=notanint,gid=9999,umask=invalid,unknownopt,dotsOK 0 0
 -- cache --
 proc_filesystems=umsdos
+group_exists:9999=false
 -- input/etc/passwd --
 root:x:0:0:root:/root:/bin/bash
 -- input/etc/group --

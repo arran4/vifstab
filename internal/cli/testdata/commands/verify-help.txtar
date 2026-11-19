@@ -17,7 +17,19 @@ Subcommands:
 
 
 Flags:
-    --file string       (default: "/etc/fstab")   File to verify.
+    --file string       (default: "/etc/fstab")   File to verify or capture; -
+                                                  selects stdin.
+    --snapshot string   (default: "")             Verify an isolated TXTAR
+                                                  snapshot; - selects stdin.
+    --capture string    (default: "")             Save a private TXTAR support
+                                                  case, including failed
+                                                  verification; - selects
+                                                  stdout.
+    --static            (default: false)          Run host-independent checks;
+                                                  live observations remain
+                                                  unchecked/unknown.
+    --unredacted        (default: false)          Retain sensitive values in an
+                                                  explicit capture.
 
 Positional Arguments:
     [operands...] No positional operands are accepted.

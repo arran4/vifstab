@@ -19,6 +19,10 @@ type Verify struct {
 	*RootCmd
 	Flags         *flag.FlagSet
 	file          string
+	snapshot      string
+	capture       string
+	static        bool
+	unredacted    bool
 	seen          map[string]bool
 	operands      []string
 	SubCommands   map[string]func() Cmd
@@ -62,7 +66,15 @@ func (c *Verify) Execute(args []string) (err error) {
 	fs := flag.NewFlagSet(c.FlagSet.Name(), flag.ContinueOnError)
 	fs.Usage = c.Usage
 
-	fs.StringVar(&c.file, "file", c.file, "File to verify.")
+	fs.StringVar(&c.file, "file", c.file, "File to verify or capture; - selects stdin.")
+
+	fs.StringVar(&c.snapshot, "snapshot", c.snapshot, "Verify an isolated TXTAR snapshot; - selects stdin.")
+
+	fs.StringVar(&c.capture, "capture", c.capture, "Save a private TXTAR support case, including failed verification; - selects stdout.")
+
+	fs.BoolVar(&c.static, "static", c.static, "Run host-independent checks; live observations remain unchecked/unknown.")
+
+	fs.BoolVar(&c.unredacted, "unredacted", c.unredacted, "Retain sensitive values in an explicit capture.")
 
 	remainingArgs, dashDashSeen, err = parseGoFlags(fs, args, c.commandPath())
 	if err != nil {
@@ -75,6 +87,30 @@ func (c *Verify) Execute(args []string) (err error) {
 	fs.Visit(func(f *flag.Flag) {
 		if f.Name == "file" {
 			seenFlags["file"] = true
+		}
+	})
+
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "snapshot" {
+			seenFlags["snapshot"] = true
+		}
+	})
+
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "capture" {
+			seenFlags["capture"] = true
+		}
+	})
+
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "static" {
+			seenFlags["static"] = true
+		}
+	})
+
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "unredacted" {
+			seenFlags["unredacted"] = true
 		}
 	})
 
@@ -113,12 +149,20 @@ func (c *RootCmd) NewVerify() *Verify {
 		SubCommands: make(map[string]func() Cmd),
 	}
 
-	set.StringVar(&v.file, "file", "/etc/fstab", "File to verify.")
+	set.StringVar(&v.file, "file", "/etc/fstab", "File to verify or capture; - selects stdin.")
+
+	set.StringVar(&v.snapshot, "snapshot", "", "Verify an isolated TXTAR snapshot; - selects stdin.")
+
+	set.StringVar(&v.capture, "capture", "", "Save a private TXTAR support case, including failed verification; - selects stdout.")
+
+	set.BoolVar(&v.static, "static", false, "Run host-independent checks; live observations remain unchecked/unknown.")
+
+	set.BoolVar(&v.unredacted, "unredacted", false, "Retain sensitive values in an explicit capture.")
 	set.Usage = v.Usage
 
 	v.CommandAction = func(c *Verify) error {
 
-		err := cli.Verify(c.file, c.seen, c.operands...)
+		err := cli.Verify(c.file, c.snapshot, c.capture, c.static, c.unredacted, c.seen, c.operands...)
 		if err != nil {
 			var exitCode *cmd.ErrExitCode
 			if errors.As(err, &exitCode) {

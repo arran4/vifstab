@@ -8,7 +8,9 @@ vifstab - Verify Linux fstab configurations and explicitly edit with linting and
 
 vifstab
 
-vifstab verify [--file PATH]
+vifstab verify [--file PATH|-] [--static] [--capture FILE|-] [--unredacted]
+
+vifstab verify --snapshot FILE|-
 
 vifstab edit [--file PATH] [--backup-dir DIR] [--systemd-reload auto|warn|never]
 
@@ -88,8 +90,41 @@ No systemd or external boot utility is required. No `verify --uefi` option exist
 **help COMMAND**, **--help**, **-h**: Show command-specific help without executing
 the action. Verification flags belong after `verify`; root verification flags
 before another command are rejected. Flags precede positional operands. The old root editing/`--verify`
-interface has been replaced. Static verification, TXTAR integration and edit
-preflight are separately tracked work, not flags in this foundation.
+interface has been replaced. **verify --static** runs host-independent rule checks while all live filesystem,
+device, path/account and kernel observations remain unchecked/unknown.
+The mode is printed explicitly; unknown is not a failure and no host fallback
+is used. Structural/option errors still block. Edit preflight is not implemented.
+
+**verify --capture FILE** saves a bounded support archive from the same validation
+pass, even when blocking findings or a bounded parser failure cause exit 1.
+Unreadable/oversized input or archive-output failures are errors. `--file -`
+explicitly borrows stdin. Capture files use private 0600 exclusive creation;
+existing files and symlinks are rejected. `--capture -` writes only TXTAR to stdout
+and sends findings/diagnostics to stderr; shell redirection controls permissions.
+Static capture is supported without live observations.
+
+Capture uses the canonical metadata provider; it does not inspect block contents,
+mount devices, export account databases, read credentials or elevate privileges.
+Default redaction pseudonymises identities, paths, network sources and sensitive
+options; topology and public role paths remain visible. **Manually review every
+capture before sharing.** Redaction can alter validation semantics/findings.
+**--unredacted** requires capture, prints an explicit warning and may retain
+credentials. Keep such artifacts private.
+
+**verify --snapshot FILE** (or `-` for stdin) runs the production validator offline.
+Missing observations remain unknown and never fall back to the current host.
+It does not create temporary files, backups or target writes, open an editor or
+launch systemd. Snapshot mode rejects file/capture/static/unredacted combinations.
+UEFI, diagram, editing and content inspection are unsupported replay operations.
+
+TXTAR schema 1.0 includes manifest.json, input/etc/fstab, optional kernel and
+provider inventory/observations JSON. Negative/unknown/permission states remain
+distinct. Serialization is deterministic; limits are 10 MiB total, 100 sections,
+2 MiB per section and 1024-byte names. Unsafe paths, ambiguous/duplicate sections,
+malformed/duplicate JSON, unsupported versions and delimiters are rejected.
+Legacy fixture forms remain supported. To add a regression, copy a reviewed
+capture to testdata, add expected/validationerrors.txt and optional options.txt
+with rule=all and format=level_prefix. See README for executable examples.
 
 ## PROCESS AND SAVE BOUNDARIES
 
@@ -139,4 +174,8 @@ unavailable classification are refused. Regular files, symlinks and intentional
 streams remain supported. Formatting checks borrowed stdin and retains pipelines.
 The Linux pathname reader requires metadata/proc-fd interfaces and keeps caller
 credentials. See `docs/TEXT-INPUTS.md` for the stable-inode boundary,
-platform limits and generated CLI/TXTAR integration still pending in review branches.
+platform limits. Generated verification, static input, capture and replay share this guard.
+
+## USER AND GROUP OBSERVATIONS
+
+Numeric UID/GID mount options must be between `0` and `4294967294`. Explicitly supported filesystem enum alternatives remain valid. A structurally valid matching local passwd/group record establishes presence; missing, unreadable, malformed or unmatched local data leaves account availability unknown because NSS may use other sources. Unknown and permission-denied observations produce informational diagnostics. Explicit provider/cache observations may still establish absence. No additional account-discovery command or NSS lookup is performed.

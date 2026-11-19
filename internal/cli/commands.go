@@ -25,21 +25,22 @@ import (
 //
 // Flags:
 //
-//	file: --file (default: "/etc/fstab") File to verify.
+//	file: --file (default: "/etc/fstab") File to verify or capture; - selects stdin.
+//	snapshot: --snapshot (default: "") Verify an isolated TXTAR snapshot; - selects stdin.
+//	capture: --capture (default: "") Save a private TXTAR support case, including failed verification; - selects stdout.
+//	static: --static (default: false) Run host-independent checks; live observations remain unchecked/unknown.
+//	unredacted: --unredacted (default: false) Retain sensitive values in an explicit capture.
 //	seen: (flag presence) Explicitly supplied flags.
 //	operands: ... No positional operands are accepted.
-func Verify(file string, seen map[string]bool, operands ...string) error {
+func Verify(file string, snapshot string, capture string, static bool, unredacted bool, seen map[string]bool, operands ...string) error {
 	if !seen["file"] {
 		file = vifstab.DefaultFile
 	}
 	if err := noOperands("vifstab verify", operands); err != nil {
 		return err
 	}
-	issues, err := editor.VerifyAndLint(config.Config{FilePath: file}, rules.ActualFS{})
-	if err != nil {
-		return applicationError(err)
-	}
-	return Report(os.Stdout, issues)
+	return verify(file, snapshot, capture, static, unredacted, seen)
+
 }
 
 // Report prints verification findings and applies the shared blocking-severity policy.
