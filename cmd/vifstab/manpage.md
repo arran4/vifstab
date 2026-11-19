@@ -12,9 +12,9 @@ vifstab verify [--file PATH|-] [--static] [--capture FILE|-] [--unredacted]
 
 vifstab verify --snapshot FILE|-
 
-vifstab edit [--file PATH] [--backup-dir DIR] [--systemd-reload auto|warn|never]
+vifstab edit [--file PATH] [--backup-dir DIR] [--systemd-reload auto|warn|never] [--metadata-policy strict|supported|best-effort]
 
-vifstab format [--file PATH|-] [--in-place|-i] [--backup-dir DIR]
+vifstab format [--file PATH|-] [--in-place|-i] [--backup-dir DIR] [--metadata-policy strict|supported|best-effort]
 
 vifstab diagram DEVICE
 
@@ -36,10 +36,12 @@ absence. Verification does not establish bootability or whether an entry is
 currently mounted. Linux is the immediate platform; general Linux 7-series
 compatibility is a development goal and other fstab dialects are future work.
 
-The editor is experimental. Validation cannot prevent every boot failure.
-Known save limitations include concurrent edits, symlink replacement, ownership
-and extended metadata loss, and RCS basename collisions (#153–#156).
-Do not describe the current save workflow as production-safe.
+This repository is in a verification and expansion stage, not a production-proven
+safety claim. Validation cannot prevent every boot failure. Saves resolve
+symlinks to their regular target without replacing the symlink, detect stale
+concurrent edits (preserving a `0600` recovery copy), isolate RCS histories by
+resolved target path, and preserve ownership, mode, special bits, and xattrs
+according to `--metadata-policy` (`strict` default, `supported`, `best-effort`).
 
 ## OPTIONS AND COMMANDS
 
@@ -55,8 +57,11 @@ An editor or save failure never silently falls back to verification.
 **--backup-dir DIR**: RCS directory for edit and in-place format. Default:
 `$XDG_CACHE_HOME/vifstab`, otherwise the caller's user cache directory (normally
 `$HOME/.cache/vifstab`). If unavailable, an explicit directory is required.
-There is no `/tmp` backup fallback. Histories currently use `<basename>,v`;
-use separate directories for different paths with the same basename.
+There is no `/tmp` backup fallback. Histories are isolated by resolved target path.
+
+**--metadata-policy MODE**: Metadata preservation policy for `edit` and
+`format --in-place` (`strict` default, `supported`, `best-effort`). Rejected on
+read-only `format` and unavailable on read-only commands.
 
 **--systemd-reload MODE**: Edit-only post-save mode. `warn` (default) prints a
 stale-unit diagnostic for `/etc/fstab` when systemd is active; `never` disables
@@ -66,13 +71,12 @@ or RCS errors. Overrides and post-rename failures warn instead of reloading.
 A reload failure leaves the saved file installed. Reloading does not remount.
 
 **format**: Print aligned fstab. Only explicit **--in-place** (or **-i**) writes,
-using the existing atomic-save/RCS path and sharing its known limitations.
+using the atomic-save/RCS path (`--metadata-policy` defaults to `strict`).
 In-place formatting requires file input and never automatically reloads systemd.
 
-**diagram DEVICE**: Render the existing ASCII partition-table diagram, not general
-mount-state reporting. Offline disk-image fixtures are supported. The legacy
-block-device opening path remains a policy concern pending metadata-only
-migration; do not use it to claim the normal verifier inspects device contents.
+**diagram DEVICE**: Render an ASCII partition-table diagram from kernel metadata
+interfaces without opening live block devices; disk-image inputs are guarded by
+stable descriptors. Not a general mount-state reporter.
 
 **uefi DEVICE MOUNTPOINT**: Explicit experimental live correlation through the
 canonical inventory and native EFI parsing. Firmware boot entries and BootCurrent
