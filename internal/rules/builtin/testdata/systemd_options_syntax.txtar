@@ -1,0 +1,22 @@
+The shared generator rule covers native, network, swap, bind and unknown types.
+Earlier repeated values remain visible and unknown/new extensions remain info.
+-- options.txt --
+rule=systemd-options
+format=level_prefix
+-- cache --
+systemd_version=262
+-- input --
+UUID=example /boot ext4 x-systemd.automount=oops,x-systemd.requires=,x-systemd.requires=second.mount 0 2
+UUID=example /efi vfat x-systemd.automount,x-systemd.idle-timeout=2min 0 2
+server:/export /network nfs x-systemd.mount-timeout=garbage 0 0
+UUID=example none swap x-systemd.automount,x-systemd.future=value 0 0
+/source /bind none bind,x-systemd.requires-mounts-for=relative 0 0
+source /future futurefs x-systemd.future=value 0 0
+-- issues --
+Error: systemd option 'x-systemd.automount' on line 1: takes no value; remove the '=' and value
+Error: systemd option 'x-systemd.requires' on line 1: requires a nonempty value after '='
+Error: systemd option 'x-systemd.mount-timeout' on line 3: invalid nonnegative systemd time span; use e.g. 30s, 2min, 1h30min or infinity
+Info: systemd option 'x-systemd.automount' on line 4: automount does not apply to swap entries
+Info: Unverified systemd extension 'x-systemd.future' on line 4: value syntax and semantics were not checked
+Error: systemd option 'x-systemd.requires-mounts-for' on line 5: requires an absolute path; use a path beginning with '/'
+Info: Unverified systemd extension 'x-systemd.future' on line 6: value syntax and semantics were not checked

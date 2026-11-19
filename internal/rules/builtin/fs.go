@@ -74,25 +74,13 @@ func (r *FSRule) Validate(ctx context.Context, api rules.API, entry *rules.Fstab
 		return nil, nil
 	}
 
-	c := rules.CacheFromContext(ctx)
-	if c == nil {
-		return nil, fmt.Errorf("no cache provided in context")
-	}
-
-	val, ok := c.Get(ProcFilesystemsKey)
-	if !ok {
-		// Try to load it
-		fsMap, err := LoadProcFilesystems("/proc/filesystems")
-		if err != nil {
-			return nil, fmt.Errorf("failed to load proc filesystems: %w", err)
-		}
-		c.Set(ProcFilesystemsKey, fsMap)
-		val = fsMap
-	}
-
-	validFS, ok := val.(map[string]bool)
-	if !ok {
-		return nil, fmt.Errorf("invalid cache type for proc_filesystems")
+	validFS, err := rules.CachedSupportedFilesystems(ctx, api)
+	if err != nil {
+		return []rules.ValidationIssue{{
+			Message: "Kernel filesystem support unknown: metadata unavailable",
+			Line:    entry.RawLine,
+			Level:   rules.IssueLevelInfo,
+		}}, nil
 	}
 
 	if !validFS[fsType] {

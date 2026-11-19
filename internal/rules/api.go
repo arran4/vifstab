@@ -2,6 +2,8 @@ package rules
 
 import (
 	"bufio"
+	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -38,6 +40,8 @@ type BlockDevice struct {
 	SysfsName   string   `json:"sysfs_name"`
 	DeviceID    string   `json:"device_id"`
 	Aliases     []string `json:"aliases"`
+	// Layout is optional live diagram enrichment, not part of capture schema v1.
+	Layout *BlockLayout `json:"-"`
 }
 
 type BlockDeviceDiagnostic struct {
@@ -65,6 +69,104 @@ type API interface {
 	ResolveDevicePath(dev string) string
 }
 
+// FileInfoProvider is an optional interface implemented by API providers that
+// can observe target fstab file metadata (ownership, permissions, ACLs).
+type FileInfoProvider interface {
+	GetFileInfo(path string) (FileInfoResult, error)
+}
+
+// GetFileInfo returns target file metadata from api when it implements
+// FileInfoProvider, or Unknown otherwise.
+func GetFileInfo(api API, path string) (FileInfoResult, error) {
+	if p, ok := api.(FileInfoProvider); ok {
+		return p.GetFileInfo(path)
+	}
+	return FileInfoResult{State: Unknown}, nil
+}
+
+type FileInfoResult struct {
+	State       ExistState
+	Mode        fs.FileMode
+	UID         *int
+	GID         *int
+	HasWriteACL *bool
+}
+
+// FilesystemSupportProvider reports kernel filesystem support. A missing provider
+// or an error means unknown, rather than an empty list of supported filesystems.
+type FilesystemSupportProvider interface {
+	GetSupportedFilesystems() (map[string]bool, error)
+}
+
+func SupportedFilesystems(api API) (map[string]bool, error) {
+	if p, ok := api.(FilesystemSupportProvider); ok {
+		m, err := p.GetSupportedFilesystems()
+		if m != nil || err != nil {
+			return m, err
+		}
+	}
+	return nil, fmt.Errorf("filesystem support unavailable")
+}
+
+func CachedSupportedFilesystems(ctx context.Context, api API) (map[string]bool, error) {
+	if c := CacheFromContext(ctx); c != nil {
+		if v, ok := c.Get("proc_filesystems_error"); ok {
+			return nil, fmt.Errorf("%v", v)
+		}
+		if v, ok := c.Get("proc_filesystems"); ok {
+			if m, ok := v.(map[string]bool); ok && m != nil {
+				return m, nil
+			}
+			return nil, fmt.Errorf("invalid cache type for proc_filesystems")
+		}
+		m, err := SupportedFilesystems(api)
+		if err == nil {
+			c.Set("proc_filesystems", m)
+		}
+		return m, err
+	}
+	return SupportedFilesystems(api)
+}
+
+func parseFilesystems(f fs.File) (map[string]bool, error) {
+	defer func() { _ = f.Close() }()
+	m := make(map[string]bool)
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		fields := strings.Fields(scanner.Text())
+		if len(fields) > 0 {
+			m[fields[len(fields)-1]] = true
+		}
+	}
+	return m, scanner.Err()
+}
+
+func (a ActualFS) GetSupportedFilesystems() (map[string]bool, error) {
+	f, err := a.getOS().Open("/proc/filesystems")
+	if err != nil {
+		return nil, err
+	}
+	return parseFilesystems(f)
+}
+
+func (c *CacheFS) GetSupportedFilesystems() (map[string]bool, error) {
+	if c.Cache != nil {
+		if v, ok := c.Cache.Get("proc_filesystems_error"); ok {
+			return nil, fmt.Errorf("%v", v)
+		}
+		if v, ok := c.Cache.Get("proc_filesystems"); ok {
+			if m, ok := v.(map[string]bool); ok && m != nil {
+				return m, nil
+			}
+		}
+	}
+	f, err := c.FS.Open("proc/filesystems")
+	if err != nil {
+		return nil, err
+	}
+	return parseFilesystems(f)
+}
+
 // OSProvider abstracts operating system operations to allow mocking
 type OSProvider interface {
 	ReadDir(name string) ([]fs.DirEntry, error)
@@ -83,8 +185,12 @@ func (defaultOSProvider) Readlink(name string) (string, error)       { return os
 func (defaultOSProvider) Stat(name string) (fs.FileInfo, error)      { return os.Stat(name) }
 
 type ActualFS struct {
-	OS OSProvider
+	OS              OSProvider
+	IncludeTopology bool // Metadata only; normal validation does not request it.
 }
+
+// Provider returns the canonical filesystem/kernel metadata provider.
+func (a ActualFS) Provider() OSProvider { return a.getOS() }
 
 func (a ActualFS) getOS() OSProvider {
 	if a.OS == nil {
@@ -94,65 +200,11 @@ func (a ActualFS) getOS() OSProvider {
 }
 
 func (a ActualFS) CheckUserExists(uid int) ExistState {
-	f, err := a.getOS().Open("/etc/passwd")
-	if err != nil {
-		if os.IsPermission(err) {
-			return PermissionDenied
-		}
-		if os.IsNotExist(err) {
-			return Unknown
-		}
-		return Unknown
-	}
-	defer func() {
-		_ = f.Close()
-	}()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.Split(line, ":")
-		if len(parts) >= 3 {
-			if id, err := strconv.Atoi(parts[2]); err == nil && id == uid {
-				return Exists
-			}
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return Unknown
-	}
-	return DoesNotExist
+	return observeAccountFile(a.getOS().Open, "/etc/passwd", uid, true)
 }
 
 func (a ActualFS) CheckGroupExists(gid int) ExistState {
-	f, err := a.getOS().Open("/etc/group")
-	if err != nil {
-		if os.IsPermission(err) {
-			return PermissionDenied
-		}
-		if os.IsNotExist(err) {
-			return Unknown
-		}
-		return Unknown
-	}
-	defer func() {
-		_ = f.Close()
-	}()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.Split(line, ":")
-		if len(parts) >= 3 {
-			if id, err := strconv.Atoi(parts[2]); err == nil && id == gid {
-				return Exists
-			}
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return Unknown
-	}
-	return DoesNotExist
+	return observeAccountFile(a.getOS().Open, "/etc/group", gid, false)
 }
 
 func (a ActualFS) CheckFileExists(path string) FileExistsResult {
@@ -167,6 +219,28 @@ func (a ActualFS) CheckFileExists(path string) FileExistsResult {
 		return FileDoesNotExist
 	}
 	return Unknown
+}
+
+func (a ActualFS) GetFileInfo(path string) (FileInfoResult, error) {
+	info, err := a.getOS().Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return FileInfoResult{State: DoesNotExist}, nil
+		}
+		if os.IsPermission(err) {
+			return FileInfoResult{State: PermissionDenied}, nil
+		}
+		return FileInfoResult{State: Unknown}, nil
+	}
+	res := FileInfoResult{
+		State: Exists,
+		Mode:  info.Mode(),
+	}
+	extractOSFileInfo(info, &res)
+	if a.OS == nil {
+		extractLinuxACL(path, &res)
+	}
+	return res, nil
 }
 
 func (a ActualFS) CheckBlockDeviceExists(dev string) ExistState {
@@ -264,6 +338,7 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 				parttype := ""
 				fstype := ""
 				devnameStr := ""
+				tableType := ""
 				for scanner.Scan() {
 					line := scanner.Text()
 					if strings.HasPrefix(line, "E:ID_PART_ENTRY_TYPE=") {
@@ -274,6 +349,9 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 					}
 					if strings.HasPrefix(line, "E:DEVNAME=") {
 						devnameStr = strings.TrimPrefix(line, "E:DEVNAME=")
+					}
+					if strings.HasPrefix(line, "E:ID_PART_TABLE_TYPE=") {
+						tableType = strings.TrimPrefix(line, "E:ID_PART_TABLE_TYPE=")
 					}
 				}
 				if err := scanner.Err(); err != nil {
@@ -305,6 +383,15 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 				}
 				if fstype != "" {
 					dev.FSType = fstype
+				}
+				if a.IncludeTopology && scanner.Err() == nil && tableType != "" {
+					dev.Layout = &BlockLayout{}
+					switch tableType {
+					case "gpt", "dos", "mbr":
+						dev.Layout.TableType = tableType
+					default:
+						diagnostics = append(diagnostics, BlockDeviceDiagnostic{Source: "/run/udev/data/" + file.Name(), Error: "partition-table type metadata unrecognized; unknown"})
+					}
 				}
 			}
 		}
@@ -433,6 +520,11 @@ func (a ActualFS) GetBlockDevices() (BlockDeviceInventory, error) {
 		}
 		return result[i].DeviceID < result[j].DeviceID
 	})
+	if a.IncludeTopology {
+		for i := range result {
+			diagnostics = append(diagnostics, enrichBlockLayout(osProv, &result[i])...)
+		}
+	}
 
 	return BlockDeviceInventory{
 		Devices:     result,
@@ -454,8 +546,9 @@ func (a ActualFS) GetHostKernelVersion() string {
 }
 
 type CacheFS struct {
-	Cache *Cache
-	FS    fs.FS
+	Cache         *Cache
+	FS            fs.FS
+	OfflineReplay bool
 }
 
 func NewCacheFS(cache *Cache, mockFS fs.FS) *CacheFS {
@@ -467,6 +560,10 @@ func NewCacheFS(cache *Cache, mockFS fs.FS) *CacheFS {
 		FS:    mockFS,
 	}
 }
+
+// ValidationCache makes explicit fixture observations available to rules that
+// share a per-validation context cache, without consulting the host.
+func (c *CacheFS) ValidationCache() *Cache { return c.Cache }
 
 func (c *CacheFS) GetHostKernelVersion() string {
 	if c.Cache != nil {
@@ -484,6 +581,9 @@ func (c *CacheFS) GetHostKernelVersion() string {
 				return s
 			}
 		}
+	}
+	if c.OfflineReplay {
+		return ""
 	}
 	return ActualFS{}.GetHostKernelVersion()
 }
@@ -503,12 +603,19 @@ func (c *CacheFS) CheckFileExists(path string) FileExistsResult {
 		}
 	}
 	if c.FS != nil {
-		if path != "" && path[0] == '/' {
-			path = path[1:]
+		checkPath := path
+		if checkPath != "" && checkPath[0] == '/' {
+			checkPath = checkPath[1:]
 		}
-		_, err := fs.Stat(c.FS, path)
+		_, err := fs.Stat(c.FS, checkPath)
 		if err == nil {
 			return FileExists
+		}
+		if c.OfflineReplay {
+			if os.IsPermission(err) {
+				return FilePermissionDenied
+			}
+			return Unknown
 		}
 		if os.IsPermission(err) {
 			return FilePermissionDenied
@@ -519,6 +626,92 @@ func (c *CacheFS) CheckFileExists(path string) FileExistsResult {
 		return Unknown
 	}
 	panic("CacheFS must be initialized with a valid fs.FS")
+}
+
+func (c *CacheFS) GetFileInfo(path string) (FileInfoResult, error) {
+	if c.Cache != nil {
+		if v, ok := c.Cache.Get(CacheKey("fstab_state")); ok {
+			if s, ok := v.(string); ok && strings.ToLower(s) == "unknown" {
+				return FileInfoResult{State: Unknown}, nil
+			}
+		}
+		res := FileInfoResult{State: Exists}
+		found := false
+		if v, ok := c.Cache.Get(CacheKey("fstab_mode")); ok {
+			var mode uint64
+			var err error
+			switch val := v.(type) {
+			case string:
+				mode, err = strconv.ParseUint(val, 8, 32)
+			case int:
+				mode = uint64(val)
+			}
+			if err == nil {
+				res.Mode = fs.FileMode(mode)
+				found = true
+			}
+		}
+		if v, ok := c.Cache.Get(CacheKey("fstab_uid")); ok {
+			switch val := v.(type) {
+			case string:
+				if u, err := strconv.Atoi(val); err == nil {
+					res.UID = &u
+					found = true
+				}
+			case int:
+				res.UID = &val
+				found = true
+			}
+		}
+		if v, ok := c.Cache.Get(CacheKey("fstab_gid")); ok {
+			switch val := v.(type) {
+			case string:
+				if g, err := strconv.Atoi(val); err == nil {
+					res.GID = &g
+					found = true
+				}
+			case int:
+				res.GID = &val
+				found = true
+			}
+		}
+		if v, ok := c.Cache.Get(CacheKey("fstab_write_acl")); ok {
+			switch val := v.(type) {
+			case bool:
+				res.HasWriteACL = &val
+				found = true
+			case string:
+				b := strings.ToLower(val) == "true" || val == "1"
+				res.HasWriteACL = &b
+				found = true
+			}
+		}
+		if found {
+			return res, nil
+		}
+	}
+	if c.FS != nil {
+		p := path
+		if p != "" && p[0] == '/' {
+			p = p[1:]
+		}
+		info, err := fs.Stat(c.FS, p)
+		if err == nil {
+			res := FileInfoResult{
+				State: Exists,
+				Mode:  info.Mode(),
+			}
+			extractOSFileInfo(info, &res)
+			return res, nil
+		}
+		if os.IsNotExist(err) {
+			return FileInfoResult{State: DoesNotExist}, nil
+		}
+		if os.IsPermission(err) {
+			return FileInfoResult{State: PermissionDenied}, nil
+		}
+	}
+	return FileInfoResult{State: Unknown}, nil
 }
 
 func (c *CacheFS) CheckUserExists(uid int) ExistState {
@@ -536,43 +729,14 @@ func (c *CacheFS) CheckUserExists(uid int) ExistState {
 			}
 		}
 	}
-	if c.FS != nil {
-		f, err := c.FS.Open("etc/passwd")
-		if err != nil {
-			if os.IsPermission(err) {
-				return PermissionDenied
-			}
-			if os.IsNotExist(err) {
-				return Unknown
-			}
-			return Unknown
-		}
-		defer func() {
-			_ = f.Close()
-		}()
-
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			line := scanner.Text()
-			parts := strings.Split(line, ":")
-			if len(parts) >= 3 {
-				if id, err := strconv.Atoi(parts[2]); err == nil && id == uid {
-					if c.Cache != nil {
-						c.Cache.Set(CacheKey("user_exists:"+strconv.Itoa(uid)), Exists)
-					}
-					return Exists
-				}
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			return Unknown
-		}
-		if c.Cache != nil {
-			c.Cache.Set(CacheKey("user_exists:"+strconv.Itoa(uid)), DoesNotExist)
-		}
-		return DoesNotExist
+	if c.FS == nil {
+		return Unknown
 	}
-	return Unknown
+	result := observeAccountFile(c.FS.Open, "etc/passwd", uid, true)
+	if c.Cache != nil {
+		c.Cache.Set(CacheKey("user_exists:"+strconv.Itoa(uid)), result)
+	}
+	return result
 }
 
 func (c *CacheFS) CheckGroupExists(gid int) ExistState {
@@ -590,47 +754,21 @@ func (c *CacheFS) CheckGroupExists(gid int) ExistState {
 			}
 		}
 	}
-	if c.FS != nil {
-		f, err := c.FS.Open("etc/group")
-		if err != nil {
-			if os.IsPermission(err) {
-				return PermissionDenied
-			}
-			if os.IsNotExist(err) {
-				return Unknown
-			}
-			return Unknown
-		}
-		defer func() {
-			_ = f.Close()
-		}()
-
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			line := scanner.Text()
-			parts := strings.Split(line, ":")
-			if len(parts) >= 3 {
-				if id, err := strconv.Atoi(parts[2]); err == nil && id == gid {
-					if c.Cache != nil {
-						c.Cache.Set(CacheKey("group_exists:"+strconv.Itoa(gid)), Exists)
-					}
-					return Exists
-				}
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			return Unknown
-		}
-		if c.Cache != nil {
-			c.Cache.Set(CacheKey("group_exists:"+strconv.Itoa(gid)), DoesNotExist)
-		}
-		return DoesNotExist
+	if c.FS == nil {
+		return Unknown
 	}
-	return Unknown
+	result := observeAccountFile(c.FS.Open, "etc/group", gid, false)
+	if c.Cache != nil {
+		c.Cache.Set(CacheKey("group_exists:"+strconv.Itoa(gid)), result)
+	}
+	return result
 }
 
 func (c *CacheFS) GetBlockDevices() (BlockDeviceInventory, error) {
 	if c.Cache != nil {
+		if v, ok := c.Cache.Get("block_devices_error"); ok {
+			return BlockDeviceInventory{Available: false}, fmt.Errorf("%v", v)
+		}
 		if v, ok := c.Cache.Get(CacheKey("block_devices")); ok {
 			if devs, ok := v.([]BlockDevice); ok {
 				return BlockDeviceInventory{Devices: devs, Available: true}, nil
@@ -644,12 +782,30 @@ func (c *CacheFS) GetBlockDevices() (BlockDeviceInventory, error) {
 }
 
 func (c *CacheFS) CheckBlockDeviceExists(dev string) ExistState {
-	if strings.HasPrefix(dev, "/dev/ubd") || strings.HasPrefix(dev, "mtd:") {
+	if !c.OfflineReplay && (strings.HasPrefix(dev, "/dev/ubd") || strings.HasPrefix(dev, "mtd:")) {
 		return Exists
 	}
 	resolvedPath := c.ResolveDevicePath(dev)
 
 	if c.Cache != nil {
+		// The exact query is authoritative, including an explicit unknown result.
+		if v, ok := c.Cache.Get(CacheKey("block_device_exists:" + dev)); ok {
+			if result, ok := v.(ExistState); ok {
+				return result
+			}
+		}
+
+		if v, ok := c.Cache.Get(CacheKey("block_device_exists:" + resolvedPath)); ok {
+			if result, ok := v.(ExistState); ok {
+				return result
+			}
+		}
+
+		// File and block-device observations are independent in snapshots.
+		if c.OfflineReplay {
+			return Unknown
+		}
+
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + resolvedPath)); ok {
 			if exists, ok := v.(bool); ok {
 				if exists {
@@ -661,7 +817,8 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) ExistState {
 				return result
 			}
 		}
-		// Also check if they cached the raw path for some reason
+
+		// Fallback check the original requested path on file_exists
 		if v, ok := c.Cache.Get(CacheKey("file_exists:" + dev)); ok {
 			if exists, ok := v.(bool); ok {
 				if exists {
@@ -673,6 +830,9 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) ExistState {
 				return result
 			}
 		}
+	}
+	if c.OfflineReplay {
+		return Unknown
 	}
 	if c.FS != nil {
 		checkPath := resolvedPath
@@ -695,6 +855,13 @@ func (c *CacheFS) CheckBlockDeviceExists(dev string) ExistState {
 }
 
 func (c *CacheFS) ResolveDevicePath(dev string) string {
+	if c.Cache != nil {
+		if v, ok := c.Cache.Get(CacheKey("resolved_device:" + dev)); ok {
+			if s, ok := v.(string); ok {
+				return s
+			}
+		}
+	}
 	return ResolveDevicePath(dev)
 }
 

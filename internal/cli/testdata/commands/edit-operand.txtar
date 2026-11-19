@@ -1,0 +1,10 @@
+Executable regression: edit-operand; default fstab is a build-time fixture.
+-- args.json --
+["edit", "bogus"]
+-- fstab --
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: unexpected arguments: ["bogus"]

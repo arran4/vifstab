@@ -3,17 +3,28 @@ package diagram
 import (
 	"fmt"
 	"io"
+	"io/fs"
+	"reflect"
 	"text/template"
 
+	"github.com/arran4/vifstab/internal/rules"
 	"github.com/diskfs/go-diskfs"
 	"github.com/diskfs/go-diskfs/disk"
 	"github.com/diskfs/go-diskfs/partition/gpt"
 	"github.com/diskfs/go-diskfs/partition/mbr"
 )
 
-// DiskFSCreator represents a function that can open a disk given a device string and options.
+// DiskFSCreator opens a regular disk image after source classification.
 // This allows us to inject a mock implementation for testing.
 type DiskFSCreator func(device string, opts ...diskfs.OpenOpt) (*disk.Disk, error)
+
+// Dependencies keeps host metadata and regular-image I/O injectable. Device
+// discovery and identity resolution always use the canonical rules inventory.
+type Dependencies struct {
+	API       rules.API
+	OS        rules.OSProvider
+	OpenImage DiskFSCreator
+}
 
 const diagramTemplate = `Partition Table: {{.TableType}}
 Disk Size: {{.DiskSize}} bytes
@@ -27,18 +38,57 @@ Visual Diagram:
 
 // Print outputs an ASCII diagram of the disk's partition table.
 func Print(w io.Writer, device string, opts ...any) error {
-	var openDisk DiskFSCreator = diskfs.Open
+	if device == "" {
+		return fmt.Errorf("diagram requires an image path or block-device reference")
+	}
+	deps := Dependencies{}
 
 	// Check if a mock diskfs creator was provided
 	for _, opt := range opts {
+		if d, ok := opt.(Dependencies); ok {
+			deps = d
+		}
 		if creator, ok := opt.(DiskFSCreator); ok {
-			openDisk = creator
+			deps.OpenImage = creator
 		}
 	}
+	if deps.OS == nil {
+		deps.OS = (rules.ActualFS{}).Provider()
+	}
+	if deps.API == nil {
+		deps.API = rules.ActualFS{OS: deps.OS, IncludeTopology: true}
+	}
+	if deps.OpenImage == nil {
+		deps.OpenImage = openRegularImage
+	}
+	info, statErr := deps.OS.Stat(device)
+	if statErr == nil && nilPointer(info) {
+		statErr = fmt.Errorf("metadata provider returned no file information")
+	}
+	if statErr != nil || info.Mode()&fs.ModeDevice != 0 && info.Mode()&fs.ModeCharDevice == 0 {
+		inventory, inventoryErr := deps.API.GetBlockDevices()
+		resolved := inventory.Resolve(device)
+		if resolved != nil || statErr == nil {
+			if resolved == nil {
+				resolved = &rules.BlockDevice{Path: device}
+			}
+			return printBlockMetadata(w, resolved, inventory, inventoryErr)
+		}
+		return fmt.Errorf("input classification/identity unknown: %w", statErr)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("input must be a regular disk image or block device")
+	}
 
-	d, err := openDisk(device, diskfs.WithOpenMode(diskfs.ReadOnly))
+	d, err := deps.OpenImage(device, diskfs.WithOpenMode(diskfs.ReadOnly))
 	if err != nil {
 		return err
+	}
+	if d == nil {
+		return fmt.Errorf("image opener returned no disk")
+	}
+	if d.Backend != nil {
+		defer func() { _ = d.Close() }()
 	}
 
 	table := d.Table
@@ -47,6 +97,9 @@ func Print(w io.Writer, device string, opts ...any) error {
 		if err != nil {
 			return err
 		}
+	}
+	if nilPointer(table) || d.Size <= 0 {
+		return fmt.Errorf("image partition table or size unavailable")
 	}
 
 	diskSize := d.Size
@@ -81,6 +134,12 @@ func Print(w io.Writer, device string, opts ...any) error {
 	lastOccupiedPos := -1
 
 	for i, p := range partitions {
+		if nilPointer(p) || p.GetStart() < 0 || p.GetSize() < 0 {
+			return fmt.Errorf("invalid image partition bounds at index %d", i+1)
+		}
+		if p.GetStart() > diskSize || p.GetSize() > diskSize-p.GetStart() {
+			return fmt.Errorf("image partition outside image bounds at index %d", i+1)
+		}
 		if p.GetSize() == 0 {
 			continue
 		}
@@ -114,10 +173,10 @@ func Print(w io.Writer, device string, opts ...any) error {
 		}
 
 		if startPos >= barWidth {
-		    startPos = barWidth - 1 // clamp to end
+			startPos = barWidth - 1 // clamp to end
 		}
 		if startPos+sizeChars > barWidth {
-		    sizeChars = barWidth - startPos
+			sizeChars = barWidth - startPos
 		}
 
 		var letter rune
@@ -144,5 +203,19 @@ func Print(w io.Writer, device string, opts ...any) error {
 		return err
 	}
 
-	return tmpl.Execute(w, data)
+	return tmpl.Execute(completeWriter{w}, data)
+}
+
+func nilPointer(value any) bool {
+	return value == nil || reflect.ValueOf(value).Kind() == reflect.Pointer && reflect.ValueOf(value).IsNil()
+}
+
+type completeWriter struct{ io.Writer }
+
+func (w completeWriter) Write(data []byte) (int, error) {
+	n, err := w.Writer.Write(data)
+	if err == nil && n != len(data) {
+		err = io.ErrShortWrite
+	}
+	return n, err
 }

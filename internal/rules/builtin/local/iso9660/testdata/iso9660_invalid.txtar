@@ -4,6 +4,7 @@
 /dev/cdrom3 /mnt/cdrom3 iso9660 dmode=invalid,umask=notoctal 0 0
 -- cache --
 proc_filesystems=iso9660
+group_exists:9999=false
 -- input/etc/passwd --
 root:x:0:0:root:/root:/bin/bash
 -- input/etc/group --

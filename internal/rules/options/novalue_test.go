@@ -32,10 +32,18 @@ func TestNoValueOption(t *testing.T) {
 		}
 	})
 
-	t.Run("x- prefix options allow values", func(t *testing.T) {
+	t.Run("registered x- flag rejects values", func(t *testing.T) {
 		issues := opt.ValidateOption(ctx, api, entry, "ext4", "x-custom", "value", true, nil)
-		if len(issues) != 0 {
-			t.Errorf("expected 0 issues for x- prefix option, got %d", len(issues))
+		if len(issues) != 1 {
+			t.Errorf("expected an issue for a value on a registered flag, got %d", len(issues))
+		}
+	})
+
+	t.Run("explicit empty value is not a bare flag", func(t *testing.T) {
+		for _, key := range []string{"ro", "X-mount.noloop", "x-systemd.automount", "x-custom"} {
+			if issues := opt.ValidateOption(ctx, api, entry, "ext4", key, "", true, nil); len(issues) != 1 {
+				t.Errorf("%s= must be rejected by a flag validator: %v", key, issues)
+			}
 		}
 	})
 }

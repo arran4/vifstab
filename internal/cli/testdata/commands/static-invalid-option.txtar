@@ -1,0 +1,13 @@
+Compiled, isolated support/verification regression: static-invalid-option.
+-- args.json --
+["verify", "--static"]
+-- fstab --
+UUID=fixture /fixture ext4 invalid-option 0 2
+-- stdin.json --
+""
+-- status --
+1
+-- stdout.json --
+"Static verification: live observations are unchecked/unknown.\nValidation issues found:\n - [error] Unknown ext4 mount option 'invalid-option' on line 1 (Line: UUID=fixture /fixture ext4 invalid-option 0 2)\n - [info] Kernel filesystem support unknown: metadata unavailable (Line: UUID=fixture /fixture ext4 invalid-option 0 2)\n"
+-- stderr.json --
+""

@@ -1,0 +1,11 @@
+Absolute links retain their directory entry and atomically update the regular target.
+-- path --
+links/fstab
+-- link/links/fstab --
+${ROOT}/data/fstab
+-- file/data/fstab --
+original
+-- new --
+edited
+-- expected/data/fstab --
+edited

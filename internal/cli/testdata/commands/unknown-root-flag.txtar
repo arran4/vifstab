@@ -1,0 +1,10 @@
+Executable regression: unknown-root-flag; default fstab is a build-time fixture.
+-- args.json --
+["--bogus"]
+-- fstab --
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: flag provided but not defined: -bogus

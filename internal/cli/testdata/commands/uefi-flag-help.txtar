@@ -1,0 +1,19 @@
+Executable regression: uefi-flag-help; default fstab is a build-time fixture.
+-- args.json --
+["uefi", "--help"]
+-- fstab --
+-- stdin --
+-- status --
+0
+-- stdout --
+-- stderr --
+Usage: vifstab uefi [operands...]
+
+Experimental live firmware correlation; unavailable observations remain unknown.
+
+Subcommands:
+    help  Print this help message
+    usage Print this usage message
+
+Positional Arguments:
+    [operands...] Device identity and mountpoint to correlate.

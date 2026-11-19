@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: capture-stdin.
+-- args.json --
+["verify", "--static", "--file", "-", "--capture", "-"]
+-- fstab --
+-- stdin.json --
+"bad\n"
+-- status --
+1
+-- stdout.json --
+"-- input/etc/fstab --\nsanitized-malformed-line\n-- manifest.json --\n{\"version\":\"1.0\",\"type\":\"system\",\"redacted\":true}\n-- provider/inventory.json --\n{\"Devices\":[],\"Diagnostics\":[],\"Available\":false}\n-- provider/observations.json --\n{\"filesystems\":null,\"filesystem_error\":\"capture filesystem support unavailable (details redacted)\",\"inventory_error\":\"capture inventory unavailable (details redacted)\"}\n"
+-- stderr.json --
+"Static verification: live observations are unchecked/unknown.\nCapture redacts private values; review before sharing. Redaction can change validation findings.\nValidation issues found:\n - [error] Line 1 has less than 6 fields (Line: bad)\n"

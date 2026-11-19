@@ -1,0 +1,9 @@
+An ordinary file retains the existing save behaviour and mode.
+-- path --
+data/fstab
+-- file/data/fstab --
+original
+-- new --
+edited
+-- expected/data/fstab --
+edited

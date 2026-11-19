@@ -15,3 +15,5 @@ root:x:0:
 Unknown fuse mount option 'invalid_option' on line 4
 User with uid 999 does not exist
 Unknown fuse3 mount option 'invalid_option' on line 8
+-- cache --
+user_exists:999=false

@@ -1,0 +1,9 @@
+Root verification flags cannot be consumed before selecting edit.
+-- args.json --
+["--verify", "edit", "--backup-dir", "backup"]
+-- fstab --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: flag provided but not defined: -verify

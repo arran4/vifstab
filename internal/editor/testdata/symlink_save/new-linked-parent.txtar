@@ -1,0 +1,11 @@
+An absent regular file may be created through an existing directory link.
+-- path --
+linked/fstab
+-- link/linked --
+data
+-- file/data/keep --
+untouched
+-- new --
+edited
+-- expected/data/fstab --
+edited

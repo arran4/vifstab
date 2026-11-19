@@ -1,0 +1,7 @@
+The real edit workflow must preserve concurrent content and recover edits.
+-- action --
+appear
+-- external --
+# external
+-- edited --
+# edited

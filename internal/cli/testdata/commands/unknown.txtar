@@ -1,0 +1,23 @@
+Executable regression: unknown; default fstab is a build-time fixture.
+-- args.json --
+["bogus"]
+-- fstab --
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Usage: vifstab <subcommand>
+
+Verify Linux fstab or explicitly edit.
+
+Subcommands:
+    diagram Print a partition diagram.
+    edit    Edit, validate and save fstab explicitly, using inherited
+            credentials.
+    format  Print aligned fstab; writing requires --in-place.
+    manpage Generate the manual page explicitly.
+    uefi    Experimental live firmware correlation; unavailable observations
+            remain unknown.
+    verify  Verify fstab read-only with the caller's credentials.
+Error: unknown command: bogus

@@ -1,8 +1,7 @@
 -- kernel --
 6.0.0
 -- cache --
-proc_filesystems:
-	afs
+proc_filesystems=afs
 -- input/etc/fstab --
 none /afs afs defaults 0 0
 none /afs afs dyn 0 0

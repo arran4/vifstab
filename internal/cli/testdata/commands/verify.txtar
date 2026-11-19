@@ -1,0 +1,10 @@
+Executable regression: verify; default fstab is a build-time fixture.
+-- args.json --
+["verify"]
+-- fstab --
+-- stdin --
+-- status --
+0
+-- stdout --
+Validation successful.
+-- stderr --

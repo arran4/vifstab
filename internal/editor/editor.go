@@ -2,6 +2,7 @@ package editor
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	_ "github.com/arran4/vifstab/internal/rules/builtin" // Register rules
 	"github.com/arran4/vifstab/internal/rules/core"
 	"github.com/arran4/vifstab/internal/systemd"
+	"github.com/arran4/vifstab/internal/textinput"
 )
 
 type TempFile interface {
@@ -27,24 +29,41 @@ type TempFile interface {
 // FS provides filesystem operations to allow mocking
 type FS interface {
 	ReadFile(name string) ([]byte, error)
+	ReadRegularFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte, perm os.FileMode) error
 	MkdirAll(path string, perm os.FileMode) error
 	Rename(oldpath, newpath string) error
 	Stat(name string) (os.FileInfo, error)
+	Lstat(name string) (os.FileInfo, error)
+	EvalSymlinks(path string) (string, error)
+	SameFile(a, b os.FileInfo) bool
+	Getwd() (string, error)
+	Lock(name string) (io.Closer, error)
 	CreateTemp(dir, pattern string) (TempFile, error)
 	Remove(name string) error
 	SyncDir(name string) error
+	Chown(name string, uid, gid int) error
+	Getxattr(path, name string) ([]byte, error)
+	Setxattr(path, name string, value []byte) error
+	Listxattr(path string) ([]string, error)
+	Removexattr(path, name string) error
 }
 
 type osFS struct{}
 
-func (osFS) ReadFile(name string) ([]byte, error) { return os.ReadFile(name) }
+func (osFS) ReadFile(name string) ([]byte, error)        { return textinput.ReadFile(name) }
+func (osFS) ReadRegularFile(name string) ([]byte, error) { return rcs.ReadOSHistory(name) }
 func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(name, data, perm)
 }
-func (osFS) MkdirAll(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
+func (osFS) MkdirAll(path string, perm os.FileMode) error { return rcs.MakeDurableDirs(path, perm) }
 func (osFS) Rename(oldpath, newpath string) error         { return os.Rename(oldpath, newpath) }
 func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name) }
+func (osFS) Lstat(name string) (os.FileInfo, error)       { return os.Lstat(name) }
+func (osFS) EvalSymlinks(path string) (string, error)     { return filepath.EvalSymlinks(path) }
+func (osFS) SameFile(a, b os.FileInfo) bool               { return os.SameFile(a, b) }
+func (osFS) Getwd() (string, error)                       { return os.Getwd() }
+func (osFS) Lock(name string) (io.Closer, error)          { return rcs.LockOSFile(name) }
 func (osFS) CreateTemp(dir, pattern string) (TempFile, error) {
 	return os.CreateTemp(dir, pattern)
 }
@@ -57,6 +76,11 @@ func (osFS) SyncDir(name string) error {
 	defer func() { _ = d.Close() }()
 	return d.Sync()
 }
+func (osFS) Chown(name string, uid, gid int) error          { return os.Chown(name, uid, gid) }
+func (osFS) Getxattr(path, name string) ([]byte, error)     { return osGetxattr(path, name) }
+func (osFS) Setxattr(path, name string, value []byte) error { return osSetxattr(path, name, value) }
+func (osFS) Listxattr(path string) ([]string, error)        { return osListxattr(path) }
+func (osFS) Removexattr(path, name string) error            { return osRemovexattr(path, name) }
 
 var DefaultFS FS = osFS{}
 
@@ -72,8 +96,12 @@ func (a rcsFSAdapter) Stat(name string) (os.FileInfo, error) {
 	return a.fs.Stat(name)
 }
 
+func (a rcsFSAdapter) Lstat(name string) (os.FileInfo, error) { return a.fs.Lstat(name) }
+func (a rcsFSAdapter) Getwd() (string, error)                 { return a.fs.Getwd() }
+func (a rcsFSAdapter) Lock(name string) (io.Closer, error)    { return a.fs.Lock(name) }
+
 func (a rcsFSAdapter) ReadFile(name string) ([]byte, error) {
-	return a.fs.ReadFile(name)
+	return a.fs.ReadRegularFile(name)
 }
 
 func (a rcsFSAdapter) Rename(oldpath, newpath string) error {
@@ -126,25 +154,26 @@ func (d Dependencies) withDefaults() Dependencies {
 
 func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 	deps = deps.withDefaults()
+	original, content, err := snapshotDestination(cfg.FilePath, deps.FS)
+	if err != nil {
+		return fmt.Errorf("failed to snapshot destination before editing: %w", err)
+	}
 
 	// 1. Copy target file to temp
 	tempFile, err := os.CreateTemp("", "vifstab-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer func() { _ = os.Remove(tempFile.Name()) }()
+	keepTemp := false
+	defer func() {
+		if !keepTemp {
+			_ = os.Remove(tempFile.Name())
+		}
+	}()
 	defer func() { _ = tempFile.Close() }()
 
-	source, err := deps.FS.ReadFile(cfg.FilePath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return fmt.Errorf("failed to open source file: %w", err)
-		}
-	} else {
-		_, err = tempFile.Write(source)
-		if err != nil {
-			return fmt.Errorf("failed to copy to temp file: %w", err)
-		}
+	if _, err := tempFile.Write(content); err != nil {
+		return fmt.Errorf("failed to copy to temp file: %w", err)
 	}
 	_ = tempFile.Close()
 
@@ -171,7 +200,7 @@ func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 		}
 
 		// 3. Read and Lint
-		f, err := os.Open(tempFile.Name())
+		f, err := textinput.Open(tempFile.Name())
 		if err != nil {
 			return fmt.Errorf("failed to read edited file: %w", err)
 		}
@@ -183,7 +212,8 @@ func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 		}
 
 		// Run rules
-		allIssues, err := lintEntries(entries, api)
+		ctx := rules.WithTargetFstab(context.Background(), cfg.FilePath)
+		allIssues, err := lintEntriesWithContext(ctx, entries, api)
 		if err != nil {
 			return err
 		}
@@ -229,12 +259,26 @@ func EditAndLint(cfg config.Config, api rules.API, deps Dependencies) error {
 	}
 
 	// 5. Save and Version
-	content, err := os.ReadFile(tempFile.Name())
+	content, err = textinput.ReadFile(tempFile.Name())
 	if err != nil {
 		return fmt.Errorf("failed to read temp file for saving: %w", err)
 	}
 
-	return commitEdit(cfg, content, blockingValidationPassed, deps)
+	res, err := commitEditSnapshot(cfg, content, blockingValidationPassed, deps, &original)
+	if err != nil && !res.Saved {
+		if res.RecoveryPath != "" {
+			return &RecoveryError{Path: res.RecoveryPath, Err: err}
+		}
+		path, recoveryErr := preserveRecovery(content, deps.FS)
+		if recoveryErr != nil {
+			// Keep the original editor copy as a last resort if a new private
+			// recovery copy cannot be written. Never discard the user's edits.
+			keepTemp = true
+			return fmt.Errorf("%w; failed to create recovery copy: %w; edited file retained at %q", err, recoveryErr, tempFile.Name())
+		}
+		return &RecoveryError{Path: path, Err: err}
+	}
+	return err
 }
 
 func editorCommandFromEnvironment() ([]string, error) {
@@ -270,6 +314,8 @@ type SaveResult struct {
 	Saved             bool
 	VersioningEnabled bool
 	Versioned         bool
+	RecoveryPath      string
+	Warnings          []string
 	Err               error
 }
 
@@ -282,22 +328,23 @@ type SaveResult struct {
 // atomically renames it over the target, and finally syncs the containing directory to
 // ensure the directory entry metadata is persisted.
 func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
+	return saveAndVersion(cfg, content, fsLayer, nil)
+}
+
+func saveAndVersion(cfg config.Config, content []byte, fsLayer FS, original *destinationSnapshot) SaveResult {
 	if fsLayer == nil {
 		fsLayer = DefaultFS
 	}
 
 	var res SaveResult
 
-	var targetMode *os.FileMode
-	if info, err := fsLayer.Stat(cfg.FilePath); err == nil {
-		m := info.Mode().Perm()
-		targetMode = &m
-	} else if !os.IsNotExist(err) {
-		res.Err = fmt.Errorf("failed to stat destination file: %w", err)
+	target, err := resolveTarget(cfg.FilePath, fsLayer)
+	if err != nil {
+		res.Err = err
 		return res
 	}
 
-	dir := filepath.Dir(cfg.FilePath)
+	dir := filepath.Dir(target.path)
 	tmpDest, err := fsLayer.CreateTemp(dir, "vifstab-tmp-*")
 	if err != nil {
 		res.Err = fmt.Errorf("failed to create temporary destination file: %w", err)
@@ -310,10 +357,22 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 		res.Err = fmt.Errorf("failed to write to temporary destination file: %w", err)
 		return res
 	}
-	if targetMode != nil {
-		if err := tmpDest.Chmod(*targetMode); err != nil {
+	if target.info != nil {
+		meta := extractTargetMetadata(target.path, target.info, fsLayer)
+		warnings, metaErr := applyAndVerifyMetadata(tmpDest.Name(), tmpDest, meta, cfg.MetadataPolicy, fsLayer)
+		if len(warnings) > 0 {
+			res.Warnings = append(res.Warnings, warnings...)
+		}
+		if metaErr != nil {
 			_ = tmpDest.Close()
-			res.Err = fmt.Errorf("failed to chmod temporary destination file: %w", err)
+			_ = fsLayer.Remove(tmpDest.Name())
+			recPath, recErr := preserveRecovery(content, fsLayer)
+			if recErr == nil {
+				res.RecoveryPath = recPath
+				res.Err = fmt.Errorf("%w; edited content recovered at %q", metaErr, recPath)
+			} else {
+				res.Err = metaErr
+			}
 			return res
 		}
 	}
@@ -329,7 +388,24 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 		return res
 	}
 
-	if err := fsLayer.Rename(tmpDest.Name(), cfg.FilePath); err != nil {
+	// Refuse a detected link retargeting while preparing the replacement. This
+	// is an optimistic check, not protection from hostile directory races.
+	current, err := resolveTarget(cfg.FilePath, fsLayer)
+	if err != nil {
+		res.Err = fmt.Errorf("failed to recheck destination before replacement: %w", err)
+		return res
+	}
+	if current.path != target.path {
+		res.Err = fmt.Errorf("%w: symlink target changed", ErrConflict)
+		return res
+	}
+	if original != nil {
+		if err := original.check(cfg.FilePath, fsLayer); err != nil {
+			res.Err = err
+			return res
+		}
+	}
+	if err := fsLayer.Rename(tmpDest.Name(), target.path); err != nil {
 		res.Err = fmt.Errorf("failed to replace destination file: %w", err)
 		return res
 	}
@@ -357,16 +433,24 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 // A user may save after blocking validation fails, but that save is never
 // eligible for an automatic reload and receives the conservative warning.
 func commitEdit(cfg config.Config, content []byte, blockingValidationPassed bool, deps Dependencies) error {
+	_, err := commitEditSnapshot(cfg, content, blockingValidationPassed, deps, nil)
+	return err
+}
+
+func commitEditSnapshot(cfg config.Config, content []byte, blockingValidationPassed bool, deps Dependencies, original *destinationSnapshot) (SaveResult, error) {
 	deps = deps.withDefaults()
-	res := SaveAndVersion(cfg, content, deps.FS)
+	res := saveAndVersion(cfg, content, deps.FS, original)
 
 	var sysErr error
 	if res.Saved {
 		fmt.Println("Saved successfully.")
-		sysErr = handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed)
+		for _, w := range res.Warnings {
+			fmt.Printf("warning: %s\n", w)
+		}
+		sysErr = handlePostSaveSystemd(cfg, deps.Systemd, blockingValidationPassed && res.Err == nil)
 	}
 
-	return errors.Join(res.Err, sysErr)
+	return res, errors.Join(res.Err, sysErr)
 }
 
 // SaveWithoutValidation saves content produced by a workflow that has not

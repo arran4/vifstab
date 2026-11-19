@@ -1,0 +1,14 @@
+Executable regression: edit-fail; default fstab is a build-time fixture.
+-- args.json --
+["edit", "--backup-dir", "backup"]
+-- fstab --
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: edit failed: editor failed: exit status 19
+-- editor --
+yes
+-- editor-exit --
+19

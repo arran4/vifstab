@@ -1,0 +1,10 @@
+Executable regression: bare; default fstab is a build-time fixture.
+-- args.json --
+[]
+-- fstab --
+-- stdin --
+-- status --
+0
+-- stdout --
+Validation successful.
+-- stderr --

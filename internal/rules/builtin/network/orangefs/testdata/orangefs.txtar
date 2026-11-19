@@ -2,8 +2,7 @@
 6.5.0
 
 -- cache --
-proc_filesystems
-orangefs
+proc_filesystems=orangefs
 
 -- input --
 tcp://localhost:3334/orangefs /pvfsmnt orangefs defaults,acl,intr,local_lock,noacl,nointr,nolocal_lock 0 0

@@ -3,6 +3,7 @@ package editor
 import (
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/arran4/vifstab/internal/config"
+	"github.com/arran4/vifstab/internal/rcs"
 	"golang.org/x/tools/txtar"
 )
 
@@ -28,6 +30,9 @@ type mockFS struct {
 
 	faults       map[string]error
 	faultTrigger map[string]bool
+	xattrs       map[string]map[string][]byte
+	uids         map[string]int
+	gids         map[string]int
 }
 
 func (m *mockFS) rawReadFile(name string) ([]byte, error) {
@@ -77,6 +82,8 @@ func (m *mockFS) ReadFile(name string) ([]byte, error) {
 	return nil, os.ErrNotExist
 }
 
+func (m *mockFS) ReadRegularFile(name string) ([]byte, error) { return m.ReadFile(name) }
+
 func (m *mockFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	if err := m.injectFault(getOpContext("write", name), name); err != nil {
 		return err
@@ -104,6 +111,24 @@ func (m *mockFS) Rename(oldpath, newpath string) error {
 	if f, ok := m.mfs[oldpath]; ok {
 		m.mfs[newpath] = f
 		delete(m.mfs, oldpath)
+		if m.uids != nil {
+			if u, ok := m.uids[oldpath]; ok {
+				m.uids[newpath] = u
+				delete(m.uids, oldpath)
+			}
+		}
+		if m.gids != nil {
+			if g, ok := m.gids[oldpath]; ok {
+				m.gids[newpath] = g
+				delete(m.gids, oldpath)
+			}
+		}
+		if m.xattrs != nil {
+			if x, ok := m.xattrs[oldpath]; ok {
+				m.xattrs[newpath] = x
+				delete(m.xattrs, oldpath)
+			}
+		}
 		return nil
 	}
 	return os.ErrNotExist
@@ -148,7 +173,11 @@ func (t *mockTempFile) Close() error {
 		return err
 	}
 	t.closed = true
-	return t.mfs.WriteFile(t.name, t.data, 0600)
+	mode := os.FileMode(0600)
+	if f, ok := t.mfs.mfs[normalizeMockPath(t.name)]; ok {
+		mode = f.Mode
+	}
+	return t.mfs.WriteFile(t.name, t.data, mode)
 }
 
 func (t *mockTempFile) Name() string {
@@ -161,6 +190,100 @@ func (t *mockTempFile) Chmod(mode os.FileMode) error {
 	}
 	if err := t.mfs.injectFault(getOpContext("temp.chmod", t.name), t.name); err != nil {
 		return err
+	}
+	norm := normalizeMockPath(t.name)
+	if f, ok := t.mfs.mfs[norm]; ok {
+		f.Mode = mode
+	}
+	return nil
+}
+
+func (t *mockTempFile) Chown(uid, gid int) error {
+	if t.closed {
+		return fmt.Errorf("file closed")
+	}
+	if err := t.mfs.injectFault(getOpContext("temp.chown", t.name), t.name); err != nil {
+		return err
+	}
+	norm := normalizeMockPath(t.name)
+	if t.mfs.uids == nil {
+		t.mfs.uids = make(map[string]int)
+	}
+	if t.mfs.gids == nil {
+		t.mfs.gids = make(map[string]int)
+	}
+	t.mfs.uids[norm] = uid
+	t.mfs.gids[norm] = gid
+	return nil
+}
+
+func (m *mockFS) Chown(name string, uid, gid int) error {
+	if err := m.injectFault(getOpContext("chown", name), name); err != nil {
+		return err
+	}
+	norm := normalizeMockPath(name)
+	if m.uids == nil {
+		m.uids = make(map[string]int)
+	}
+	if m.gids == nil {
+		m.gids = make(map[string]int)
+	}
+	m.uids[norm] = uid
+	m.gids[norm] = gid
+	return nil
+}
+
+func (m *mockFS) Listxattr(path string) ([]string, error) {
+	if err := m.injectFault(getOpContext("listxattr", path), path); err != nil {
+		return nil, err
+	}
+	path = normalizeMockPath(path)
+	if m.xattrs == nil {
+		return nil, nil
+	}
+	attrs := m.xattrs[path]
+	var res []string
+	for k := range attrs {
+		res = append(res, k)
+	}
+	return res, nil
+}
+
+func (m *mockFS) Getxattr(path, name string) ([]byte, error) {
+	if err := m.injectFault(getOpContext("getxattr", path), path); err != nil {
+		return nil, err
+	}
+	path = normalizeMockPath(path)
+	if m.xattrs != nil && m.xattrs[path] != nil {
+		if val, ok := m.xattrs[path][name]; ok {
+			return val, nil
+		}
+	}
+	return nil, os.ErrNotExist
+}
+
+func (m *mockFS) Setxattr(path, name string, value []byte) error {
+	if err := m.injectFault(getOpContext("setxattr", path), path); err != nil {
+		return err
+	}
+	path = normalizeMockPath(path)
+	if m.xattrs == nil {
+		m.xattrs = make(map[string]map[string][]byte)
+	}
+	if m.xattrs[path] == nil {
+		m.xattrs[path] = make(map[string][]byte)
+	}
+	m.xattrs[path][name] = value
+	return nil
+}
+
+func (m *mockFS) Removexattr(path, name string) error {
+	if err := m.injectFault(getOpContext("removexattr", path), path); err != nil {
+		return err
+	}
+	path = normalizeMockPath(path)
+	if m.xattrs != nil && m.xattrs[path] != nil {
+		delete(m.xattrs[path], name)
 	}
 	return nil
 }
@@ -180,20 +303,29 @@ func (m *mockFS) CreateTemp(dir, pattern string) (TempFile, error) {
 		return nil, err
 	}
 	dir = normalizeMockPath(dir)
-	name := filepath.Join(dir, strings.ReplaceAll(pattern, "*", "mock"))
-	return &mockTempFile{name: normalizeMockPath(name), mfs: m}, nil
+	name := normalizeMockPath(filepath.Join(dir, strings.ReplaceAll(pattern, "*", "mock")))
+	if m.mfs == nil {
+		m.mfs = make(fstest.MapFS)
+	}
+	m.mfs[name] = &fstest.MapFile{Mode: 0600}
+	return &mockTempFile{name: name, mfs: m}, nil
 }
 
 type dummyFileInfo struct {
-	mode os.FileMode
+	mode     os.FileMode
+	identity any
+	uid      int
+	gid      int
+	hasUID   bool
 }
 
-func (d dummyFileInfo) Name() string       { return "dummy" }
-func (d dummyFileInfo) Size() int64        { return 0 }
-func (d dummyFileInfo) Mode() os.FileMode  { return d.mode }
-func (d dummyFileInfo) ModTime() time.Time { return time.Time{} }
-func (d dummyFileInfo) IsDir() bool        { return false }
-func (d dummyFileInfo) Sys() interface{}   { return nil }
+func (d dummyFileInfo) Name() string              { return "dummy" }
+func (d dummyFileInfo) Size() int64               { return 0 }
+func (d dummyFileInfo) Mode() os.FileMode         { return d.mode }
+func (d dummyFileInfo) ModTime() time.Time        { return time.Time{} }
+func (d dummyFileInfo) IsDir() bool               { return false }
+func (d dummyFileInfo) Sys() interface{}          { return d.identity }
+func (d dummyFileInfo) MockSys() (int, int, bool) { return d.uid, d.gid, d.hasUID }
 
 func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 	if err := m.injectFault(getOpContext("stat", name), name); err != nil {
@@ -201,11 +333,30 @@ func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 	}
 	name = normalizeMockPath(name)
 	if f, ok := m.mfs[name]; ok {
-		// Return a dummy stat with the file mode
-		return dummyFileInfo{mode: f.Mode}, nil
+		uid, gid := 0, 0
+		hasUID := true
+		if m.uids != nil {
+			if u, ok := m.uids[name]; ok {
+				uid = u
+			}
+		}
+		if m.gids != nil {
+			if g, ok := m.gids[name]; ok {
+				gid = g
+			}
+		}
+		return dummyFileInfo{mode: f.Mode, identity: f, uid: uid, gid: gid, hasUID: hasUID}, nil
 	}
 	return nil, os.ErrNotExist
 }
+
+// Existing save fault fixtures contain regular files only. Symlink regressions
+// below use osFS through the production resolver, never a test-only resolver.
+func (m *mockFS) Lstat(name string) (os.FileInfo, error)   { return m.Stat(name) }
+func (m *mockFS) EvalSymlinks(name string) (string, error) { return name, nil }
+func (m *mockFS) SameFile(a, b os.FileInfo) bool           { return a.Sys() == b.Sys() }
+func (m *mockFS) Getwd() (string, error)                   { return "/fixture", nil }
+func (m *mockFS) Lock(string) (io.Closer, error)           { return io.NopCloser(strings.NewReader("")), nil }
 
 func TestSaveAndVersionRealFS(t *testing.T) {
 	// Create a temporary directory
@@ -345,7 +496,7 @@ func TestSaveAndVersion(t *testing.T) {
 					expectedVersioned = strings.TrimSpace(string(file.Data))
 				} else if file.Name == "expected/Err" {
 					expectedErr = strings.TrimSpace(string(file.Data))
-				} else if strings.HasPrefix(file.Name, "expected/") && strings.HasSuffix(file.Name, ",v") {
+				} else if strings.HasPrefix(file.Name, "expected/") && (strings.HasSuffix(file.Name, ",v") || file.Name == "expected/${RCS_PATH}") {
 					expectedRcsContent = string(file.Data)
 					expectedRcsPath = strings.TrimPrefix(file.Name, "expected/")
 				} else if strings.HasPrefix(file.Name, "env/") {
@@ -371,11 +522,20 @@ func TestSaveAndVersion(t *testing.T) {
 				faults:       faults,
 				faultTrigger: make(map[string]bool),
 			}
+			var archivePath string
+			if backupDir != "" {
+				archivePath, err = rcs.HistoryPath(testFile, backupDir, rcsFSAdapter{fs: mfs})
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			expectedRcsPath = strings.ReplaceAll(expectedRcsPath, "${RCS_PATH}", archivePath)
 
 			// Setup full initial file state dynamically
 			for _, file := range archive.Files {
 				if strings.HasPrefix(file.Name, "input/") && file.Name != "input/new_fstab" && file.Name != "input/update_fstab" {
 					p := strings.TrimPrefix(file.Name, "input/")
+					p = strings.ReplaceAll(p, "${RCS_PATH}", archivePath)
 					p = normalizeMockPath(p)
 					mfs.mfs[p] = &fstest.MapFile{Data: file.Data, Mode: 0644}
 				}
@@ -447,7 +607,7 @@ func TestSaveAndVersion(t *testing.T) {
 						t.Fatalf("cfg.BackupDir is empty when expectedRcsExists=true")
 					}
 				} else {
-					rcsPath := filepath.Join(cfg.BackupDir, filepath.Base(testFile)+",v")
+					rcsPath := archivePath
 					actualExists := mfs.rawExists(rcsPath)
 					if actualExists != expectedRcsExists {
 						t.Errorf("expected RCS file exists=%v, got %v at %s", expectedRcsExists, actualExists, rcsPath)

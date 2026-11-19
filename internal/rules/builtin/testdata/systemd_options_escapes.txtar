@@ -1,0 +1,9 @@
+Time spans support fstab space escapes without changing source spelling.
+-- options.txt --
+rule=systemd-options
+format=level_prefix
+-- cache --
+systemd_version=262
+-- input --
+UUID=example /data ext4 x-systemd.mount-timeout=1h\04030min,x-systemd.requires=example@instance.service,x-systemd.after=/with\040space 0 2
+-- issues --
