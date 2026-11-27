@@ -153,6 +153,9 @@ accepted input is not proof that every option or future extension was validated.
 The rule fixtures under `internal/rules/builtin` are the evidence for individual
 behaviors.
 
+Repeated mount-option values are preserved for cross-option checks; see
+[the validation API and its limits](docs/MOUNT-OPTIONS.md).
+
 Unknown `x-`, `X-` and `x-systemd.` mount options remain accepted with nonblocking
 unverified information. Known extension value shapes are checked; acceptance is
 not proof of helper or systemd behavior. See [extension validation](docs/EXTENSION-OPTIONS.md).
