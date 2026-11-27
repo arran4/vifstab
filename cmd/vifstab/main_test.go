@@ -117,7 +117,7 @@ func TestDiagram(t *testing.T) {
 			}
 
 			var buf bytes.Buffer
-			err = diagram.Print(&buf, "mock_device", mockOpener)
+			err = diagram.Print(&buf, tmpPath, mockOpener)
 			if err != nil {
 				t.Fatal(err)
 			}

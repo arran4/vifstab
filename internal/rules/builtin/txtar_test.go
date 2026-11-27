@@ -197,6 +197,14 @@ func TestAllTxtarRules(t *testing.T) {
 
 			ctx := rules.WithCache(context.Background(), c)
 
+			fstabPath := "/etc/fstab"
+			if v, ok := c.Get(rules.CacheKey("fstab_path")); ok {
+				if s, ok := v.(string); ok && s != "" {
+					fstabPath = s
+				}
+			}
+			ctx = rules.WithTargetFstab(ctx, fstabPath)
+
 			// Determine which rules to run
 			targetRuleName := parsedOpts.RuleName
 			if targetRuleName == "" {
@@ -244,7 +252,7 @@ func TestAllTxtarRules(t *testing.T) {
 			if fmtMode == "auto" {
 				if strings.HasPrefix(filepath.ToSlash(tcPath), "testdata/") {
 					fmtMode = "contains"
-				} else if strings.HasPrefix(expectedStr, "Error:") || strings.HasPrefix(expectedStr, "Warning:") || strings.HasPrefix(expectedStr, "Suggestion:") {
+				} else if strings.HasPrefix(expectedStr, "Error:") || strings.HasPrefix(expectedStr, "Warning:") || strings.HasPrefix(expectedStr, "Suggestion:") || strings.HasPrefix(expectedStr, "Info:") || strings.HasPrefix(expectedStr, "Security:") {
 					fmtMode = "level_prefix"
 				} else {
 					fmtMode = "plain"

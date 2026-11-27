@@ -3,6 +3,7 @@ package rcs
 import (
 	"bytes"
 	"fmt"
+	"github.com/arran4/vifstab/internal/textinput"
 	"io"
 	"os"
 	"path/filepath"
@@ -40,7 +41,7 @@ type osFS struct{}
 
 func (osFS) MkdirAll(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
 func (osFS) Stat(name string) (os.FileInfo, error)        { return os.Stat(name) }
-func (osFS) ReadFile(name string) ([]byte, error)         { return os.ReadFile(name) }
+func (osFS) ReadFile(name string) ([]byte, error)         { return textinput.ReadFile(name) }
 func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(name, data, perm)
 }
