@@ -60,9 +60,15 @@ During verification and editing, `vifstab` inspects the selected effective targe
 
 The default `data=ordered` mode is not an equivalent durability replacement for `data=journal`; review data-integrity implications before changing the option. `vifstab` never rewrites the mount mode automatically.
 
+Mount-option validation preserves repeated values and their input order. Existing
+per-option validators retain their last-value context; new cross-option checks
+can inspect every occurrence. This does not by itself validate systemd extensions
+or change existing filesystem conflict policies. Formatting keeps option spelling
+and order. See docs/MOUNT-OPTIONS.md in the source distribution.
+
 ## USER AND GROUP OBSERVATIONS
 
-Numeric UID/GID mount options must be between `0` and `4294967294`. Explicitly supported filesystem enum alternatives remain valid. A structurally valid matching local passwd/group record establishes presence; missing, unreadable, malformed or unmatched local data leaves account availability unknown because NSS may use other sources. Unknown and permission-denied observations produce informational diagnostics. Explicit provider/cache observations may still establish absence. No additional account-discovery command or NSS lookup is performed.
+A matching local passwd/group record can establish presence. Unavailable or unmatched local account observations remain unknown; explicit provider/cache observations may establish absence. Numeric ID syntax is checked independently.
 
 ## SEE ALSO
 `fstab(5)`, `mount(8)`, `rcs(1)`
