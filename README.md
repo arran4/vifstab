@@ -153,6 +153,9 @@ accepted input is not proof that every option or future extension was validated.
 The rule fixtures under `internal/rules/builtin` are the evidence for individual
 behaviors.
 
+Repeated mount-option values are preserved for cross-option checks; see
+[the validation API and its limits](docs/MOUNT-OPTIONS.md).
+
 ## Environment Variables
 
 - `VISUAL` or `EDITOR`: Defines the text editor to use when opening the fstab file. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is not interpreted. Normal editor arguments are supported. Editor commands are executed directly rather than through a shell.
