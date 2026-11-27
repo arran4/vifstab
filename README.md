@@ -8,6 +8,8 @@ Saving through a symlink updates its resolved regular-file target and preserves 
 
 Detected changes to the destination during editing refuse the save and preserve an edited recovery copy. See [save behaviour](docs/SAVE-SAFETY.md).
 
+Save metadata policy defaults to strict; `--metadata-policy supported` permits unavailable xattr support, while `best-effort` reports metadata that could not be preserved.
+
 ## Features
 
 - **Editing:** Validates proposed changes before an intentional save, with known save-safety limitations under review.

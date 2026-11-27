@@ -70,6 +70,8 @@ can inspect every occurrence. This does not by itself validate systemd extension
 or change existing filesystem conflict policies. Formatting keeps option spelling
 and order. See docs/MOUNT-OPTIONS.md in the source distribution.
 
+**--metadata-policy**: `strict` (default), `supported`, or `best-effort`. Strict refuses replacement if target metadata cannot be preserved; supported permits unavailable xattr support; best-effort warns about metadata that could not be preserved.
+
 ## SEE ALSO
 `fstab(5)`, `mount(8)`, `rcs(1)`
 
