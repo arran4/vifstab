@@ -60,6 +60,12 @@ During verification and editing, `vifstab` inspects the selected effective targe
 
 The default `data=ordered` mode is not an equivalent durability replacement for `data=journal`; review data-integrity implications before changing the option. `vifstab` never rewrites the mount mode automatically.
 
+Mount-option validation preserves repeated values and their input order. Existing
+per-option validators retain their last-value context; new cross-option checks
+can inspect every occurrence. This does not by itself validate systemd extensions
+or change existing filesystem conflict policies. Formatting keeps option spelling
+and order. See docs/MOUNT-OPTIONS.md in the source distribution.
+
 ## EXPERIMENTAL UEFI OBSERVATIONS
 
 The explicit `uefi` command correlates device and firmware metadata. Missing filesystem type and missing or malformed GPT type remain unknown. A definite `Not ESP` report requires a structurally valid obtained GPT type; otherwise the report shows `GPT role: unknown`. Optional EFI-directory information is attempted only for an already-mounted matching device, with unavailable results unknown. This is not filesystem-content verification for an unmounted device or a bootability guarantee.

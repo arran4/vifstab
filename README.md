@@ -153,6 +153,9 @@ accepted input is not proof that every option or future extension was validated.
 The rule fixtures under `internal/rules/builtin` are the evidence for individual
 behaviors.
 
+Repeated mount-option values are preserved for cross-option checks; see
+[the validation API and its limits](docs/MOUNT-OPTIONS.md).
+
 ### Experimental UEFI observations
 
 The explicit `uefi <device> <mountpoint>` command correlates canonical device metadata with firmware observations. Missing filesystem metadata and missing or malformed GPT type metadata remain unknown; the report prints `GPT role: unknown` rather than `Not ESP` without a valid type observation. The optional EFI-directory observation is attempted only for an already-mounted matching device and remains unknown when unavailable. This command does not verify filesystem contents on an unmounted device or guarantee bootability.
