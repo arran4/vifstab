@@ -3,6 +3,7 @@ package rules
 import (
 	"bufio"
 	"errors"
+	"io"
 	"io/fs"
 	"strconv"
 	"strings"
@@ -40,43 +41,45 @@ func observeAccountFile(open func(string) (fs.File, error), name string, id int,
 	if user {
 		columns = 7
 	}
-	scanner := bufio.NewScanner(f)
-	terminated := false
-	scanner.Split(func(data []byte, atEOF bool) (int, []byte, error) {
-		advance, token, err := bufio.ScanLines(data, atEOF)
-		terminated = advance > 0 && data[advance-1] == '\n'
-		return advance, token, err
-	})
-	for scanner.Scan() {
-		// A read fault can expose a structurally plausible partial final row.
-		// Accept a final row without LF only at ordinary EOF, not after I/O loss.
-		if !terminated && scanner.Err() != nil {
-			continue
-		}
-		line := scanner.Text()
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") || strings.IndexByte(line, 0) >= 0 {
-			continue
-		}
-		parts := strings.Split(line, ":")
-		if len(parts) != columns || parts[0] == "" || parts[0][0] == '+' || parts[0][0] == '-' {
-			continue
-		}
-		observed, valid := accountRecordID(parts[2])
-		if !valid || observed != uint64(id) {
-			continue
-		}
-		if user {
-			if _, valid := accountRecordID(parts[3]); !valid {
-				continue
+	reader := bufio.NewReader(f)
+	for {
+		line, err := reader.ReadString('\n')
+		// A complete line is usable even if subsequent input is unavailable.
+		// An unterminated final record is usable only at ordinary EOF.
+		if strings.HasSuffix(line, "\n") || errors.Is(err, io.EOF) {
+			line = strings.TrimSuffix(strings.TrimSuffix(line, "\n"), "\r")
+			if accountLineMatches(line, columns, id, user) {
+				return Exists
 			}
 		}
-		return Exists
+		if err != nil {
+			if errors.Is(err, fs.ErrPermission) {
+				return PermissionDenied
+			}
+			return Unknown
+		}
 	}
-	if errors.Is(scanner.Err(), fs.ErrPermission) {
-		return PermissionDenied
+}
+
+func accountLineMatches(line string, columns, id int, user bool) bool {
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" || strings.HasPrefix(trimmed, "#") || strings.IndexByte(line, 0) >= 0 {
+		return false
 	}
-	return Unknown
+	parts := strings.Split(line, ":")
+	if len(parts) != columns || parts[0] == "" || parts[0][0] == '+' || parts[0][0] == '-' {
+		return false
+	}
+	observed, valid := accountRecordID(parts[2])
+	if !valid || observed != uint64(id) {
+		return false
+	}
+	if user {
+		if _, valid := accountRecordID(parts[3]); !valid {
+			return false
+		}
+	}
+	return true
 }
 
 func accountRecordID(text string) (uint64, bool) {
