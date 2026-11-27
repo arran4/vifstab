@@ -48,15 +48,18 @@ func (r *RomfsRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 			val = parts[1]
 		}
 
+		if extensionIssues, handled := options.ValidateExtensionOption(ctx, api, entry, "romfs", key, val, len(parts) > 1); handled {
+			issues = append(issues, extensionIssues...)
+			continue
+		}
+
 		validator, ok := romfsOptions[key]
 		if !ok {
-			if !strings.HasPrefix(key, "x-systemd.") && !strings.HasPrefix(key, "x-") && !strings.HasPrefix(key, "X-") {
-				issues = append(issues, rules.ValidationIssue{
-					Message: fmt.Sprintf("Unknown romfs mount option '%s' on line %d", key, entry.LineNum),
-					Line:    entry.RawLine,
-					Level:   rules.IssueLevelError,
-				})
-			}
+			issues = append(issues, rules.ValidationIssue{
+				Message: fmt.Sprintf("Unknown romfs mount option '%s' on line %d", key, entry.LineNum),
+				Line:    entry.RawLine,
+				Level:   rules.IssueLevelError,
+			})
 			continue
 		}
 

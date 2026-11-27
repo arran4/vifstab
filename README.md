@@ -156,6 +156,10 @@ behaviors.
 Repeated mount-option values are preserved for cross-option checks; see
 [the validation API and its limits](docs/MOUNT-OPTIONS.md).
 
+Unknown `x-`, `X-` and `x-systemd.` mount options remain accepted with nonblocking
+unverified information. Known extension value shapes are checked; acceptance is
+not proof of helper or systemd behavior. See [extension validation](docs/EXTENSION-OPTIONS.md).
+
 ## Environment Variables
 
 - `VISUAL` or `EDITOR`: Defines the text editor to use when opening the fstab file. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is not interpreted. Normal editor arguments are supported. Editor commands are executed directly rather than through a shell.

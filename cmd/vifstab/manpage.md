@@ -66,6 +66,14 @@ can inspect every occurrence. This does not by itself validate systemd extension
 or change existing filesystem conflict policies. Formatting keeps option spelling
 and order. See docs/MOUNT-OPTIONS.md in the source distribution.
 
+Unknown x-, X- and x-systemd. mount options produce nonblocking unverified
+information. Known generic extension value shapes are checked, including octal
+mkdir modes, bare X-mount.noloop and a nonempty X-mount.subdir value. Registered
+flag options reject any explicit value, including an empty one. Case matters;
+x- and X- have different util-linux userspace retention semantics. No filesystem
+contents or installed systemd behavior are verified by accepting an extension.
+See docs/EXTENSION-OPTIONS.md in the source distribution.
+
 ## SEE ALSO
 `fstab(5)`, `mount(8)`, `rcs(1)`
 
