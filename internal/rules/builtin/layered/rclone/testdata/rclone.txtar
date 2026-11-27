@@ -23,3 +23,5 @@ user1:x:1000:
 Invalid value 'invalid' for rclone mount option 'vfs-cache-mode' on line 8
 Unknown rclone mount option 'made_up_option' on line 11
 User with uid 9999 does not exist
+-- cache --
+user_exists:9999=false

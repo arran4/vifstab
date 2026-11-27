@@ -123,65 +123,11 @@ func (a ActualFS) getOS() OSProvider {
 }
 
 func (a ActualFS) CheckUserExists(uid int) ExistState {
-	f, err := a.getOS().Open("/etc/passwd")
-	if err != nil {
-		if os.IsPermission(err) {
-			return PermissionDenied
-		}
-		if os.IsNotExist(err) {
-			return Unknown
-		}
-		return Unknown
-	}
-	defer func() {
-		_ = f.Close()
-	}()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.Split(line, ":")
-		if len(parts) >= 3 {
-			if id, err := strconv.Atoi(parts[2]); err == nil && id == uid {
-				return Exists
-			}
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return Unknown
-	}
-	return DoesNotExist
+	return observeAccountFile(a.getOS().Open, "/etc/passwd", uid, true)
 }
 
 func (a ActualFS) CheckGroupExists(gid int) ExistState {
-	f, err := a.getOS().Open("/etc/group")
-	if err != nil {
-		if os.IsPermission(err) {
-			return PermissionDenied
-		}
-		if os.IsNotExist(err) {
-			return Unknown
-		}
-		return Unknown
-	}
-	defer func() {
-		_ = f.Close()
-	}()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.Split(line, ":")
-		if len(parts) >= 3 {
-			if id, err := strconv.Atoi(parts[2]); err == nil && id == gid {
-				return Exists
-			}
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return Unknown
-	}
-	return DoesNotExist
+	return observeAccountFile(a.getOS().Open, "/etc/group", gid, false)
 }
 
 func (a ActualFS) CheckFileExists(path string) FileExistsResult {
@@ -691,43 +637,14 @@ func (c *CacheFS) CheckUserExists(uid int) ExistState {
 			}
 		}
 	}
-	if c.FS != nil {
-		f, err := c.FS.Open("etc/passwd")
-		if err != nil {
-			if os.IsPermission(err) {
-				return PermissionDenied
-			}
-			if os.IsNotExist(err) {
-				return Unknown
-			}
-			return Unknown
-		}
-		defer func() {
-			_ = f.Close()
-		}()
-
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			line := scanner.Text()
-			parts := strings.Split(line, ":")
-			if len(parts) >= 3 {
-				if id, err := strconv.Atoi(parts[2]); err == nil && id == uid {
-					if c.Cache != nil {
-						c.Cache.Set(CacheKey("user_exists:"+strconv.Itoa(uid)), Exists)
-					}
-					return Exists
-				}
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			return Unknown
-		}
-		if c.Cache != nil {
-			c.Cache.Set(CacheKey("user_exists:"+strconv.Itoa(uid)), DoesNotExist)
-		}
-		return DoesNotExist
+	if c.FS == nil {
+		return Unknown
 	}
-	return Unknown
+	result := observeAccountFile(c.FS.Open, "etc/passwd", uid, true)
+	if c.Cache != nil {
+		c.Cache.Set(CacheKey("user_exists:"+strconv.Itoa(uid)), result)
+	}
+	return result
 }
 
 func (c *CacheFS) CheckGroupExists(gid int) ExistState {
@@ -745,43 +662,14 @@ func (c *CacheFS) CheckGroupExists(gid int) ExistState {
 			}
 		}
 	}
-	if c.FS != nil {
-		f, err := c.FS.Open("etc/group")
-		if err != nil {
-			if os.IsPermission(err) {
-				return PermissionDenied
-			}
-			if os.IsNotExist(err) {
-				return Unknown
-			}
-			return Unknown
-		}
-		defer func() {
-			_ = f.Close()
-		}()
-
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			line := scanner.Text()
-			parts := strings.Split(line, ":")
-			if len(parts) >= 3 {
-				if id, err := strconv.Atoi(parts[2]); err == nil && id == gid {
-					if c.Cache != nil {
-						c.Cache.Set(CacheKey("group_exists:"+strconv.Itoa(gid)), Exists)
-					}
-					return Exists
-				}
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			return Unknown
-		}
-		if c.Cache != nil {
-			c.Cache.Set(CacheKey("group_exists:"+strconv.Itoa(gid)), DoesNotExist)
-		}
-		return DoesNotExist
+	if c.FS == nil {
+		return Unknown
 	}
-	return Unknown
+	result := observeAccountFile(c.FS.Open, "etc/group", gid, false)
+	if c.Cache != nil {
+		c.Cache.Set(CacheKey("group_exists:"+strconv.Itoa(gid)), result)
+	}
+	return result
 }
 
 func (c *CacheFS) GetBlockDevices() (BlockDeviceInventory, error) {

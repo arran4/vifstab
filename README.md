@@ -156,6 +156,10 @@ behaviors.
 Repeated mount-option values are preserved for cross-option checks; see
 [the validation API and its limits](docs/MOUNT-OPTIONS.md).
 
+### User and group observations
+
+Numeric UID/GID options use the source filesystem's supported ID range and enum values. A matching local passwd/group record can establish presence; unavailable or unmatched local data leaves availability unknown because NSS may use other sources. Explicit provider/cache observations can establish absence. See [account observations](docs/ACCOUNT-OBSERVATIONS.md).
+
 ## Environment Variables
 
 - `VISUAL` or `EDITOR`: Defines the text editor to use when opening the fstab file. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is not interpreted. Normal editor arguments are supported. Editor commands are executed directly rather than through a shell.

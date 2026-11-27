@@ -5,6 +5,7 @@
 /dev/sda4 /mnt/adfs4 adfs ftsuffix=invalid 0 0
 -- cache --
 proc_filesystems=adfs
+group_exists:9999=false
 -- input/etc/passwd --
 root:x:0:0:root:/root:/bin/bash
 -- input/etc/group --

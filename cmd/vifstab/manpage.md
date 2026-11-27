@@ -66,6 +66,10 @@ can inspect every occurrence. This does not by itself validate systemd extension
 or change existing filesystem conflict policies. Formatting keeps option spelling
 and order. See docs/MOUNT-OPTIONS.md in the source distribution.
 
+## USER AND GROUP OBSERVATIONS
+
+A matching local passwd/group record can establish presence. Unavailable or unmatched local account observations remain unknown; explicit provider/cache observations may establish absence. Numeric ID syntax is checked independently.
+
 ## SEE ALSO
 `fstab(5)`, `mount(8)`, `rcs(1)`
 
