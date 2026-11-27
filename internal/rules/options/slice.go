@@ -77,22 +77,11 @@ func ValidateOptionsSlice(ctx context.Context, api rules.API, entry *rules.Fstab
 	}
 
 	var issues []rules.ValidationIssue
-	parsedOpts := rules.SplitOptions(entry.Fields[3])
-	opts := make([]OptionState, 0, len(parsedOpts))
-	for _, opt := range parsedOpts {
-		parts := strings.SplitN(opt, "=", 2)
-		key := parts[0]
-		var val string
-		hasVal := len(parts) > 1
-		if hasVal {
-			val = parts[1]
-		}
-		opts = append(opts, OptionState{Key: key, Value: val, HasVal: hasVal})
-	}
+	set := ParseOptionSet(entry.Fields[3])
 
 	for _, v := range validators {
 		if v != nil {
-			issues = append(issues, v.ValidateOptions(ctx, api, entry, fsName, opts)...)
+			issues = append(issues, v.ValidateOptions(ctx, api, entry, fsName, set.Ordered())...)
 		}
 	}
 	return issues
