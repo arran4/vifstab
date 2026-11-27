@@ -74,6 +74,8 @@ x- and X- have different util-linux userspace retention semantics. No filesystem
 contents or installed systemd behavior are verified by accepting an extension.
 See docs/EXTENSION-OPTIONS.md in the source distribution.
 
+Known x-systemd.* options are checked offline; unknown names and unavailable target-version observations remain unverified. See docs/SYSTEMD-OPTIONS.md in the source distribution.
+
 ## SEE ALSO
 `fstab(5)`, `mount(8)`, `rcs(1)`
 

@@ -1,0 +1,9 @@
+Without an explicit version observation, report unknown once per entry.
+-- options.txt --
+rule=systemd-options
+format=level_prefix
+-- input --
+UUID=example /data ext4 x-systemd.automount,x-systemd.mount-timeout=30s,x-systemd.future=value 0 2
+-- issues --
+Info: systemd option 'x-systemd.automount' on line 1: target systemd version/applicability unknown; syntax checks do not establish generator behavior
+Info: Unverified systemd extension 'x-systemd.future' on line 1: value syntax and semantics were not checked

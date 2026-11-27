@@ -29,6 +29,11 @@ func ValidateExtensionOption(ctx context.Context, api rules.API, entry *rules.Fs
 	if namespace == "" {
 		return nil, false
 	}
+	if namespace == "systemd" {
+		// The dedicated shared systemd rule owns this namespace, including
+		// unknown names, across filesystem, swap and bind entries.
+		return nil, true
+	}
 	if validator, ok := GenericExtensionOptions()[key]; ok {
 		return validator.ValidateOption(ctx, api, entry, fsName, key, value, hasValue, nil), true
 	}
