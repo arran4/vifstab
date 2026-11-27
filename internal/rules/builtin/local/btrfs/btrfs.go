@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"context"
-	"os"
 	"strings"
 
 	"fmt"
@@ -373,7 +372,6 @@ func (r *BTRFSRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 			}
 		case "subvol":
 			if val != "" {
-				checked := false
 				if c != nil {
 					if v, ok := c.Get(rules.CacheKey("btrfs_subvol_exists:" + val)); ok {
 						if exists, ok := v.(bool); ok && !exists {
@@ -383,22 +381,11 @@ func (r *BTRFSRule) Validate(ctx context.Context, api rules.API, entry *rules.Fs
 								Level:   rules.IssueLevelWarning,
 							})
 						}
-						checked = true
 					}
 				}
-				if !checked {
-					// We only check if it's an absolute path, because otherwise it's relative
-					// to the BTRFS subvolume root which we can't reliably resolve without parsing UUIDs/mounts.
-					if strings.HasPrefix(val, "/") {
-						if _, err := os.Stat(val); err != nil && os.IsNotExist(err) {
-							issues = append(issues, rules.ValidationIssue{
-								Message: fmt.Sprintf("Subvolume '%s' might not exist on line %d", val, entry.LineNum),
-								Line:    entry.RawLine,
-								Level:   rules.IssueLevelWarning,
-							})
-						}
-					}
-				}
+				// Subvolume contents cannot be inferred from the host VFS. Only
+				// explicit fixture observations above are used until a filesystem
+				// content inspection mode exists.
 			}
 		}
 	}
