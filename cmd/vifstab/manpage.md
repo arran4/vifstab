@@ -21,6 +21,8 @@ Findings have info, warning, security and error levels. Info is non-blocking; wa
 
 Saves preserve a configured symlink and replace its resolved regular-file target. Broken links, loops and missing parent directories are rejected.
 
+Detected stale edits refuse the save and retain an edited recovery copy. This is optimistic conflict detection, not a transaction against unrelated writers.
+
 ## OPTIONS
 **--backup-dir**="": Directory to store RCS backups. If omitted, it uses `$XDG_CACHE_HOME/vifstab` or the caller's user-cache directory plus `/vifstab` (normally `$HOME/.cache/vifstab`). If that directory cannot be determined, editing requires an explicit `--backup-dir`; there is no `/tmp/.vifstab` fallback.
 

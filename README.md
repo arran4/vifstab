@@ -6,6 +6,8 @@
 
 Saving through a symlink updates its resolved regular-file target and preserves the link. Broken links and loops are rejected. See [save behaviour](docs/SAVE-SAFETY.md).
 
+Detected changes to the destination during editing refuse the save and preserve an edited recovery copy. See [save behaviour](docs/SAVE-SAFETY.md).
+
 ## Features
 
 - **Editing:** Validates proposed changes before an intentional save, with known save-safety limitations under review.

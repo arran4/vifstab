@@ -185,7 +185,8 @@ func (m *mockFS) CreateTemp(dir, pattern string) (TempFile, error) {
 }
 
 type dummyFileInfo struct {
-	mode os.FileMode
+	mode     os.FileMode
+	identity any
 }
 
 func (d dummyFileInfo) Name() string       { return "dummy" }
@@ -193,7 +194,7 @@ func (d dummyFileInfo) Size() int64        { return 0 }
 func (d dummyFileInfo) Mode() os.FileMode  { return d.mode }
 func (d dummyFileInfo) ModTime() time.Time { return time.Time{} }
 func (d dummyFileInfo) IsDir() bool        { return false }
-func (d dummyFileInfo) Sys() interface{}   { return nil }
+func (d dummyFileInfo) Sys() interface{}   { return d.identity }
 
 func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 	if err := m.injectFault(getOpContext("stat", name), name); err != nil {
@@ -202,7 +203,7 @@ func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 	name = normalizeMockPath(name)
 	if f, ok := m.mfs[name]; ok {
 		// Return a dummy stat with the file mode
-		return dummyFileInfo{mode: f.Mode}, nil
+		return dummyFileInfo{mode: f.Mode, identity: f}, nil
 	}
 	return nil, os.ErrNotExist
 }
@@ -211,6 +212,7 @@ func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 // below use osFS through the production resolver, never a test-only resolver.
 func (m *mockFS) Lstat(name string) (os.FileInfo, error)   { return m.Stat(name) }
 func (m *mockFS) EvalSymlinks(name string) (string, error) { return name, nil }
+func (m *mockFS) SameFile(a, b os.FileInfo) bool           { return a.Sys() == b.Sys() }
 
 func TestSaveAndVersionRealFS(t *testing.T) {
 	// Create a temporary directory

@@ -1,0 +1,9 @@
+The real edit workflow must preserve concurrent content and recover edits.
+-- action --
+same-stat-content
+-- original --
+# old
+-- external --
+# new
+-- edited --
+# edited
