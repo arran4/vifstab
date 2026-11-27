@@ -13,7 +13,7 @@ import (
 // Restore returns a verified revision without writing to any destination. An
 // empty revision selects the head. It never guesses the identity of legacy files.
 func Restore(source, revision string, config Config, fs FS) ([]byte, error) {
-	if config.Dir == "" {
+	if config.Dir == "" && !config.Local {
 		return nil, fmt.Errorf("no RCS backup directory was selected")
 	}
 	if fs == nil {

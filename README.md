@@ -11,10 +11,7 @@
 - **Versioning:** Automatically backs up changes using RCS.
 - **Manpage generation:** Can generate its own man page.
 
-New RCS histories use a source-path digest under the backup directory's `v1/`
-namespace, keeping different `fstab` paths separate. Ambiguous legacy basename
-histories require explicit review before starting a new history; they are never
-silently imported or overwritten. See [RCS identity, migration and recovery](docs/RCS-HISTORIES.md).
+RCS uses a separate backup directory only for `/etc/fstab`. Alternative files are unversioned by default; `--rcs` enables adjacent `file,v` history.
 
 ## Installation
 
@@ -157,6 +154,9 @@ layered and external filesystems. Coverage varies by rule and available metadata
 accepted input is not proof that every option or future extension was validated.
 The rule fixtures under `internal/rules/builtin` are the evidence for individual
 behaviors.
+
+Repeated mount-option values are preserved for cross-option checks; see
+[the validation API and its limits](docs/MOUNT-OPTIONS.md).
 
 ## Environment Variables
 

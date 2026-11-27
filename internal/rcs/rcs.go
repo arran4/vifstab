@@ -16,7 +16,8 @@ import (
 )
 
 type Config struct {
-	Dir string
+	Dir   string // external directory for /etc/fstab only
+	Local bool   // explicitly enable adjacent history for another file
 }
 
 type TempFile interface {
@@ -69,7 +70,7 @@ func (osFS) SyncDir(name string) error {
 var DefaultFS FS = osFS{}
 
 func Update(filePath string, content []byte, config Config, opts ...any) (resultErr error) {
-	if config.Dir == "" {
+	if config.Dir == "" && !config.Local {
 		return nil
 	}
 
@@ -84,8 +85,10 @@ func Update(filePath string, content []byte, config Config, opts ...any) (result
 	if err != nil {
 		return err
 	}
-	if err := fsLayer.MkdirAll(historyParent(rcsFilepath), 0700); err != nil {
-		return fmt.Errorf("failed to create rcs dir: %w", err)
+	if identity == "/etc/fstab" {
+		if err := fsLayer.MkdirAll(historyParent(rcsFilepath), 0700); err != nil {
+			return fmt.Errorf("failed to create rcs dir: %w", err)
+		}
 	}
 	lock, err := fsLayer.Lock(rcsFilepath + ".lock")
 	if err != nil {
@@ -102,12 +105,6 @@ func Update(filePath string, content []byte, config Config, opts ...any) (result
 	info, err := fsLayer.Lstat(rcsFilepath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			legacy := joinHistoryPath(config.Dir, filepath.Base(filePath)+",v")
-			if _, err := fsLayer.Lstat(legacy); err == nil {
-				return &LegacyHistoryError{LegacyPath: legacy, HistoryPath: rcsFilepath}
-			} else if !os.IsNotExist(err) {
-				return fmt.Errorf("failed to inspect legacy rcs history: %w", err)
-			}
 			// Treat as new file
 			f = rcs.NewFile()
 			f.Head = "1.1"
@@ -144,6 +141,9 @@ func Update(filePath string, content []byte, config Config, opts ...any) (result
 		f, err = rcs.ParseFile(bytes.NewReader(rcsData))
 		if err != nil {
 			return fmt.Errorf("failed to parse rcs file: %w", err)
+		}
+		if f.Description == "" {
+			return &LegacyHistoryError{LegacyPath: rcsFilepath, HistoryPath: rcsFilepath}
 		}
 		provenance, err := parseProvenance(f, identity)
 		if err != nil {

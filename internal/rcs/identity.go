@@ -14,12 +14,9 @@ import (
 	rcslib "github.com/arran4/golang-rcs"
 )
 
-// HistoryPath returns the versioned path-derived archive name without touching
-// the backup directory. Relative source paths use the injected working directory.
+// HistoryPath returns the archive name without opening the source or archive.
+// Only /etc/fstab uses an external backup directory; other archives are adjacent.
 func HistoryPath(source, backupDir string, fs FS) (string, error) {
-	if backupDir == "" {
-		return "", fmt.Errorf("no RCS backup directory was selected")
-	}
 	if fs == nil {
 		fs = DefaultFS
 	}
@@ -43,21 +40,13 @@ func historyIdentity(source, backupDir string, fs FS) (identity, path string, er
 		// Never clean symlink/..: lexical cleaning can identify a different file.
 		identity = joinHistoryPath(wd, source)
 	}
-	digest := sha256.Sum256([]byte(identity))
-	base := filepath.Base(source)
-	var safe strings.Builder
-	for i := 0; i < len(base) && safe.Len() < 40; i++ {
-		c := base[i]
-		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_' {
-			safe.WriteByte(c)
-		} else {
-			safe.WriteByte('_')
+	if identity == "/etc/fstab" {
+		if backupDir == "" {
+			return "", "", fmt.Errorf("no RCS backup directory was selected for /etc/fstab")
 		}
+		return identity, joinHistoryPath(backupDir, "fstab,v"), nil
 	}
-	if safe.Len() == 0 {
-		safe.WriteString("file")
-	}
-	return identity, joinHistoryPath(joinHistoryPath(backupDir, "v1"), safe.String()+"--"+hex.EncodeToString(digest[:])+",v"), nil
+	return identity, identity + ",v", nil
 }
 
 // Preserve symlink-sensitive components in the caller-selected backup path too.

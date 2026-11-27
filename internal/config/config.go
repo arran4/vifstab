@@ -15,11 +15,15 @@ const (
 
 type Config struct {
 	BackupDir     string
+	LocalRCS      bool
 	FilePath      string
 	SystemdReload SystemdReloadAction
 }
 
 func GetDefaultConfig(filePath string) (Config, error) {
+	if filePath != "/etc/fstab" {
+		return Config{FilePath: filePath, SystemdReload: SystemdReloadWarn}, nil
+	}
 	backupDir := ""
 	if xdgCache := os.Getenv("XDG_CACHE_HOME"); xdgCache != "" {
 		backupDir = xdgCache + "/vifstab"

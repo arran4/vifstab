@@ -1,51 +1,6 @@
-# RCS history identity and recovery
+# RCS history and recovery
 
-New histories live under `<backup-dir>/v1/<name>--<digest>,v`. The display name
-contains at most 40 ASCII letters, digits, hyphens or underscores from the source
-basename. The digest is the full SHA-256 of the configured absolute source path.
-Source components never become backup subdirectories, so arbitrary source names
-cannot escape the selected backup directory or create an uncontrolled hierarchy.
-
-Relative sources are prefixed with the caller's working directory. The mapping
-does not collapse `.`/`..` or filesystem aliases: cleaning `link/../fstab` before
-resolving the link can identify a different file. Use consistent path spelling;
-aliases may have separate histories rather than risk merging unrelated sources.
-The selected backup directory also retains symlink-sensitive path semantics.
-This is a pathname identity, not an inode identity; ordinary replacement at the
-same configured path continues its history.
-
-Each archive's RCS description records a versioned source identity (base64 of the
-path bytes) and revision sizes, ending information and SHA-256 digests. The writer
-checks that identity before appending. A mismatched label, including a hypothetical
-hash-name collision, refuses the update instead of combining histories. Base64
-is not anonymization: archives contain private file contents and identifying data.
-Digests detect corruption; they are not signatures against an attacker who can
-rewrite both the contents and metadata.
-
-## Existing basename-only histories
-
-The previous layout used `<backup-dir>/<basename>,v`, which could already contain
-revisions from different sources. When a source has no labelled new history but
-a legacy basename file exists, updating returns an error naming both paths.
-The program does not rename, overwrite, import or guess the ownership of that file.
-
-Before starting a new history:
-
-1. Retain a private copy of the old archive and inspect it. Establish which source
-   each recoverable revision belongs to; do not assume every entry belongs to the
-   current fstab. Older vifstab archives may contain unlinked full-text revisions,
-   so ordinary RCS checkout is not proof that every old revision is recoverable.
-2. As an explicit operator action, archive the legacy file under a different
-   private name/location so it no longer occupies the ambiguous basename path.
-   Keep its bytes and provenance; the application does not perform this action.
-3. Retry the reviewed save. It starts a separate labelled history at revision
-   `1.1`. This is not an automatic migration of old revision numbers or contents.
-
-An already labelled history can continue even if a legacy archive is retained
-alongside it; the source label is authoritative. Foreign or corrupt labelled
-histories are refused without rewriting their bytes. A versioning failure can
-occur after the fstab itself was saved: report that partial result and inspect
-both files rather than assuming the destination was rolled back.
+Only the system /etc/fstab has an external history directory: the archive is <backup-dir>/fstab,v. Alternative files are not versioned by default. Explicit --rcs enables an adjacent file,v archive; its persistent advisory lock is file,v.lock. No alternative-file history or lock is created in the cache directory. Relative paths retain symlink-sensitive spelling. The source identity and revision integrity checks still protect against mixing unrelated histories. A pre-existing unlabelled or corrupt archive is refused without overwriting it; retain and inspect its contents before starting a new history.
 
 ## Atomic updates and concurrency
 
