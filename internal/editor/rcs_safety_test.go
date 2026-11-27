@@ -13,7 +13,7 @@ import (
 // reader permits symlinked fstab paths, but history reads must remain no-follow.
 func TestSaveRefusesSymlinkHistoryThroughAdapter(t *testing.T) {
 	root := t.TempDir()
-	cfg := config.Config{FilePath: filepath.Join(root, "fstab"), BackupDir: filepath.Join(root, "backup")}
+	cfg := config.Config{FilePath: filepath.Join(root, "fstab"), LocalRCS: true}
 	history, err := rcs.HistoryPath(cfg.FilePath, cfg.BackupDir, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -63,8 +63,8 @@ func (f *historySwapFS) Lstat(name string) (os.FileInfo, error) {
 }
 func TestSaveDetectsHistorySymlinkBeforeRead(t *testing.T) {
 	root := t.TempDir()
-	cfg := config.Config{FilePath: filepath.Join(root, "fstab"), BackupDir: filepath.Join(root, "backup")}
-	if err := rcs.Update(cfg.FilePath, []byte("# original\n"), rcs.Config{Dir: cfg.BackupDir}); err != nil {
+	cfg := config.Config{FilePath: filepath.Join(root, "fstab"), LocalRCS: true}
+	if err := rcs.Update(cfg.FilePath, []byte("# original\n"), rcs.Config{Local: true}); err != nil {
 		t.Fatal(err)
 	}
 	history, err := rcs.HistoryPath(cfg.FilePath, cfg.BackupDir, nil)

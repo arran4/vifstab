@@ -219,11 +219,9 @@ func TestSaveAndVersionRealFS(t *testing.T) {
 	// Create a temporary directory
 	dir := t.TempDir()
 	fstabPath := filepath.Join(dir, "fstab")
-	backupDir := filepath.Join(dir, "backup")
-
 	cfg := config.Config{
-		FilePath:  fstabPath,
-		BackupDir: backupDir,
+		FilePath: fstabPath,
+		LocalRCS: true,
 	}
 
 	content := []byte("fstab content")

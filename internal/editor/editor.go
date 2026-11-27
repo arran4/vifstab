@@ -355,7 +355,7 @@ func SaveAndVersion(cfg config.Config, content []byte, fsLayer FS) SaveResult {
 		res.Err = errors.Join(res.Err, fmt.Errorf("failed to sync directory after rename: %w", err))
 	}
 
-	if cfg.BackupDir != "" || cfg.LocalRCS {
+	if cfg.FilePath == "/etc/fstab" && cfg.BackupDir != "" || cfg.LocalRCS {
 		res.VersioningEnabled = true
 		rcsCfg := rcs.Config{Dir: cfg.BackupDir, Local: cfg.LocalRCS}
 		if err := rcs.Update(cfg.FilePath, content, rcsCfg, rcsFSAdapter{fs: fsLayer}); err != nil {

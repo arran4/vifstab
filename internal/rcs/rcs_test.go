@@ -36,9 +36,6 @@ func (m *mockFS) Stat(name string) (os.FileInfo, error) {
 }
 
 func (m *mockFS) Lstat(name string) (os.FileInfo, error) {
-	if !strings.Contains(filepath.ToSlash(name), "/v1/") {
-		return nil, os.ErrNotExist
-	}
 	info, err := m.Stat(name)
 	if info == nil && err == nil {
 		return (fstest.MapFS{"history": {Mode: 0600}}).Stat("history")
@@ -247,10 +244,10 @@ text
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
 			if tt.fsMock != nil {
-				labelFixture(t, tt.fsMock, "testfile.txt", tt.config.Dir)
-				err = Update("testfile.txt", []byte("content"), tt.config, tt.fsMock)
+				labelFixture(t, tt.fsMock, "/etc/fstab", tt.config.Dir)
+				err = Update("/etc/fstab", []byte("content"), tt.config, tt.fsMock)
 			} else {
-				err = Update("testfile.txt", []byte("content"), tt.config)
+				err = Update("/etc/fstab", []byte("content"), tt.config)
 			}
 
 			if tt.expectedStr == "" && tt.expectedErr == nil {
@@ -287,7 +284,7 @@ func TestUpdate_NewFileSuccess(t *testing.T) {
 	config := Config{Dir: "testdir"}
 	content := []byte("new file content")
 
-	err := Update("testfile.txt", content, config, fsMock)
+	err := Update("/etc/fstab", content, config, fsMock)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -296,7 +293,7 @@ func TestUpdate_NewFileSuccess(t *testing.T) {
 		t.Fatalf("expected TempFile Close to be called exactly once (recording write), got %d", fsMock.writeFileCalls)
 	}
 
-	expectedPath, err := HistoryPath("testfile.txt", config.Dir, fsMock)
+	expectedPath, err := HistoryPath("/etc/fstab", config.Dir, fsMock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,9 +368,9 @@ text
 	}
 	config := Config{Dir: "testdir"}
 	newContent := []byte("updated content")
-	labelFixture(t, fsMock, "testfile.txt", config.Dir)
+	labelFixture(t, fsMock, "/etc/fstab", config.Dir)
 
-	err := Update("testfile.txt", newContent, config, fsMock)
+	err := Update("/etc/fstab", newContent, config, fsMock)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -382,7 +379,7 @@ text
 		t.Fatalf("expected TempFile Close to be called exactly once (recording write), got %d", fsMock.writeFileCalls)
 	}
 
-	expectedPath, err := HistoryPath("testfile.txt", config.Dir, fsMock)
+	expectedPath, err := HistoryPath("/etc/fstab", config.Dir, fsMock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -424,7 +421,7 @@ text
 		t.Errorf("expected second revision to be '1.1', got %q", parsedFile.RevisionContents[1].Revision)
 	}
 
-	identity, _, err := historyIdentity("testfile.txt", config.Dir, fsMock)
+	identity, _, err := historyIdentity("/etc/fstab", config.Dir, fsMock)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -85,6 +85,9 @@ func Update(filePath string, content []byte, config Config, opts ...any) (result
 	if err != nil {
 		return err
 	}
+	if identity != "/etc/fstab" && !config.Local {
+		return nil
+	}
 	if identity == "/etc/fstab" {
 		if err := fsLayer.MkdirAll(historyParent(rcsFilepath), 0700); err != nil {
 			return fmt.Errorf("failed to create rcs dir: %w", err)

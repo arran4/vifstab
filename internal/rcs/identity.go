@@ -55,7 +55,11 @@ func joinHistoryPath(dir, name string) string {
 }
 
 func historyParent(path string) string {
-	return path[:strings.LastIndexByte(path, filepath.Separator)]
+	index := strings.LastIndexByte(path, filepath.Separator)
+	if index == 0 {
+		return string(filepath.Separator)
+	}
+	return path[:index]
 }
 
 func archiveAuthor() rcslib.ID {

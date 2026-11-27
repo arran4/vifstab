@@ -13,13 +13,13 @@ import (
 // Verify an actual earlier revision through the existing RCS checkout library.
 func TestHistoricalRevisionMustBeRestorable(t *testing.T) {
 	dir := t.TempDir()
-	source := filepath.Join(t.TempDir(), "fstab")
+	source := filepath.Join(dir, "fstab")
 	for _, content := range []string{"original\n", "edited\n"} {
-		if err := Update(source, []byte(content), Config{Dir: dir}); err != nil {
+		if err := Update(source, []byte(content), Config{Local: true}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	history, err := HistoryPath(source, dir, nil)
+	history, err := HistoryPath(source, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,8 +42,13 @@ func TestHistoricalRevisionMustBeRestorable(t *testing.T) {
 
 func TestSameBasenameHistoriesStaySeparate(t *testing.T) {
 	dir := t.TempDir()
-	for _, source := range []string{"/fixtures/one/fstab", "/fixtures/two/fstab"} {
-		if err := Update(source, []byte(source), Config{Dir: dir}); err != nil {
+	for _, name := range []string{"one", "two"} {
+		parent := filepath.Join(dir, name)
+		if err := os.Mkdir(parent, 0700); err != nil {
+			t.Fatal(err)
+		}
+		source := filepath.Join(parent, "fstab")
+		if err := Update(source, []byte(source), Config{Local: true}); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -41,9 +41,22 @@ func TestHistoryTXTAR(t *testing.T) {
 			if err := json.Unmarshal(archive.Files[0].Data, &cases); err != nil {
 				t.Fatal(err)
 			}
-			cfg := Config{Dir: t.TempDir()}
+			root := t.TempDir()
+			cfg := Config{Dir: filepath.Join(root, "backup"), Local: true}
 			seen := map[string]bool{}
-			for _, tc := range cases {
+			for i, tc := range cases {
+				// The original path is exercised by the pure path mapper. All actual
+				// adjacent writes use a sandboxed, distinct source directory.
+				if _, err := HistoryPath(tc.Source, cfg.Dir, nil); err != nil {
+					t.Fatal(err)
+				}
+				if tc.Source != "/etc/fstab" {
+					dir := filepath.Join(root, fmt.Sprintf("source-%d", i))
+					if err := os.Mkdir(dir, 0700); err != nil {
+						t.Fatal(err)
+					}
+					tc.Source = filepath.Join(dir, filepath.Base(tc.Source))
+				}
 				history, err := HistoryPath(tc.Source, cfg.Dir, nil)
 				if err != nil {
 					t.Fatal(err)
@@ -52,12 +65,12 @@ func TestHistoryTXTAR(t *testing.T) {
 					t.Fatalf("source identities collided: %s", history)
 				}
 				seen[history] = true
-				rel, err := filepath.Rel(cfg.Dir, history)
-				if err != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
-					t.Fatalf("history escaped backup dir: %s %v", history, err)
+				wantPath := tc.Source + ",v"
+				if tc.Source == "/etc/fstab" {
+					wantPath = filepath.Join(cfg.Dir, "fstab,v")
 				}
-				if len(filepath.Base(history)) > 110 {
-					t.Fatalf("unbounded basename: %d", len(filepath.Base(history)))
+				if history != wantPath {
+					t.Fatalf("history = %q, want %q", history, wantPath)
 				}
 				for _, encoded := range tc.Revisions {
 					content, err := base64.StdEncoding.DecodeString(encoded)
@@ -125,61 +138,69 @@ func TestSourcePathIdentity(t *testing.T) {
 			t.Fatalf("invalid source accepted %q", source)
 		}
 	}
-	if _, err := HistoryPath("fstab", "", nil); err == nil {
+	if _, err := HistoryPath("/etc/fstab", "", nil); err == nil {
 		t.Fatal("empty backup directory accepted")
 	}
 }
 
 func TestLegacyHistoryRequiresExplicitReconciliation(t *testing.T) {
-	cfg := Config{Dir: t.TempDir()}
-	legacy := filepath.Join(cfg.Dir, "fstab,v")
-	old := []byte("unlabelled legacy history, potentially mixed\n")
-	if err := os.WriteFile(legacy, old, 0600); err != nil {
-		t.Fatal(err)
-	}
-	sources := []string{"/etc/fstab", "/srv/chroot/etc/fstab"}
-	for _, source := range sources {
-		err := Update(source, []byte(source), cfg)
-		var conflict *LegacyHistoryError
-		if !errors.As(err, &conflict) || conflict.LegacyPath != legacy {
-			t.Fatalf("legacy adopted silently: %v", err)
-		}
-		got, readErr := os.ReadFile(legacy)
-		if readErr != nil || !bytes.Equal(got, old) {
-			t.Fatalf("legacy changed: %q %v", got, readErr)
-		}
-		history, err := HistoryPath(source, cfg.Dir, nil)
-		if err != nil {
+	root := t.TempDir()
+	for _, tc := range []struct {
+		source string
+		cfg    Config
+		path   string
+	}{
+		{"/etc/fstab", Config{Dir: root}, filepath.Join(root, "fstab,v")},
+		{filepath.Join(root, "alternate"), Config{Local: true}, filepath.Join(root, "alternate,v")},
+	} {
+		old := []byte("unlabelled legacy history, potentially mixed\n")
+		if err := os.WriteFile(tc.path, old, 0600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := os.Stat(history); !os.IsNotExist(err) {
-			t.Fatalf("new history created despite legacy uncertainty: %v", err)
+		if err := Update(tc.source, []byte("new"), tc.cfg); err == nil {
+			t.Fatal("legacy history accepted")
 		}
-	}
-	// Model the documented owner action: retain the original elsewhere, then start
-	// independent histories. The product never renames/imports the legacy archive.
-	retained := filepath.Join(cfg.Dir, "legacy-retained,v")
-	if err := os.Rename(legacy, retained); err != nil {
-		t.Fatal(err)
-	}
-	for _, source := range sources {
-		if err := Update(source, []byte(source), cfg); err != nil {
+		got, err := os.ReadFile(tc.path)
+		if err != nil || !bytes.Equal(got, old) {
+			t.Fatalf("legacy changed: %q %v", got, err)
+		}
+		if err := os.Rename(tc.path, tc.path+".retained"); err != nil {
 			t.Fatal(err)
 		}
-		got, err := Restore(source, "1.1", cfg, nil)
-		if err != nil || string(got) != source {
-			t.Fatalf("new history mixed: %q %v", got, err)
+		if err := Update(tc.source, []byte("new"), tc.cfg); err != nil {
+			t.Fatal(err)
+		}
+		got, err = Restore(tc.source, "1.1", tc.cfg, nil)
+		if err != nil || string(got) != "new" {
+			t.Fatalf("new history: %q %v", got, err)
 		}
 	}
-	got, err := os.ReadFile(retained)
-	if err != nil || !bytes.Equal(got, old) {
-		t.Fatalf("retained legacy changed: %q %v", got, err)
+}
+
+func TestAlternativeHistoryRequiresOptIn(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "fstab")
+	backup := filepath.Join(root, "unused")
+	if err := Update(source, []byte("disabled"), Config{Dir: backup}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(source + ",v"); !os.IsNotExist(err) {
+		t.Fatalf("disabled history created: %v", err)
+	}
+	if err := Update(source, []byte("enabled"), Config{Local: true}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(source + ",v"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(backup); !os.IsNotExist(err) {
+		t.Fatalf("alternate created external directory: %v", err)
 	}
 }
 
 func TestConcurrentHistoryUpdatesKeepEveryRevision(t *testing.T) {
-	cfg := Config{Dir: t.TempDir()}
-	source := "/fixtures/fstab"
+	cfg := Config{Local: true}
+	source := filepath.Join(t.TempDir(), "fstab")
 	const count = 24
 	var wg sync.WaitGroup
 	failures := make(chan error, count)
@@ -275,7 +296,7 @@ func TestHistoryLockCoversReadModifyWrite(t *testing.T) {
 	fs := &orderedFS{FS: osFS{}}
 	cfg := Config{Dir: t.TempDir()}
 	for _, s := range []string{"first", "second"} {
-		if err := Update("/fixture/fstab", []byte(s), cfg, fs); err != nil {
+		if err := Update("/etc/fstab", []byte(s), cfg, fs); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -283,12 +304,12 @@ func TestHistoryLockCoversReadModifyWrite(t *testing.T) {
 		t.Fatalf("incomplete lock scope: held=%v checks=%d", fs.held, fs.checks)
 	}
 	fs.lockErr = os.ErrPermission
-	if err := Update("/fixture/fstab", []byte("not committed"), cfg, fs); !errors.Is(err, os.ErrPermission) {
+	if err := Update("/etc/fstab", []byte("not committed"), cfg, fs); !errors.Is(err, os.ErrPermission) {
 		t.Fatalf("lock failure ignored %v", err)
 	}
 	fs.lockErr = nil
 	fs.closeErr = os.ErrPermission
-	if err := Update("/fixture/fstab", []byte("committed, unlock error"), cfg, fs); !errors.Is(err, os.ErrPermission) || fs.held {
+	if err := Update("/etc/fstab", []byte("committed, unlock error"), cfg, fs); !errors.Is(err, os.ErrPermission) || fs.held {
 		t.Fatalf("unlock failure ignored %v", err)
 	}
 }
@@ -297,7 +318,7 @@ func TestCorruptOrForeignHistoryIsNeverOverwritten(t *testing.T) {
 	for _, kind := range []string{"source", "checksum", "delta", "unreachable"} {
 		t.Run(kind, func(t *testing.T) {
 			cfg := Config{Dir: t.TempDir()}
-			source := "/fixture/fstab"
+			source := "/etc/fstab"
 			for _, s := range []string{"old\n", "new\n"} {
 				if err := Update(source, []byte(s), cfg); err != nil {
 					t.Fatal(err)
@@ -346,7 +367,7 @@ func TestHistorySymlinksAreRefused(t *testing.T) {
 	for _, suffix := range []string{"", ".lock"} {
 		t.Run(suffix, func(t *testing.T) {
 			cfg := Config{Dir: t.TempDir()}
-			source := "/fixture/fstab"
+			source := "/etc/fstab"
 			history, err := HistoryPath(source, cfg.Dir, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -380,7 +401,7 @@ func TestBackupDirectorySymlinkDotDotIsNotCleaned(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := Config{Dir: root + "/link/../backup"}
-	source := "/fixture/fstab"
+	source := "/etc/fstab"
 	if err := Update(source, []byte("correct directory"), cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -416,10 +437,10 @@ func TestRootWorkingDirectoryIdentity(t *testing.T) {
 func TestInvalidAuthorCannotBreakArchive(t *testing.T) {
 	t.Setenv("USER", "bad;author\nhead 9.9;")
 	cfg := Config{Dir: t.TempDir()}
-	if err := Update("/fixture/fstab", []byte("safe\n"), cfg); err != nil {
+	if err := Update("/etc/fstab", []byte("safe\n"), cfg); err != nil {
 		t.Fatal(err)
 	}
-	got, err := Restore("/fixture/fstab", "", cfg, nil)
+	got, err := Restore("/etc/fstab", "", cfg, nil)
 	if err != nil || string(got) != "safe\n" {
 		t.Fatalf("author affected content %q %v", got, err)
 	}

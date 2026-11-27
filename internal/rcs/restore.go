@@ -23,6 +23,9 @@ func Restore(source, revision string, config Config, fs FS) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if identity != "/etc/fstab" && !config.Local {
+		return nil, fmt.Errorf("adjacent RCS history was not enabled")
+	}
 	data, err := fs.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read RCS history for recovery: %w", err)
