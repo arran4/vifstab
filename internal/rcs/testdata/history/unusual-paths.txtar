@@ -1,0 +1,40 @@
+Source path text cannot introduce backup traversal or uncontrolled directories.
+-- cases.json --
+[
+  {
+    "source": "../../../../outside/fstab",
+    "revisions_base64": [
+      "ZGF0YSAw"
+    ]
+  },
+  {
+    "source": "/one/link/../fstab",
+    "revisions_base64": [
+      "ZGF0YSAx"
+    ]
+  },
+  {
+    "source": "/one/fstab",
+    "revisions_base64": [
+      "ZGF0YSAy"
+    ]
+  },
+  {
+    "source": "/tmp/line\nname/../../fstab",
+    "revisions_base64": [
+      "ZGF0YSAz"
+    ]
+  },
+  {
+    "source": "/arbitrary/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/fstab",
+    "revisions_base64": [
+      "ZGF0YSA0"
+    ]
+  },
+  {
+    "source": "/mount/../../weird@;name",
+    "revisions_base64": [
+      "ZGF0YSA1"
+    ]
+  }
+]

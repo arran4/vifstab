@@ -11,6 +11,8 @@
 - **Versioning:** Automatically backs up changes using RCS.
 - **Manpage generation:** Can generate its own man page.
 
+RCS uses a separate backup directory only for `/etc/fstab`. Alternative files are unversioned by default; `--rcs` enables adjacent `file,v` history.
+
 ## Installation
 
 ### Using Go

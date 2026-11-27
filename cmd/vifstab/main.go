@@ -73,7 +73,8 @@ func main() {
 		formatCmd := flag.NewFlagSet("format", flag.ExitOnError)
 		fileFlag := formatCmd.String("file", "/etc/fstab", "File to format")
 		inPlaceFlag := formatCmd.Bool("i", false, "Write formatted output back to the file (in-place)")
-		backupDirFlag := formatCmd.String("backup-dir", "", "Directory to store RCS backups")
+		backupDirFlag := formatCmd.String("backup-dir", "", "RCS backup directory for /etc/fstab")
+		localRCSFlag := formatCmd.Bool("rcs", false, "Enable adjacent RCS history for an alternative file")
 		formatCmd.Usage = func() {
 			fmt.Fprintf(os.Stderr, "Usage: %s format [options]\n", os.Args[0])
 			formatCmd.PrintDefaults()
@@ -110,7 +111,13 @@ func main() {
 			defer func() { _ = in.Close() }()
 		}
 
+		if !*inPlaceFlag && (*localRCSFlag || *backupDirFlag != "") {
+			handleError(fmt.Errorf("RCS options require in-place formatting"))
+		}
 		if *inPlaceFlag {
+			if *fileFlag != "/etc/fstab" && *backupDirFlag != "" {
+				handleError(fmt.Errorf("--backup-dir applies only to /etc/fstab; use --rcs for adjacent history"))
+			}
 			// Read the entire file content, format it, then overwrite
 			tempFile, err := os.CreateTemp("", "vifstab-format-*")
 			if err != nil {
@@ -141,6 +148,7 @@ func main() {
 			if *backupDirFlag != "" {
 				cfg.BackupDir = *backupDirFlag
 			}
+			cfg.LocalRCS = *localRCSFlag
 			if err := editor.SaveWithoutValidation(cfg, content, editor.DefaultDependencies()); err != nil {
 				handleError(err)
 			}
@@ -156,13 +164,15 @@ func main() {
 
 	var (
 		backupDir       string
+		localRCS        bool
 		file            string
 		generateManpage bool
 		verifyOnly      bool
 		systemdReload   string
 	)
 
-	flag.StringVar(&backupDir, "backup-dir", "", "Directory to store RCS backups (defaults to a sensible location based on the file being edited and the user running the command)")
+	flag.StringVar(&backupDir, "backup-dir", "", "RCS backup directory for /etc/fstab")
+	flag.BoolVar(&localRCS, "rcs", false, "Enable adjacent RCS history for an alternative file")
 	flag.StringVar(&file, "file", "/etc/fstab", "File to edit")
 	flag.BoolVar(&generateManpage, "generate-manpage", false, "Generate man page for vifstab to vifstab.1")
 	flag.BoolVar(&verifyOnly, "verify", false, "Verify the file without opening an editor")
@@ -193,6 +203,7 @@ func main() {
 	if backupDir != "" {
 		cfg.BackupDir = backupDir
 	}
+	cfg.LocalRCS = localRCS
 
 	switch config.SystemdReloadAction(systemdReload) {
 	case config.SystemdReloadAuto, config.SystemdReloadWarn, config.SystemdReloadNever:
@@ -234,6 +245,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	if file != "/etc/fstab" && backupDir != "" {
+		handleError(fmt.Errorf("--backup-dir applies only to /etc/fstab; use --rcs for adjacent history"))
+	}
 	if err != nil && backupDir == "" {
 		handleError(err)
 	}

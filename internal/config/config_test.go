@@ -29,6 +29,11 @@ func TestGetDefaultConfig(t *testing.T) {
 			expectedCache: "/home/user/.cache/vifstab",
 		},
 		{
+			name:          "Alternative requires no cache",
+			filePath:      "/tmp/example.fstab",
+			expectedCache: "",
+		},
+		{
 			name:          "Neither XDG_CACHE_HOME nor HOME is set",
 			xdgCacheHome:  "",
 			homeEnv:       "",

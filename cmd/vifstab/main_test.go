@@ -213,44 +213,24 @@ func TestExplicitBackupDir(t *testing.T) {
 
 func TestFormatInPlaceNoCache(t *testing.T) {
 	binPath := buildBinary(t)
-
-	tempDir := t.TempDir()
-	fstabPath := filepath.Join(tempDir, "fstab")
-	backupDir := filepath.Join(tempDir, "backup")
-	err := os.WriteFile(fstabPath, []byte(""), 0644)
-	if err != nil {
+	root := t.TempDir()
+	fstabPath := filepath.Join(root, "fstab")
+	if err := os.WriteFile(fstabPath, []byte(""), 0644); err != nil {
 		t.Fatal(err)
 	}
-
-	cmd := exec.Command(binPath, "format", "-i", "--file", fstabPath)
-	cmd.Env = []string{
-		"XDG_CACHE_HOME=",
-		"HOME=",
-		"USERPROFILE=",
-		"PATH=" + os.Getenv("PATH"),
-	}
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	err = cmd.Run()
-	if err == nil {
-		t.Fatalf("format -i without cache dir should have failed, but it succeeded")
-	}
-	if !strings.Contains(stderr.String(), "could not determine user cache directory") {
-		t.Fatalf("expected error about cache dir, got: %s", stderr.String())
-	}
-
-	cmd2 := exec.Command(binPath, "format", "-i", "--file", fstabPath, "--backup-dir", backupDir)
-	cmd2.Env = []string{
-		"XDG_CACHE_HOME=",
-		"HOME=",
-		"USERPROFILE=",
-		"PATH=" + os.Getenv("PATH"),
-	}
-	var stderr2 bytes.Buffer
-	cmd2.Stderr = &stderr2
-	err = cmd2.Run()
-	if err != nil {
-		t.Fatalf("format -i with explicit backup dir failed: %v\nStderr: %s", err, stderr2.String())
+	for _, enabled := range []bool{false, true} {
+		args := []string{"format", "-i", "--file", fstabPath}
+		if enabled {
+			args = append(args, "--rcs")
+		}
+		cmd := exec.Command(binPath, args...)
+		cmd.Env = []string{"XDG_CACHE_HOME=", "HOME=", "USERPROFILE=", "PATH=" + os.Getenv("PATH")}
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("format -i: %v: %s", err, out)
+		}
+		_, err := os.Stat(fstabPath + ",v")
+		if enabled && err != nil || !enabled && !os.IsNotExist(err) {
+			t.Fatalf("adjacent history enabled=%v, stat=%v", enabled, err)
+		}
 	}
 }
