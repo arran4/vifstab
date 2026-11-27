@@ -1,0 +1,9 @@
+-- options.txt --
+rule=fstab_permissions
+format=level_prefix
+-- input/etc/fstab --
+LABEL=root / ext4 defaults 0 1
+-- cache --
+fstab_path=/etc/fstab
+fstab_state=unknown
+-- issues --

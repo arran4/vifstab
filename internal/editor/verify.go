@@ -3,7 +3,7 @@ package editor
 import (
 	"context"
 	"fmt"
-	"os"
+	"github.com/arran4/vifstab/internal/textinput"
 
 	"github.com/arran4/vifstab/internal/config"
 	"github.com/arran4/vifstab/internal/rules"
@@ -26,10 +26,14 @@ func (m *memoizedAPI) GetBlockDevices() (rules.BlockDeviceInventory, error) {
 	return m.inv, m.err
 }
 
+func (m *memoizedAPI) GetFileInfo(path string) (rules.FileInfoResult, error) {
+	return rules.GetFileInfo(m.API, path)
+}
+
 // VerifyAndLint reads the given file and lints it against all registered rules.
 // It returns a slice of all suggestions (warnings, errors, etc.) and an error if a technical failure occurred.
 func VerifyAndLint(cfg config.Config, api rules.API) ([]rules.ValidationIssue, error) {
-	f, err := os.Open(cfg.FilePath)
+	f, err := textinput.Open(cfg.FilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file for verification: %w", err)
 	}
@@ -43,7 +47,8 @@ func VerifyAndLint(cfg config.Config, api rules.API) ([]rules.ValidationIssue, e
 	}
 
 	// Run rules
-	return lintEntries(entries, api)
+	ctx := rules.WithTargetFstab(context.Background(), cfg.FilePath)
+	return lintEntriesWithContext(ctx, entries, api)
 }
 
 // lintEntries validates a list of fstab entries against all registered rules.
@@ -61,8 +66,20 @@ func lintEntriesWithContext(ctx context.Context, entries []*rules.FstabEntry, ap
 	memoized := &memoizedAPI{API: api}
 
 	var allIssues []rules.ValidationIssue
+	for _, r := range allRules {
+		if fr, ok := r.(rules.FileRule); ok {
+			issues, err := fr.ValidateFile(ctx, memoized)
+			if err != nil {
+				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)
+			}
+			allIssues = append(allIssues, issues...)
+		}
+	}
 	for _, entry := range entries {
 		for _, r := range allRules {
+			if _, ok := r.(rules.FileRule); ok {
+				continue
+			}
 			issues, err := r.Validate(ctx, memoized, entry)
 			if err != nil {
 				return nil, fmt.Errorf("rule %s failed: %w", r.Name(), err)

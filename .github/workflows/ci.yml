@@ -52,12 +52,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
-  discussions: write
-  pull-requests: write
-  checks: write
-  packages: write
-  security-events: write
+  contents: read
 
 jobs:
   route:
@@ -73,6 +68,12 @@ jobs:
     steps:
       - id: route
         shell: bash
+        env:
+          VIFSTAB_EVENT_NAME: ${{ github.event_name }}
+          VIFSTAB_EVENT_REF: ${{ github.ref }}
+          VIFSTAB_EVENT_ACTION: ${{ github.event.action }}
+          VIFSTAB_EVENT_SCHEDULE: ${{ github.event.schedule }}
+          VIFSTAB_PIPELINE_MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
 
@@ -83,12 +84,12 @@ jobs:
           is_monthly=false
           is_nightly=false
 
-          case "${{ github.event_name }}" in
+          case "$VIFSTAB_EVENT_NAME" in
             push)
               run_code_checks=true
               ;;
             pull_request)
-              if [[ "${{ github.event.action }}" == "closed" ]]; then
+              if [[ "$VIFSTAB_EVENT_ACTION" == "closed" ]]; then
                 run_cleanup=true
               else
                 run_pr_meta_checks=true
@@ -100,30 +101,32 @@ jobs:
               ;;
             workflow_dispatch)
               run_code_checks=true
-              if [[ "${{ inputs.mode }}" == release-* ]]; then
+              if [[ "$VIFSTAB_PIPELINE_MODE" == release-* ]]; then
                 run_release=true
               fi
-              if [[ "${{ inputs.mode }}" == "monthly-maintenance" ]]; then
+              if [[ "$VIFSTAB_PIPELINE_MODE" == "monthly-maintenance" ]]; then
                 is_monthly=true
               fi
-              if [[ "${{ inputs.mode }}" == "lint-fix" ]]; then
+              if [[ "$VIFSTAB_PIPELINE_MODE" == "lint-fix" ]]; then
                 is_nightly=true
               fi
               ;;
             schedule)
               run_code_checks=true
-              if [[ "${{ github.event.schedule }}" == "0 19 1 * *" ]]; then
+              if [[ "$VIFSTAB_EVENT_SCHEDULE" == "0 19 1 * *" ]]; then
                 is_monthly=true
               fi
               ;;
           esac
 
-          echo "run_code_checks=$run_code_checks" >> "$GITHUB_OUTPUT"
-          echo "run_pr_meta_checks=$run_pr_meta_checks" >> "$GITHUB_OUTPUT"
-          echo "run_cleanup=$run_cleanup" >> "$GITHUB_OUTPUT"
-          echo "run_release=$run_release" >> "$GITHUB_OUTPUT"
-          echo "is_monthly=$is_monthly" >> "$GITHUB_OUTPUT"
-          echo "is_nightly=$is_nightly" >> "$GITHUB_OUTPUT"
+          {
+            echo "run_code_checks=$run_code_checks"
+            echo "run_pr_meta_checks=$run_pr_meta_checks"
+            echo "run_cleanup=$run_cleanup"
+            echo "run_release=$run_release"
+            echo "is_monthly=$is_monthly"
+            echo "is_nightly=$is_nightly"
+          } >> "$GITHUB_OUTPUT"
 
   prepare-release-tag:
     name: Prepare release tag
@@ -134,21 +137,26 @@ jobs:
       release_tag: ${{ steps.tag.outputs.release_tag }}
       next_version: ${{ steps.tag.outputs.next_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           fetch-depth: 0
       - name: Setup git-tag-inc
-        uses: arran4/git-tag-inc-action@v1
+        uses: arran4/git-tag-inc-action@89e8d014ce431b8c757393fe77585b299a939f86 # v1
         with:
           mode: install
+          version: v1.3.10
       - id: tag
+        env:
+          VIFSTAB_PIPELINE_MODE: ${{ inputs.mode }}
+          VIFSTAB_RELEASE_OVERRIDE: ${{ inputs.release_version_override }}
         shell: bash
         run: |
           set -euo pipefail
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          MODE="${{ inputs.mode }}"
-          OVERRIDE="${{ inputs.release_version_override }}"
+          MODE="$VIFSTAB_PIPELINE_MODE"
+          OVERRIDE="$VIFSTAB_RELEASE_OVERRIDE"
 
           if [[ -n "$OVERRIDE" ]]; then
             OVERRIDE="${OVERRIDE#v}"
@@ -219,14 +227,16 @@ jobs:
     if: ${{ needs.route.outputs.run_code_checks == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
-          version: latest
+          version: v2.15.0
 
   go-test:
     name: Go lint/test (${{ matrix.os }})
@@ -238,8 +248,10 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
           cache: true
@@ -252,21 +264,29 @@ jobs:
     if: ${{ needs.route.outputs.run_code_checks == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
           cache: true
       - run: go vet ./...
 
   go-fmt-pr:
+    # This owner-invoked job alone may push a formatting branch and open a PR.
+    permissions:
+      contents: write
+      pull-requests: write
     name: go fmt -> PR (manual dispatch)
     needs: [route]
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'lint-fix' && inputs.allow_prs == true }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
       - name: Run go fmt
@@ -274,12 +294,13 @@ jobs:
       - name: Create PR if go fmt changed files
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VIFSTAB_RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
           git diff --quiet && { echo "No fmt changes"; exit 0; }
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          BRANCH="ci/gofmt/${{ github.run_id }}"
+          BRANCH="ci/gofmt/$VIFSTAB_RUN_ID"
           git checkout -b "$BRANCH"
           git add -A
           git commit -m "ci: go fmt"
@@ -287,25 +308,31 @@ jobs:
           gh pr create --title "ci: go fmt" --body "Automated go fmt from manual dispatch." --base main --head "$BRANCH" --label "ci-autofix"
 
   goreleaser:
+    # Tag/manual publishing needs repository release writes, not other scopes.
+    permissions:
+      contents: write
     name: GoReleaser
     needs: [route, go-test, prepare-release-tag]
     if: ${{ (((github.event_name == 'push') && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && startsWith(inputs.mode, 'release-'))) }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
       - name: Tag commit for release (workflow_dispatch)
         if: ${{ github.event_name == 'workflow_dispatch' && startsWith(inputs.mode, 'release-') }}
-        run: git tag ${{ needs.prepare-release-tag.outputs.release_tag }}
+        env:
+          VIFSTAB_RELEASE_TAG: ${{ needs.prepare-release-tag.outputs.release_tag }}
+        run: git tag -- "$VIFSTAB_RELEASE_TAG"
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
         with:
           distribution: goreleaser
-          version: '~> v2'
+          version: 'v2.20.0'
           args: >-
             release --clean
             ${{ (github.event_name == 'workflow_dispatch' && (inputs.mode == 'release-test' || inputs.mode == 'release-rc' || inputs.mode == 'release-alpha')) && '--snapshot' || '' }}

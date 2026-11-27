@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Private security reporting guidance
+    url: https://github.com/arran4/vifstab/blob/main/SECURITY.md
+    about: Do not disclose vulnerabilities or confidential captures in public issues.
