@@ -1,0 +1,18 @@
+Executable regression: edit-abort; default fstab is a build-time fixture.
+-- args.json --
+["edit", "--backup-dir", "backup"]
+-- fstab --
+bad
+-- stdin --
+q
+-- status --
+0
+-- stdout --
+Validation issues found:
+ - [error] Line 1 has less than 6 fields (Line: bad)
+What now? (e)dit again, (c)ontinue and save anyway, (q)uit without saving: Aborted.
+-- stderr --
+-- editor --
+yes
+-- editor-exit --
+

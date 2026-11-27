@@ -1,0 +1,12 @@
+Executable regression: format-pipe; default fstab is a build-time fixture.
+-- args.json --
+["format"]
+-- fstab --
+# file
+-- stdin --
+none /mnt tmpfs defaults 0 0
+-- status --
+0
+-- stdout --
+none  /mnt  tmpfs  defaults  0  0
+-- stderr --

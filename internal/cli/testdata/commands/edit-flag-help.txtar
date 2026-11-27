@@ -1,0 +1,29 @@
+Executable regression: edit-flag-help; default fstab is a build-time fixture.
+-- args.json --
+["edit", "--help"]
+-- fstab --
+-- stdin --
+-- status --
+0
+-- stdout --
+-- stderr --
+Usage: vifstab edit [flags...] [operands...]
+
+Edit, validate and save fstab explicitly, using inherited credentials.
+
+Subcommands:
+    help  Print this help message
+    usage Print this usage message
+
+
+Flags:
+    --file string             (default: "/etc/fstab")   File to edit.
+    --backup-dir string       (default: "")             RCS backup directory;
+                                                        defaults to the caller's
+                                                        cache.
+    --systemd-reload string   (default: "warn")         Post-save systemd
+                                                        handling: auto, warn or
+                                                        never.
+
+Positional Arguments:
+    [operands...] No positional operands are accepted.

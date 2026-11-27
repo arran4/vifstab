@@ -28,10 +28,24 @@ func (f FileOption) ValidateOption(ctx context.Context, api rules.API, entry *ru
 		existsResult := api.CheckFileExists(decodedVal)
 
 		if existsResult != rules.FileExists {
+			if existsResult == rules.Unknown {
+				return []rules.ValidationIssue{{
+					Message: fmt.Sprintf("Unable to determine existence of file '%s' for %s mount option '%s' on line %d", decodedVal, fsName, key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelInfo,
+				}}
+			}
 			if existsResult == rules.FilePermissionDenied && f.IgnoreFailureIfNoPermission {
 				// We lack permission to check, but we are allowed to ignore it.
 				// However, if we're ignoring the failure entirely, we shouldn't emit an error.
 				return nil
+			}
+			if existsResult == rules.FilePermissionDenied {
+				return []rules.ValidationIssue{{
+					Message: fmt.Sprintf("Permission denied while checking file '%s' for %s mount option '%s' on line %d", decodedVal, fsName, key, entry.LineNum),
+					Line:    entry.RawLine,
+					Level:   rules.IssueLevelInfo,
+				}}
 			}
 			return []rules.ValidationIssue{
 				{

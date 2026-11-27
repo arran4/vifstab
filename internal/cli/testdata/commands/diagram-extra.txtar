@@ -1,0 +1,10 @@
+Executable regression: diagram-extra; default fstab is a build-time fixture.
+-- args.json --
+["diagram", "one", "two"]
+-- fstab --
+-- stdin --
+-- status --
+1
+-- stdout --
+-- stderr --
+Error: expected at most 1 arguments for devices, got 2

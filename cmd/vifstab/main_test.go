@@ -162,7 +162,7 @@ func TestVerifyFallbackError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cmd := exec.Command(binPath, "--verify", "--file", fstabPath)
+	cmd := exec.Command(binPath, "verify", "--file", fstabPath)
 	cmd.Env = []string{
 		"XDG_CACHE_HOME=",
 		"HOME=",
@@ -181,18 +181,17 @@ func TestVerifyFallbackError(t *testing.T) {
 	}
 }
 
-func TestExplicitBackupDir(t *testing.T) {
+func TestVerifyNeedsNoBackupDir(t *testing.T) {
 	binPath := buildBinary(t)
 
 	tempDir := t.TempDir()
 	fstabPath := filepath.Join(tempDir, "fstab")
-	backupDir := filepath.Join(tempDir, "backup")
 	err := os.WriteFile(fstabPath, []byte(""), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cmd := exec.Command(binPath, "--verify", "--file", fstabPath, "--backup-dir", backupDir)
+	cmd := exec.Command(binPath, "verify", "--file", fstabPath)
 	cmd.Env = []string{
 		"XDG_CACHE_HOME=",
 		"HOME=",

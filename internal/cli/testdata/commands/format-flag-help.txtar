@@ -1,0 +1,30 @@
+Executable regression: format-flag-help; default fstab is a build-time fixture.
+-- args.json --
+["format", "--help"]
+-- fstab --
+-- stdin --
+-- status --
+0
+-- stdout --
+-- stderr --
+Usage: vifstab format [flags...] [operands...]
+
+Print aligned fstab; writing requires --in-place.
+
+Subcommands:
+    help  Print this help message
+    usage Print this usage message
+
+
+Flags:
+    --file string         (default: "/etc/fstab")   Input file; an explicit path
+                                                    takes precedence over piped
+                                                    stdin. Use - for stdin.
+    --in-place, -i        (default: false)          Replace the selected file
+                                                    using the save and recovery
+                                                    workflow.
+    --backup-dir string   (default: "")             RCS directory for in-place
+                                                    formatting.
+
+Positional Arguments:
+    [operands...] No positional operands are accepted.

@@ -1,0 +1,12 @@
+Executable regression: version; default fstab is a build-time fixture.
+-- args.json --
+["version"]
+-- fstab --
+-- stdin --
+-- status --
+0
+-- stdout --
+Version: dev
+Commit: none
+Date: unknown
+-- stderr --

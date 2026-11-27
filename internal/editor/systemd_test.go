@@ -102,7 +102,7 @@ func TestCommitEditSystemdHandling(t *testing.T) {
 	}
 }
 
-func TestCommitEditRCSFailureAfterSaveStillReloads(t *testing.T) {
+func TestCommitEditRCSFailureAfterSaveDoesNotReload(t *testing.T) {
 	fsLayer := &rcsFailFS{mockFS: newCommitTestFS()}
 	sm := &mockSystemdManager{isActive: true}
 	cfg := config.Config{FilePath: "/etc/fstab", BackupDir: "/backup", SystemdReload: config.SystemdReloadAuto}
@@ -110,8 +110,8 @@ func TestCommitEditRCSFailureAfterSaveStillReloads(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "rcs update failed") {
 		t.Fatalf("got error %v, want rcs failure", err)
 	}
-	if sm.reloadCount != 1 {
-		t.Fatalf("Reload called %d times after rcs failure, want 1", sm.reloadCount)
+	if sm.reloadCount != 0 {
+		t.Fatalf("Reload called %d times after rcs failure, want 0", sm.reloadCount)
 	}
 }
 
@@ -233,7 +233,7 @@ func TestCommitEditReloadFailureIsPostSaveError(t *testing.T) {
 	}
 }
 
-func TestCommitEditDualFailureCombinesErrors(t *testing.T) {
+func TestCommitEditRCSFailureSuppressesReloadFailure(t *testing.T) {
 	fsLayer := newCommitTestFS()
 	rcsErr := errors.New("rcs failure")
 	fsLayer.faults = map[string]error{
@@ -245,15 +245,15 @@ func TestCommitEditDualFailureCombinesErrors(t *testing.T) {
 
 	err := commitEdit(cfg, []byte("new"), true, Dependencies{FS: fsLayer, Systemd: sm})
 	if err == nil {
-		t.Fatal("expected combined error, got nil")
+		t.Fatal("expected RCS error, got nil")
 	}
 
 	if !errors.Is(err, rcsErr) {
 		t.Errorf("error does not wrap RCS failure: %v", err)
 	}
 
-	if !errors.Is(err, systemdErr) {
-		t.Errorf("error does not wrap systemd failure: %v", err)
+	if errors.Is(err, systemdErr) || sm.reloadCount != 0 {
+		t.Errorf("reload must not run after RCS failure: calls=%d, error=%v", sm.reloadCount, err)
 	}
 }
 
@@ -336,3 +336,26 @@ func TestSaveWithoutValidationUsesConservativeSystemdWarning(t *testing.T) {
 		})
 	}
 }
+
+// A rename may succeed while its durability sync fails. Preserve the installed
+// content, but do not automatically reload after an operation returning failure.
+func TestCommitEditDirectorySyncFailureDoesNotReload(t *testing.T) {
+	fsLayer := &syncFailFS{mockFS: newCommitTestFS()}
+	sm := &mockSystemdManager{isActive: true}
+	cfg := config.Config{FilePath: "/etc/fstab", SystemdReload: config.SystemdReloadAuto}
+	err := commitEdit(cfg, []byte("new"), true, Dependencies{FS: fsLayer, Systemd: sm})
+	if err == nil || !strings.Contains(err.Error(), "sync directory") {
+		t.Fatalf("expected durability error: %v", err)
+	}
+	if sm.reloadCount != 0 {
+		t.Fatalf("Reload called %d times after sync failure", sm.reloadCount)
+	}
+	got, readErr := fsLayer.ReadFile("/etc/fstab")
+	if readErr != nil || string(got) != "new" {
+		t.Fatalf("installed content: %q, %v", got, readErr)
+	}
+}
+
+type syncFailFS struct{ *mockFS }
+
+func (f *syncFailFS) SyncDir(string) error { return errors.New("injected directory sync failure") }

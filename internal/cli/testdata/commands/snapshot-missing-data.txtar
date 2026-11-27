@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: snapshot-missing-data.
+-- args.json --
+["verify", "--snapshot", "-"]
+-- fstab --
+-- stdin.json --
+"not an archive\n"
+-- status --
+1
+-- stdout.json --
+""
+-- stderr.json --
+"Error: verify failed: failed to parse txtar file: invalid archive: missing fstab data\n"

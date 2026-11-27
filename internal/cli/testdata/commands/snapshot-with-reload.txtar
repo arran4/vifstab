@@ -1,0 +1,12 @@
+Compiled, isolated support/verification regression: snapshot-with-reload.
+-- args.json --
+["verify", "--snapshot", "-", "--systemd-reload", "auto"]
+-- fstab --
+-- stdin.json --
+"-- input/etc/fstab --\n"
+-- status --
+1
+-- stdout.json --
+""
+-- stderr.json --
+"Error: flag provided but not defined: -systemd-reload\n"

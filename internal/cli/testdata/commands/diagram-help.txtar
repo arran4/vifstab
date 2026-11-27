@@ -1,0 +1,19 @@
+Executable regression: diagram-help; default fstab is a build-time fixture.
+-- args.json --
+["help", "diagram"]
+-- fstab --
+-- stdin --
+-- status --
+0
+-- stdout --
+-- stderr --
+Usage: vifstab diagram [devices...]
+
+Print a partition diagram.
+
+Subcommands:
+    help  Print this help message
+    usage Print this usage message
+
+Positional Arguments:
+    [devices...] Device or disk image.

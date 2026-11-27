@@ -1,19 +1,13 @@
 -- kernel --
 6.0.0
--- input --
+-- input/etc/fstab --
 coda /mnt coda fd=3 0 0
 coda /mnt coda fd=4,ro,nodev,noexec 0 0
 coda /mnt coda fd=3,rw 0 0
--- issues --
--- input --
 coda /mnt coda fd=foo 0 0
--- issues --
-Invalid value 'foo' for coda mount option 'fd' on line 1, must be an integer
--- input --
 coda /mnt coda fd 0 0
--- issues --
-Missing value for coda mount option 'fd' on line 1
--- input --
 coda /mnt coda invalidopt 0 0
 -- issues --
-Unknown coda mount option 'invalidopt' on line 1
+Invalid value 'foo' for coda mount option 'fd' on line 4, must be an integer
+Missing value for coda mount option 'fd' on line 5
+Unknown coda mount option 'invalidopt' on line 6
