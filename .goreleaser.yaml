@@ -28,7 +28,5 @@ archives:
         info: {owner: root, group: root, mode: 0644, mtime: '{{ .CommitDate }}'}
       - src: README.md
         info: {owner: root, group: root, mode: 0644, mtime: '{{ .CommitDate }}'}
-      - src: INSTALL.md
-        info: {owner: root, group: root, mode: 0644, mtime: '{{ .CommitDate }}'}
-      - src: THIRD_PARTY_NOTICES.md
+      - src: THIRD_PARTY_NOTICES.txt
         info: {owner: root, group: root, mode: 0644, mtime: '{{ .CommitDate }}'}

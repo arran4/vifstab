@@ -8,6 +8,13 @@ type Rule interface {
 	Validate(ctx context.Context, api API, entry *FstabEntry) ([]ValidationIssue, error)
 }
 
+// FileRule is an optional interface for rules that validate file-level properties
+// once per fstab file, including empty files with zero entries.
+type FileRule interface {
+	Rule
+	ValidateFile(ctx context.Context, api API) ([]ValidationIssue, error)
+}
+
 type IssueLevel string
 
 const (
