@@ -172,6 +172,10 @@ priority order, default `vi`. Arguments `--` and the temporary path are appended
 
 **XDG_CACHE_HOME**, **HOME**: Caller cache lookup for writing workflows.
 
+Mount-option validation preserves repeated values and their input order. Existing
+validators may use the last occurrence; cross-option checks can inspect all values
+and order. See docs/MOUNT-OPTIONS.md in the source distribution.
+
 ## SEE ALSO
 
 fstab(5), mount(8), README.md

@@ -224,6 +224,9 @@ removal kernel is not confirmed; a calendar date is not proof of unsupported
 syntax. `data=ordered` has different integrity guarantees and is not silently
 substituted.
 
+Repeated mount-option values are preserved for cross-option checks; see
+[the validation API and its limits](docs/MOUNT-OPTIONS.md).
+
 ## Development and regression cases
 
 ```sh

@@ -1,0 +1,12 @@
+A sample cross-option check can distinguish an option with repeated values from
+one with a single value; it runs once per key rather than duplicating findings.
+-- input/etc/fstab --
+UUID=example /efi vfat x-systemd.idle-timeout=30s,umask=0077,x-systemd.idle-timeout=2min,x-systemd.requires=first.mount,x-systemd.requires=first.mount 0 2
+-- expected/options.txt --
+x-systemd.idle-timeout has-value=true value="30s"
+umask has-value=true value="0077"
+x-systemd.idle-timeout has-value=true value="2min"
+x-systemd.requires has-value=true value="first.mount"
+x-systemd.requires has-value=true value="first.mount"
+-- expected/findings.txt --
+info: example singleton x-systemd.idle-timeout has 2 occurrences
