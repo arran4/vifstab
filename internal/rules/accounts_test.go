@@ -149,3 +149,22 @@ func TestExplicitAccountObservationsRemainAuthoritative(t *testing.T) {
 		}
 	}
 }
+
+func TestAccountRecordsBeyondScannerTokenSize(t *testing.T) {
+	members := strings.Repeat("member,", 20000) + "last"
+	gecos := strings.Repeat("long field ", 10000)
+	for _, finalNewline := range []string{"", "\n"} {
+		files := fstest.MapFS{
+			"etc/passwd": {Data: []byte("other:x:2000:2000:" + gecos + ":/:/bin/false\nexample:x:1000:1000:" + gecos + ":/:/bin/false" + finalNewline)},
+			"etc/group":  {Data: []byte("other:x:2000:" + members + "\nexample:x:1000:" + members + finalNewline)},
+		}
+		actual := rules.ActualFS{OS: mockErrorOS{openFunc: func(path string) (fs.File, error) {
+			return files.Open(strings.TrimPrefix(path, "/"))
+		}}}
+		for _, api := range []rules.API{actual, rules.NewCacheFS(rules.NewCache(), files)} {
+			if api.CheckUserExists(1000) != rules.Exists || api.CheckGroupExists(1000) != rules.Exists {
+				t.Fatal("valid large records were not observed")
+			}
+		}
+	}
+}
