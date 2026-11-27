@@ -40,10 +40,10 @@ func TestSELinuxContextOption(t *testing.T) {
 	opt := options.SELinuxContextOption{}
 
 	tests := []struct {
-		name     string
-		val      string
-		hasVal   bool
-		wantErrs int
+		name       string
+		val        string
+		hasVal     bool
+		wantErrs   int
 		wantErrMsg string
 	}{
 		{

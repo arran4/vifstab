@@ -2,19 +2,17 @@
 
 **⚠️ Work in Progress**
 
-`vifstab` is a work-in-progress utility providing a visudo-like safe editing workflow for `/etc/fstab` files. It safely edits `fstab` files with built-in linting and versioning, respects the `$VISUAL` or `$EDITOR` environment variables, and saves backups using RCS.
+`vifstab` is a work-in-progress Linux fstab verifier with a visudo-inspired editing workflow, built-in linting and RCS versioning. It respects `$VISUAL` or `$EDITOR`. Editing, replacement metadata and backup/recovery still have known limitations; validation cannot guarantee a successful boot.
 
-Saving through a symlink updates its resolved regular-file target and preserves
-the link. Broken links and loops are rejected. Editing detects changes since
-the initial snapshot and retains a recovery copy after a refused save. Remaining
-races, in-place formatting, ownership, extended-metadata and RCS limitations are
-documented; read
-[save behaviour and limitations](docs/SAVE-SAFETY.md) before using either on an
-important configuration.
+Saving through a symlink updates its resolved regular-file target and preserves the link. Broken links and loops are rejected. See [save behaviour](docs/SAVE-SAFETY.md).
+
+Detected changes to the destination during editing refuse the save and preserve an edited recovery copy. See [save behaviour](docs/SAVE-SAFETY.md).
+
+Save metadata policy defaults to strict; `--metadata-policy supported` permits unavailable xattr support, while `best-effort` reports metadata that could not be preserved.
 
 ## Features
 
-- **Safe editing:** Edits `/etc/fstab` with validation to prevent critical boot errors.
+- **Editing:** Validates proposed changes before an intentional save, with known save-safety limitations under review.
 - **Linting:** Built-in modular rules for format and filesystem checks.
 - **Versioning:** Automatically backs up changes using RCS.
 - **Manpage generation:** Can generate its own man page.
@@ -56,6 +54,15 @@ vifstab
 ```
 *Note: Modifying system files like `/etc/fstab` requires elevated privileges. It is the caller's responsibility to arrange sufficient permissions (e.g., using `sudo`, `doas`, or `su`) when invoking `vifstab`.*
 
+## Target Ownership and Permissions Verification
+
+During verification and editing, `vifstab` inspects the selected effective target (`--file`, following symlinks via `stat`) once per file—including empty fstab files—for ownership, mode bits, and Linux POSIX access ACLs (`system.posix_acl_access`):
+- A system target (`/etc/fstab`) triggers a warning if it is world-writable, owned by an unexpected non-root user, group-writable by a non-root group, or has ACL write access granted to non-root users.
+- Alternate user-specified fstab paths are warned if world-writable or if write ACLs expose write access to non-owners.
+- Secure configurations such as `0644` or `0600` root:root ownership produce no warnings.
+- Unavailable, unsupported, or unreadable metadata (including ACLs) remains unknown rather than emitting false positives, and `vifstab` never modifies permissions automatically.
+- Permission issues are reported at `warning` severity, which is blocking in `vifstab`: read-only verification exits non-zero, and `vifstab edit` prompts `(e)dit again, (c)ontinue and save anyway, (q)uit without saving`.
+
 ### Security Model and Privileges
 
 `vifstab` is designed to validate and version files, not to manage process privileges. It provides a visudo-like safe editing workflow, but unlike `visudo`, `vifstab` does not acquire or manage privileges itself; it relies entirely on the invocation context.
@@ -81,7 +88,6 @@ Note: `SUDO_EDITOR` is intentionally ignored because `vifstab` does not infer or
 - `--backup-dir value`: Directory to store RCS backups. If not provided, it defaults to `$XDG_CACHE_HOME/vifstab` or `~/.cache/vifstab` for the current user.
 - `--file value`: File to edit (default: "/etc/fstab")
 - `--generate-manpage`: Generate man page for vifstab to `vifstab.1`
-- `--metadata-policy value`: Metadata preservation policy for save operations (`strict|supported|best-effort`) (default: `strict`). `strict` preserves target file ownership (UID/GID), permissions/mode, and extended attributes (xattrs), refusing replacement and preserving a recovery copy if any attribute cannot be restored. `supported` allows missing xattr filesystem support while strictly enforcing ownership and permissions. `best-effort` applies all preservable metadata and emits user-facing warnings for any attributes that could not be preserved.
 - `--systemd-reload value`: Post-save systemd handling for `/etc/fstab` (`auto|warn|never`) (default: `warn`). `auto` runs `systemctl daemon-reload` only after validation and a committed save; an explicitly saved validation failure is warned instead. `warn` prints a diagnostic; `never` does nothing. In-place formatting of `/etc/fstab` warns conservatively and never reloads automatically.
 - `--verify`: Verify the file without opening an editor. Exits with a non-zero status if validation fails.
 
@@ -95,16 +101,16 @@ vifstab --file /path/to/custom/fstab --backup-dir /var/backups/vifstab
 
 `vifstab` provides several subcommands for specific tasks:
 
-- `diagram <device>`: Generates an ASCII art diagram of the filesystem stack and dependencies for the given block device.
+- `diagram <device-or-image>`: Shows a kernel/udev metadata diagram for a block device, or parses the partition table of a regular disk image. Unknown space is not proof of free space.
 - `format [options]`: Formats the `fstab` entries into a column-aligned format.
 - `uefi <device> <mountpoint>`: Correlates an fstab ESP entry with firmware boot entries and the currently booted EFI partition.
 
 Examples:
 
-Generate a diagram for a block device:
+Show the available kernel/udev layout for a block device:
 
 ```bash
-vifstab diagram /dev/sda1
+vifstab diagram /dev/sda
 ```
 
 Format an existing `fstab` file:
@@ -127,12 +133,13 @@ cat /etc/fstab | vifstab format
 
 ## Linting
 
-`vifstab` includes a modular linting registry that validates your entries before saving. It categorizes feedback into three levels:
-
-1. **Suggestions:** Suggestions can accompany a warning or stand on their own. They represent automatically determined improvements.
-2. **Warnings:** Warnings indicate issues that might cause non-critical errors, such as non-existent mount options.
-3. **Security:** Security issues are similar to warnings but track their own severity score for security-related issues.
-4. **Errors:** Errors indicate critical issues that might cause a complete failure, such as missing block devices or unknown filesystems.
+`vifstab` uses a modular registry with four finding levels: **info**, **warning**,
+**security** and **error**. Info is non-blocking. Warning, security and error
+findings fail verification and prompt before editing can continue; an explicit
+save override is possible. Suggestions can accompany a finding rather than
+forming a separate level. Unknown or unreadable observations are not proof that
+a device or property is absent. Diagnostics do not guarantee safe filesystem
+contents or a successful boot.
 
 ### EXT4 `data=journal` compatibility
 
@@ -144,14 +151,44 @@ cat /etc/fstab | vifstab format
 
 The informational notice does not rewrite `fstab`. Switching to the default `data=ordered` changes crash-consistency guarantees, so the administrator must decide whether it is an appropriate alternative. If the kernel version cannot be determined, this rule does not assume deprecation is active.
 
-Currently built-in rules check for:
-- Format validity (e.g., minimum number of fields)
-- Linux filesystem validity (checking against `/proc/filesystems`)
+Rule families cover parsing/field shape, filesystem and mount-option checks,
+mount-point/source identities, Linux/kernel compatibility and security-related
+configuration. Filesystem-specific families include local, network, virtual,
+layered and external filesystems. Coverage varies by rule and available metadata;
+accepted input is not proof that every option or future extension was validated.
+The rule fixtures under `internal/rules/builtin` are the evidence for individual
+behaviors.
+
+Repeated mount-option values are preserved for cross-option checks; see
+[the validation API and its limits](docs/MOUNT-OPTIONS.md).
 
 ## Environment Variables
 
 - `VISUAL` or `EDITOR`: Defines the text editor to use when opening the fstab file. `VISUAL` takes precedence over `EDITOR`. `SUDO_EDITOR` is not interpreted. Normal editor arguments are supported. Editor commands are executed directly rather than through a shell.
 
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for deterministic fixture tests and current
+interface boundaries, [SECURITY.md](SECURITY.md) for private reporting, and
+[capture privacy guidance](docs/CAPTURE-PRIVACY.md) before sharing system data.
+Linux 7-series compatibility is a development goal; BSD support is future work.
+The editor, in-place formatting and RCS remain experimental while save safety is
+reviewed. Validation cannot guarantee a successful boot.
+
 ## License
 
 `vifstab` is licensed under the [BSD 3-Clause License](LICENSE).
+
+Block diagrams do not open device contents. Regular images retain read-only GPT/MBR
+parsing through a checked stable file handle. Btrfs subvolume contents are not
+inferred from host paths. See [diagram sources and unknown states](docs/DIAGRAM-SOURCES.md)
+for platform limits, fixture tests and output privacy.
+
+## Configuration text input safety
+
+Fstab text inputs are classified before a data open; block-device inputs and
+unavailable classification are refused. Regular files, symlinks and intentional
+streams remain supported. Formatting checks borrowed stdin and retains pipelines.
+The Linux pathname reader requires metadata/proc-fd interfaces and keeps caller
+credentials. See [text input sources and limits](docs/TEXT-INPUTS.md) for the stable-inode boundary,
+platform limits and integration notes for the unmerged review branches.

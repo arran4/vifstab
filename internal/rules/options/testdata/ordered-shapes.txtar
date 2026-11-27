@@ -1,0 +1,13 @@
+Non-systemd repetitions preserve bare versus explicitly empty shapes, quoted
+commas, fstab octal escapes and additional equals signs without normalising.
+-- input/etc/fstab --
+overlay /merged overlay lowerdir=/one,lowerdir=/two,context="a,b",flag,flag=,path=/with\040space,path=a=b 0 0
+-- expected/options.txt --
+lowerdir has-value=true value="/one"
+lowerdir has-value=true value="/two"
+context has-value=true value="\"a,b\""
+flag has-value=false value=""
+flag has-value=true value=""
+path has-value=true value="/with\\040space"
+path has-value=true value="a=b"
+-- expected/findings.txt --

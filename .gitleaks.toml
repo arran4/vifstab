@@ -1,0 +1,13 @@
+# Narrow Gitleaks configuration for vifstab.
+# Extends the default Gitleaks ruleset without disabling any detection rules.
+
+title = "vifstab gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Published upstream Ceph mount.ceph(8) documentation example credential in historical test fixture"
+condition = "AND"
+commits = ["eb29dc529ab4c78b53df0d24b1eab9f9eddd9407"]
+paths = ['''^internal/rules/builtin/network/ceph/testdata/ceph\.txtar$''']
