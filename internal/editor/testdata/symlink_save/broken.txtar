@@ -1,0 +1,11 @@
+Dangling final links are rejected; no implicit creation or link replacement.
+-- path --
+links/fstab
+-- link/links/fstab --
+../data/missing
+-- file/data/keep --
+untouched
+-- new --
+edited
+-- error --
+failed to resolve destination

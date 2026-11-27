@@ -4,6 +4,8 @@
 
 `vifstab` is a work-in-progress Linux fstab verifier with a visudo-inspired editing workflow, built-in linting and RCS versioning. It respects `$VISUAL` or `$EDITOR`. Editing, replacement metadata and backup/recovery still have known limitations; validation cannot guarantee a successful boot.
 
+Saving through a symlink updates its resolved regular-file target and preserves the link. Broken links and loops are rejected. See [save behaviour](docs/SAVE-SAFETY.md).
+
 ## Features
 
 - **Editing:** Validates proposed changes before an intentional save, with known save-safety limitations under review.

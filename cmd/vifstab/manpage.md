@@ -19,6 +19,8 @@ Additionally, `vifstab` can maintain RCS revisions of saved content. This is not
 
 Findings have info, warning, security and error levels. Info is non-blocking; warnings, security findings and errors fail verification. Editing prompts on blocking findings, and the caller can explicitly override them. Unavailable observations are not proof of absence. Validation does not guarantee successful boot or safe filesystem contents.
 
+Saves preserve a configured symlink and replace its resolved regular-file target. Broken links, loops and missing parent directories are rejected.
+
 ## OPTIONS
 **--backup-dir**="": Directory to store RCS backups. If omitted, it uses `$XDG_CACHE_HOME/vifstab` or the caller's user-cache directory plus `/vifstab` (normally `$HOME/.cache/vifstab`). If that directory cannot be determined, editing requires an explicit `--backup-dir`; there is no `/tmp/.vifstab` fallback.
 
